@@ -105,7 +105,8 @@ def run():
             ctx = browser.new_context(viewport=vp, device_scale_factor=2 if name == 'phone' else 1)
             page = ctx.new_page()
             page.on('pageerror', lambda e: errors.append(f'pageerror: {e}'))
-            page.on('console', lambda m: errors.append(f'console.{m.type}: {m.text}') if m.type in ('error', 'warning') and 'fonts.g' not in m.text else None)
+            # フォントはわざと読みこまない（速く・ネットなしでも動くように）。そのときの読みこみエラーは数えない
+            page.on('console', lambda m: errors.append(f'console.{m.type}: {m.text}') if m.type in ('error', 'warning') and 'fonts.g' not in m.text and 'net::ERR_' not in m.text else None)
             page.route('**/fonts.googleapis.com/**', lambda r: r.abort())
             page.route('**/fonts.gstatic.com/**', lambda r: r.abort())
             page.goto(URL)
