@@ -18,7 +18,7 @@
 2. **プレイヤーに何かを選ばせるときは engine.js の `pick(g, p, 見出し, 選択肢, CPU用の選び方)` を通す。** オンラインでは選んだ番号が手（`{t:'choice', i}`）として相手に送られる。
 3. 実行のたびに順番が変わりうるもの（オブジェクトのキー、`Set`、`Promise` の終わる順など）で結果が変わらないようにする。迷ったら並べ替える（例：`makeDeck` はカードidの順、`energyTypes` は `TYPE_ORDER` の順、最初の配置のあと手札は uid の順）。
 4. **engine.js から DOM を触らない。** 画面とのやりとりは `g.io` だけ（下の「IO」）。Node だけでテストできるようにするため。
-5. 変更したら **`bash test/check.sh`**（ビルド＋すぐ終わるテスト、10秒ほど）。カードの数値やCPUの考え方を変えたら **`node test/rates.js 40`** も（全デッキの勝率が 40〜60% に入っているか）。画面を変えたらブラウザのテストを動かして、スクリーンショットを目で見る。
+5. 変更したら **`bash test/check.sh`**（ビルド＋すぐ終わるテスト、10秒ほど）。カードの数値やCPUの考え方を変えたら **`node test/rates.js 200`** も（全デッキの勝率が 40〜60% に入っているか。10秒ほど）。画面を変えたらブラウザのテストを動かして、スクリーンショットを目で見る。
 6. セーブデータ（`STORE`）に項目を足すときは `normalizeStore()` に初期値を書き、古いセーブがそのまま読めるようにする。
 7. 画面の言葉はやさしい日本語で（中高生が読む前提。むずかしい漢字・英語・記号は避ける）。コードのコメントも日本語。
 8. JSの中に `</script` という文字列を書かない（1枚のHTMLにまとめるので、そこでHTMLが切れる。build.py が止める）。
@@ -37,8 +37,8 @@ bash test/check.sh            # ビルド + sim / determinism / odds。どれか
 node test/sim.js                          # CPU同士で全デッキを対戦させ、ルールの不変条件を検査（problems: 0 ならOK）
 node test/determinism.js                  # 同じ種なら同じ対戦になるか（same 12/12 ならOK）
 node test/odds.js                         # パックの確率。全カードがどこかのパックから出るか
-node test/rates.js 40                     # 全デッキ総当たりの勝率（左右入れ替えあり。数分かかる）
-node test/focus.js 40 p_turing,p_neumann  # 指定したデッキだけの勝率
+node test/rates.js 200                    # 全デッキ総当たりの勝率（先攻・後攻を入れ替えて。10秒ほど。少ない回数だと数%ぶれる）
+node test/focus.js 100 p_turing,p_neumann # 指定したデッキだけの勝率
 node test/matrix.js 80                    # 組み合わせごとの勝率と、ワザの使われ方
 node test/usage.js                        # 「コンピュータの父」のカードが実際に使われているか（ログを数える）
 ```
@@ -140,7 +140,7 @@ python3 test/sheet.py set=father big=1   # 絵柄の一覧（ids=enigma,alan で
 2. **src/art.js**：`ART.<id> = g => { ... }` で絵を描く（絵がないと `ART._missing` の「？」になる）。`python3 test/sheet.py ids=<id> big=1` で目で確かめる。
 3. **src/engine.js**：新しい効果なら、ワザは `dmgFn` / `after`（必要なら `mkCtx` に道具を足す）、コマンドは `handInfo` と `actTrainer`、CPUが使うための判断（`aiSupporter` など）も足す。選ばせるときは必ず `pick()`。
 4. CPUのデッキで使わせたいなら `PRESETS` のどれかに入れる（1デッキ20枚・同じカードは2枚まで）。
-5. `bash test/check.sh` → `node test/rates.js 40`（入れたデッキの勝率が 40〜60% か）→ `node test/usage.js` に言葉を足して、CPUが本当に使っているかを見る。
+5. `bash test/check.sh` → `node test/rates.js 200`（入れたデッキの勝率が 40〜60% か）→ `node test/usage.js` に言葉を足して、CPUが本当に使っているかを見る。
 
 いまの数値の目安：v1 は HP 50〜100（多くは60）、v2 は 80〜110、v3 と ex は 140〜160。ワザの基本ダメージは、エネルギー1個で 0〜40、2個で 0〜60、3個で 0〜130。にげるは多くが1か2。
 
@@ -154,6 +154,7 @@ python3 test/sheet.py set=father big=1   # 絵柄の一覧（ids=enigma,alan で
 - Claude の中のオンライン対戦は、偽の `window.claude` でしか試していない（本当の2つのアカウントでは未確認）。
 - サイト版の WebRTC 対戦は、同じパソコンの2つのページでしか試していない。TURN サーバーがないので、学校や会社のネットワーク・携帯回線の組み合わせによってはつながらないことがある（そのときは25秒ほどで「つながりませんでした」と出る）。
 - 画面は主にスマホの縦長（390×844）とパソコン（1280×860）で確かめている。
+- バランス（`node test/rates.js 200`、2026年11月）：ネットワーク網 60% がいちばん強く、量子とAI 40%・プログラミング基礎 42% がいちばん弱い。どれも目安の 40〜60% には入っているが、はしにいる。
 
 ## 次にやれそうなこと
 
