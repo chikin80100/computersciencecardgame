@@ -1,0 +1,9 @@
+# ビルドしたもの（docs/index.html は GitHub Pages 用に入れる）
+dist/
+
+# テストのスクリーンショット
+test/shots/
+
+__pycache__/
+node_modules/
+.DS_Store
