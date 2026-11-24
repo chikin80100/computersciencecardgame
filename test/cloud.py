@@ -44,14 +44,14 @@ with sync_playwright() as p:
     # 1) はじめての訪問：アカウントにデータなし → 今の状態を書く
     page.goto(URL + '#packs'); page.wait_for_timeout(900)
     st = page.evaluate('({where: SAVE.where, ready: SAVE.ready, t: STORE.tickets, writes: window.__writes.length})')
-    check(st['where'] == 'cloud' and st['ready'] and st['t'] == 20 and st['writes'] == 1, f'first visit writes once {st}')
+    check(st['where'] == 'cloud' and st['ready'] and st['t'] == 30 and st['writes'] == 1, f'first visit writes once {st}')
     check('アカウントに保存' in page.inner_text('#scr-packs'), 'pack screen says account save')
     # 2) パックを開ける → 少し待つと1回だけ書く
     page.click('.screen:not([hidden]) .btn[data-open="world"]', force=True); page.wait_for_timeout(200)
     page.click('#packov .po-pack', force=True); page.wait_for_timeout(900)
     page.click('#packov [data-po="all"]', force=True); page.wait_for_timeout(1700)
     remote = page.evaluate(f'JSON.parse(localStorage.getItem("__fake_db__"))["{P}"]')
-    check(remote['tickets'] == 19 and sum(remote['coll'].values()) == 5 and remote['points'] == 5, f'pack result synced t={remote["tickets"]} cards={sum(remote["coll"].values())}')
+    check(remote['tickets'] == 29 and sum(remote['coll'].values()) == 5 and remote['points'] == 5, f'pack result synced t={remote["tickets"]} cards={sum(remote["coll"].values())}')
     check(page.evaluate('window.__writes.length') == 2, 'one write per change')
     # 3) 再読み込み：同じ内容なら書かない
     page.goto('about:blank'); page.goto(URL); page.wait_for_timeout(900)
@@ -60,7 +60,7 @@ with sync_playwright() as p:
     page.evaluate('localStorage.removeItem("cs-term-card-battle-v1")')
     page.goto('about:blank'); page.goto(URL); page.wait_for_timeout(900)
     st = page.evaluate('({t: STORE.tickets, cards: Object.values(STORE.coll).reduce((a,b)=>a+b,0), p: STORE.points})')
-    check(st == {'t': 19, 'cards': 5, 'p': 5}, f'new device loads account data {st}')
+    check(st == {'t': 29, 'cards': 5, 'p': 5}, f'new device loads account data {st}')
     # 5) 一時的な失敗のあとで、やり直して保存される
     page.evaluate('window.__failNext.n = 1')
     page.evaluate('STORE.points += 1; saveStore()'); page.wait_for_timeout(1500)
