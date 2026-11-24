@@ -1199,7 +1199,8 @@ const PACKS = [
   { id: 'mind', series: 'base', name: '機械と知能', en: 'MACHINE & MIND', types: ['hw', 'ai'], cover: 'quantum', c1: '#cf6420', c2: '#7547ad' },
 ];
 const PACK_POINT = 5; // 1パックあたりのパックポイント
+const MULTI_PACKS = 10; // 「10連」でまとめてひらくパックの数（チケットも同じ枚数を使う）
 // もらえるパックチケット（はじめ・勝ち・負け・引き分け・毎日）。降参したときは0枚
-const REWARD = { start: 20, win: 5, lose: 3, draw: 3, daily: 10 };
+const REWARD = { start: 30, win: 5, lose: 3, draw: 3, daily: 10 };
 const REWARD_TEXT = `勝ち+${REWARD.win}、負け・引き分け+${REWARD.lose}`;
 const EXCHANGE_COST = { 1: 35, 2: 70, 3: 150, 4: 400 };

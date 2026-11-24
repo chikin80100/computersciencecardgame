@@ -680,7 +680,7 @@ function renderRules() {
       <li>オンライン対戦は、勝つとパックチケット+${REWARD.win}、負け・引き分けで+${REWARD.lose}。途中でぬけると降参になる。</li>
     </ul></section>
     <section><h3 class="h3">パックとコレクション</h3><ul>
-      <li>パックチケット1枚で、パックを1つ（5枚入り）ひらける。チケットは対戦すると増える（${REWARD_TEXT}。降参は0）。毎日はじめて遊ぶと+${REWARD.daily}。</li>
+      <li>パックチケット1枚で、パックを1つ（5枚入り）ひらける。「${MULTI_PACKS}連」なら、チケット${MULTI_PACKS}枚で${MULTI_PACKS}パックをまとめてひらける（中身の確率は1パックずつと同じ）。はじめはチケット${REWARD.start}枚。チケットは対戦すると増える（${REWARD_TEXT}。降参は0）。毎日はじめて遊ぶと+${REWARD.daily}。</li>
       <li>レア度は ◆（v1など）・◆◆（v2など）・◆◆◆（v3など）・◆◆◆◆（ex）。ごくまれに、キラキラの<b>☆ホロ</b>カードや、全部レアの<b>ゴッドパック</b>が出る。</li>
       <li>パックを1つひらくたびにパックポイント+${PACK_POINT}。図鑑で、ほしいカードと交換できる（◆${EXCHANGE_COST[1]}pt〜◆◆◆◆${EXCHANGE_COST[4]}pt）。</li>
       <li>自分で作るデッキには、持っているカードしか入れられない。プリセットデッキはいつでも使える。</li>
@@ -816,10 +816,11 @@ function cardBackHTML(rare) {
 function renderPacks() {
   const loading = !SAVE.ready;
   const none = STORE.tickets < 1 || loading;
+  const none10 = STORE.tickets < MULTI_PACKS || loading;
   $('#scr-packs').innerHTML = `<div class="page">
     <header class="top"><button type="button" class="back" data-nav="title">← タイトル</button><h2>パックをひらく</h2></header>
     ${walletHTML([['TICKETS', STORE.tickets, '枚'], ['PACK PTS', STORE.points, 'pt'], ['COLLECTION', ownedKinds(), `/ ${ALL_IDS.length}種`]])}
-    <p class="note">チケット1枚で1パック（5枚）。チケットは対戦すると増えます（${REWARD_TEXT}）。毎日はじめて遊ぶと+${REWARD.daily}。${SAVE.where === 'cloud' ? 'コレクションはあなたのアカウントに保存されます。' : 'コレクションはこのブラウザに保存されます。'}</p>
+    <p class="note">チケット1枚で1パック（5枚）。「${MULTI_PACKS}連」なら、チケット${MULTI_PACKS}枚で${MULTI_PACKS}パックをまとめてひらけます。チケットは対戦すると増えます（${REWARD_TEXT}）。毎日はじめて遊ぶと+${REWARD.daily}。${SAVE.where === 'cloud' ? 'コレクションはあなたのアカウントに保存されます。' : 'コレクションはこのブラウザに保存されます。'}</p>
     ${loading ? '<p class="msg">セーブデータを読み込み中…</p>' : STORE.tickets < 1 ? '<p class="msg warn">チケットがありません。対戦してチケットを増やそう。</p>' : ''}
     ${SERIES.map(se => `<section class="series">
       <h3 class="ser-h">${esc(se.name)}${se.isNew ? '<b class="ser-new">NEW</b>' : ''}</h3>
@@ -829,7 +830,10 @@ function renderPacks() {
         return `<div class="pack-cell">
           <button type="button" class="pack-btn" data-open="${pk.id}" ${none ? 'disabled' : ''} aria-label="${esc(pk.name)}パックをひらく">${pk.isNew ? '<b class="pk-new">NEW</b>' : ''}${packHTML(pk)}</button>
           <p class="pk-prog">${esc(pk.tagline || packTypes(pk).map(t => TYPES[t].name).join('・'))}<br>所持 ${a} / ${b}種</p>
-          <button type="button" class="btn gold" data-open="${pk.id}" ${none ? 'disabled' : ''}>ひらく（チケット1枚）</button>
+          <div class="pk-btns">
+            <button type="button" class="btn gold" data-open="${pk.id}" ${none ? 'disabled' : ''}>ひらく（チケット1枚）</button>
+            <button type="button" class="btn ten" data-open10="${pk.id}" ${none10 ? 'disabled' : ''} aria-label="${esc(pk.name)}パックを${MULTI_PACKS}連でひらく（チケット${MULTI_PACKS}枚）">${MULTI_PACKS}連でひらく<small>チケット${MULTI_PACKS}枚で${MULTI_PACKS}パック</small></button>
+          </div>
         </div>`;
       }).join('')}</div>
     </section>`).join('')}
@@ -839,20 +843,27 @@ function renderPacks() {
         <tr><td>4枚目</td><td>−</td><td>72%</td><td>18%</td><td>8%</td><td>2%</td></tr>
         <tr><td>5枚目</td><td>−</td><td>50%</td><td>28%</td><td>16%</td><td>6%</td></tr>
       </tbody></table>
-      <p class="note">◆＝v1のユニットとふつうのコマンド、◆◆＝v2、◆◆◆＝v3と強いコマンド、◆◆◆◆＝exと人物カード。0.5%の確率で、全部◆◆◆以上の「ゴッドパック」。「コンピュータの父」シリーズでは、◆◆◆◆の半分がそのパックの人物カードになり、人物カードの☆ホロも出る。</p>
+      <p class="note">◆＝v1のユニットとふつうのコマンド、◆◆＝v2、◆◆◆＝v3と強いコマンド、◆◆◆◆＝exと人物カード。0.5%の確率で、全部◆◆◆以上の「ゴッドパック」。「コンピュータの父」シリーズでは、◆◆◆◆の半分がそのパックの人物カードになり、人物カードの☆ホロも出る。${MULTI_PACKS}連でも、1パックずつの確率は同じ。</p>
     </section>
   </div>`;
-  $('#scr-packs').onclick = e => { const b = e.target.closest('[data-open]'); if (b && !b.disabled) openPack(b.dataset.open); };
+  $('#scr-packs').onclick = e => {
+    const b = e.target.closest('[data-open], [data-open10]');
+    if (!b || b.disabled) return;
+    if (b.dataset.open10) openPack(b.dataset.open10, MULTI_PACKS); else openPack(b.dataset.open);
+  };
 }
 
 let PACKFLOW = null;
-function openPack(packId) {
+/* n パックをまとめてひらく（1か MULTI_PACKS）。チケットは n 枚。1パックずつの中身は rollPack のまま */
+function openPack(packId, n) {
+  n = n === MULTI_PACKS ? MULTI_PACKS : 1;
   const pack = PACKS.find(p => p.id === packId);
   if (!pack) return;
   if (!SAVE.ready) { toast('セーブデータを読み込み中です。少し待ってください'); return; }
-  if (STORE.tickets < 1) { toast('パックチケットがありません'); return; }
-  STORE.tickets -= 1;
-  const pulls = rollPack(pack);
+  if (STORE.tickets < n) { toast(n > 1 ? `${n}連には、パックチケットが${n}枚いります` : 'パックチケットがありません'); return; }
+  STORE.tickets -= n;
+  const pulls = [];
+  for (let k = 0; k < n; k++) pulls.push(...rollPack(pack).map(pl => Object.assign(pl, { pk: k })));
   const seen = new Set();
   pulls.forEach(pl => {
     pl.isNew = !owned(pl.id) && !seen.has(pl.id);
@@ -860,21 +871,55 @@ function openPack(packId) {
     STORE.coll[pl.id] = owned(pl.id) + 1;
     if (pl.holo) STORE.holo[pl.id] = (STORE.holo[pl.id] || 0) + 1;
   });
-  STORE.points += PACK_POINT;
-  STORE.stats.packs++;
+  STORE.points += PACK_POINT * n;
+  STORE.stats.packs += n;
   saveStore();
-  PACKFLOW = { pack, pulls, i: -1, stage: 'pack', flipped: false };
+  PACKFLOW = { pack, n, pulls, i: -1, stage: 'pack', flipped: false };
   renderPackOverlay();
+}
+/* 10連の結果：同じカード（ホロかどうかも同じ）をまとめて、ホロ → レア度の高い順 → NEW → 番号の順に並べる */
+function multiPulls(pulls) {
+  const map = new Map();
+  for (const pl of pulls) {
+    const k = pl.id + (pl.holo ? '*' : '');
+    const e = map.get(k) || { id: pl.id, holo: pl.holo, n: 0, isNew: false };
+    e.n++;
+    if (pl.isNew) e.isNew = true;
+    map.set(k, e);
+  }
+  return Array.from(map.values()).sort((a, b) => (b.holo - a.holo) || (rarityOf(DEF[b.id]) - rarityOf(DEF[a.id])) || (b.isNew - a.isNew) || (DEF[a.id].no - DEF[b.id].no));
+}
+function multiDoneHTML(f) {
+  const list = multiPulls(f.pulls);
+  const cnt = test => f.pulls.filter(test).length;
+  const gods = new Set(f.pulls.filter(pl => pl.god).map(pl => pl.pk)).size;
+  const step = Math.min(70, Math.round(1500 / list.length)); // めくり終わるまで、長くても2秒ほど
+  const sum = [['NEW', cnt(pl => pl.isNew), '種'], ['☆ホロ', cnt(pl => pl.holo), '枚'], [RARITY_MARK[4], cnt(pl => !pl.holo && rarityOf(DEF[pl.id]) === 4), '枚'], [RARITY_MARK[3], cnt(pl => !pl.holo && rarityOf(DEF[pl.id]) === 3), '枚']];
+  return `<div class="po-in done multi">
+      <h3 class="po-title">${esc(f.pack.name)}パック ×${f.n}${gods ? `<b class="god">GOD PACK${gods > 1 ? ` ×${gods}` : ''}!</b>` : ''}</h3>
+      <p class="po-sum">${sum.map(([k, v, u]) => `<span class="${k === 'NEW' ? 'newtxt' : ''}">${k} <b>${v}</b>${u}</span>`).join('')}</p>
+      <div class="po-grid multi" style="--step:${step}ms">${list.map((e, k) => {
+        const rare = rarityOf(DEF[e.id]) >= 3 || e.holo;
+        return `<button type="button" class="tbtn po-flip ${rare ? 'rare' : ''}" style="--i:${k}" data-po-info="${e.id}" aria-label="${esc(DEF[e.id].name)}${e.holo ? '（☆ホロ）' : ''}${e.n > 1 ? ` ${e.n}枚` : ''}${e.isNew ? '（NEW）' : ''}の詳細">
+          <span class="po-back" aria-hidden="true">${cardBackHTML(rare)}</span>
+          <span class="po-front">${thumbHTML(e.id, { holo: e.holo, badge: e.isNew ? 'NEW' : '' })}</span>
+          ${e.n > 1 ? `<b class="po-cnt">×${e.n}</b>` : ''}
+        </button>`;
+      }).join('')}</div>
+      <p class="po-msg">パックポイント +${PACK_POINT * f.n}（いま ${STORE.points}pt）　チケット残り ${STORE.tickets}枚</p>
+      <div class="po-btns"><button type="button" class="btn gold" data-po="again" ${STORE.tickets < f.n ? 'disabled' : ''}>もう${f.n}パック</button><button type="button" class="btn" data-po="dex">図鑑で見る</button><button type="button" class="btn ghost" data-po="close">とじる</button></div>
+    </div>`;
 }
 function renderPackOverlay() {
   const f = PACKFLOW, ov = $('#packov');
   if (!f) { ov.hidden = true; ov.innerHTML = ''; return; }
   ov.hidden = false;
   if (f.stage === 'pack') {
+    const many = f.n > 1, ghost = c => `<span class="po-ghost ${c}" aria-hidden="true">${packHTML(f.pack, true)}</span>`;
     ov.innerHTML = `<div class="po-in">
-      <p class="silk">OPEN PACK ・ TICKETS LEFT ${STORE.tickets}</p>
-      <button type="button" class="po-pack" data-po="tear" aria-label="パックを開ける">${packHTML(f.pack, true)}</button>
-      <p class="po-msg">タップして開封</p>
+      <p class="silk">${many ? `OPEN ${f.n} PACKS` : 'OPEN PACK'} ・ TICKETS LEFT ${STORE.tickets}</p>
+      <button type="button" class="po-pack ${many ? 'many' : ''}" data-po="tear" aria-label="${many ? `${f.n}パックを開ける` : 'パックを開ける'}">${many ? ghost('g1') + ghost('g2') : ''}${packHTML(f.pack, true)}${many ? `<b class="po-x">×${f.n}</b>` : ''}</button>
+      <p class="po-msg">${many ? `タップして${f.n}パックまとめて開封` : 'タップして開封'}</p>
     </div>`;
     const b = $('.po-pack', ov); if (b) b.focus({ preventScroll: true });
   } else if (f.stage === 'cards') {
@@ -890,6 +935,9 @@ function renderPackOverlay() {
       <div class="po-btns"><button type="button" class="btn ghost" data-po="all">すべてめくる</button></div>
     </div>`;
     const b = $('.po-card', ov); if (b) b.focus({ preventScroll: true });
+  } else if (f.n > 1) {
+    ov.innerHTML = multiDoneHTML(f);
+    ov.scrollTop = 0;
   } else {
     ov.innerHTML = `<div class="po-in done">
       <h3 class="po-title">${esc(f.pack.name)}パック${f.pulls[0].god ? '<b class="god">GOD PACK!</b>' : ''}</h3>
@@ -907,7 +955,8 @@ async function tearPack() {
   if (el) el.classList.add('tear');
   await sleep(REDUCED ? 60 : 700);
   if (PACKFLOW !== f) return;
-  f.stage = 'cards'; f.i = 0; f.flipped = false;
+  if (f.n > 1) f.stage = 'done'; // 10連は、1枚ずつめくらずに、まとめて結果を見せる
+  else { f.stage = 'cards'; f.i = 0; f.flipped = false; }
   renderPackOverlay();
 }
 function flipOrNext() {
@@ -936,7 +985,7 @@ $('#packov').addEventListener('click', e => {
   if (k === 'tear') tearPack();
   else if (k === 'next') flipOrNext();
   else if (k === 'all') { f.stage = 'done'; renderPackOverlay(); }
-  else if (k === 'again') { const id = f.pack.id; PACKFLOW = null; openPack(id); }
+  else if (k === 'again') { const id = f.pack.id, n = f.n; PACKFLOW = null; openPack(id, n); }
   else if (k === 'dex') { PACKFLOW = null; renderPackOverlay(); show('dex'); }
   else if (k === 'close') { PACKFLOW = null; renderPackOverlay(); if (RENDER[UI.screen]) RENDER[UI.screen](); }
 });

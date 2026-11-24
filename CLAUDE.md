@@ -57,6 +57,7 @@ python3 test/shannon_ui.py      # 「クロード・シャノン」パック：�
 python3 test/pioneer_ui.py      # 「プログラミングの先駆者」：開封・図鑑・詩的科学・ナノ秒の針金・ノートG・マークI・COBOL
 python3 test/ubicomp_ui.py      # 「遍在する計算機」：NEWのしるし・開封・図鑑・フィールド（TRONハウス）・ベンチのTRONとセンサー・カーム・テクノロジー
 python3 test/rare.py            # ゴッドパックとホロの見た目
+python3 test/multi_ui.py        # はじめのチケット30枚と、10連（チケット・枚数・まとめ方・ならび順・もう10パック・スマホ/パソコン/動きを減らす設定）
 python3 test/local2p.py         # この端末で2人対戦（端末を渡す画面）
 python3 test/online.py 0.3      # Claude内のオンライン対戦。偽の window.claude で2ページをつなぎ、手を30%落としても最後の盤面が一致するか
 python3 test/online.py 0.3 '&noroom=1'   # room が使えないとき（db だけ）でも遊べるか
@@ -148,8 +149,8 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 
 - `UI.me`：どちらの席の目線で盤面を見るか（CPU戦は0、オンラインは自分の席、この端末での2人対戦は操作している人）。`UI.vs`：`'cpu' | 'local' | 'online'`。
 - 画面は `show(名前)` で切り替え（`ROUTES`）。対戦画面は `renderBattle()`、人の操作は `doMove()` → `applyMove()`、番の終わりは `finishHumanTurn()`。
-- パック：`rollPack(pack)`。5枚目と4枚目にレアが出やすい。シリーズのパックは目玉の人物カード（`feature`）が ◆◆◆◆ の半分をしめる（だいたい18%のパックに入る）。`isNew: true` のシリーズとパックには NEW のしるしがつく。シリーズは `SERIES` の順に、パックはシリーズの中で NEW が先頭に出る（いまは「遍在する計算機」のマーク・ワイザー・TRON・落合陽一）。ふつうのパックには `set` つきのカードは入らない。ゴッドパックは0.5%ほど。
-- チケット：`REWARD = {start:20, win:5, lose:3, draw:3, daily:10}`（`grantReward()`）。降参した人・この端末での2人対戦・ずれて終わった対戦はもらえない。
+- パック：`openPack(packId, n)` で開ける（n は 1 か `MULTI_PACKS`＝10。10連はチケット10枚・パックポイント10パック分）。中身は1パックずつ `rollPack(pack)`。10連は1枚ずつめくらず、`multiDoneHTML()` で、同じカード（ホロかどうかも同じ）をまとめて「×枚数」をつけ、ホロ → レア度の高い順にならべて、裏から順にめくれる絵で見せる（動きを減らす設定では、すぐ表）。おまけの確定枠はなく、確率は1パックずつと同じ。`rollPack` は test/odds.js が `function packPool` 〜 `function packHTML` の間を切り出して使うので、その間に画面の関数を入れない。5枚目と4枚目にレアが出やすい。シリーズのパックは目玉の人物カード（`feature`）が ◆◆◆◆ の半分をしめる（だいたい18%のパックに入る）。`isNew: true` のシリーズとパックには NEW のしるしがつく。シリーズは `SERIES` の順に、パックはシリーズの中で NEW が先頭に出る（いまは「遍在する計算機」のマーク・ワイザー・TRON・落合陽一）。ふつうのパックには `set` つきのカードは入らない。ゴッドパックは0.5%ほど。
+- チケット：`REWARD = {start:30, win:5, lose:3, draw:3, daily:10}`（`grantReward()`）。`start` は、はじめての人（セーブに `tickets` がない人）だけに配る。前の版のセーブの枚数は変えない（2026年11月24日に20→30。前に10→20にしたときは、`bonus2` で前のセーブにも差を配った）。降参した人・この端末での2人対戦・ずれて終わった対戦はもらえない。
 
 ### セーブ
 
