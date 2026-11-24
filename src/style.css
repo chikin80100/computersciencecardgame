@@ -412,9 +412,10 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 .packs { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 24px; margin: 18px 0 28px; }
 .pack-cell { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
 .pk-prog { margin: 0; font-size: 12px; color: rgba(230, 238, 226, .8); }
-.pack-btn { padding: 0; border: 0; background: none; cursor: pointer; transition: transform .2s; }
+.pack-btn { position: relative; padding: 0; border: 0; background: none; cursor: pointer; transition: transform .2s; }
 .pack-btn:hover:not(:disabled) { transform: translateY(-5px) rotate(-1.5deg); }
 .pack-btn:disabled { cursor: not-allowed; filter: grayscale(.6) brightness(.8); }
+.pk-new { position: absolute; z-index: 2; top: -8px; right: -10px; font-size: 12px; font-weight: 700; letter-spacing: .04em; background: #d63b2f; color: #fff; padding: 2px 7px; border-radius: 4px; box-shadow: 0 2px 6px rgba(0, 0, 0, .45); transform: rotate(8deg); }
 .pack { --w: 176px; width: var(--w); display: flex; flex-direction: column; filter: drop-shadow(0 12px 18px rgba(0, 0, 0, .5)); }
 .pack.big { --w: 230px; }
 .pk-crimp { height: 14px; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .28) 0 2px, rgba(0, 0, 0, .12) 2px 4px), linear-gradient(90deg, var(--c1), var(--c2)); }

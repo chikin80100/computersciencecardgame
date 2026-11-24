@@ -277,7 +277,7 @@ function renderTitle() {
     <nav class="menu" aria-label="メニュー">
       <button type="button" class="btn gold big" data-nav="select" data-vs="cpu">対戦する<small>CPUと対戦</small></button>
       <button type="button" class="btn gold big" data-nav="select" data-vs="online">対人戦<small>オンライン ・ この端末で2人</small></button>
-      <button type="button" class="btn gold big" data-nav="packs">パックをひらく<small>新シリーズ「コンピュータの父」登場！ ・ チケット ${STORE.tickets}枚</small></button>
+      <button type="button" class="btn gold big" data-nav="packs">パックをひらく<small>新パック「クロード・シャノン」登場！ ・ チケット ${STORE.tickets}枚</small></button>
       <button type="button" class="btn" data-nav="dex">カード図鑑<small>${ownedKinds()} / ${ALL_IDS.length}種</small></button>
       <button type="button" class="btn" data-nav="decks">デッキをつくる</button>
       <button type="button" class="btn wide" data-nav="rules">あそびかた</button>
@@ -683,7 +683,7 @@ function renderRules() {
       <li>レア度は ◆（v1など）・◆◆（v2など）・◆◆◆（v3など）・◆◆◆◆（ex）。ごくまれに、キラキラの<b>☆ホロ</b>カードや、全部レアの<b>ゴッドパック</b>が出る。</li>
       <li>パックを1つひらくたびにパックポイント+${PACK_POINT}。図鑑で、ほしいカードと交換できる（◆${EXCHANGE_COST[1]}pt〜◆◆◆◆${EXCHANGE_COST[4]}pt）。</li>
       <li>自分で作るデッキには、持っているカードしか入れられない。プリセットデッキはいつでも使える。</li>
-      <li>「コンピュータの父」シリーズ（「アラン・チューリング」パック・「ジョン・フォン・ノイマン」パック）のカードは、そのパックからしか出ない。</li>
+      <li>「コンピュータの父」シリーズ（「アラン・チューリング」パック・「ジョン・フォン・ノイマン」パック・「クロード・シャノン」パック）のカードは、そのパックからしか出ない。</li>
     </ul></section>
     <div class="cta"><button type="button" class="btn gold big" data-nav="select">対戦する</button></div>
   </div>`;
@@ -823,10 +823,10 @@ function renderPacks() {
     ${SERIES.map(se => `<section class="series">
       <h3 class="ser-h">${esc(se.name)}${se.isNew ? '<b class="ser-new">NEW</b>' : ''}</h3>
       <p class="note">${esc(se.blurb)}</p>
-      <div class="packs">${PACKS.filter(pk => pk.series === se.id).map(pk => {
+      <div class="packs">${PACKS.filter(pk => pk.series === se.id).sort((a, b) => !!b.isNew - !!a.isNew).map(pk => { // 新しいパックを先頭に
         const [a, b] = packProgress(pk);
         return `<div class="pack-cell">
-          <button type="button" class="pack-btn" data-open="${pk.id}" ${none ? 'disabled' : ''} aria-label="${esc(pk.name)}パックをひらく">${packHTML(pk)}</button>
+          <button type="button" class="pack-btn" data-open="${pk.id}" ${none ? 'disabled' : ''} aria-label="${esc(pk.name)}パックをひらく">${pk.isNew ? '<b class="pk-new">NEW</b>' : ''}${packHTML(pk)}</button>
           <p class="pk-prog">${esc(pk.tagline || packTypes(pk).map(t => TYPES[t].name).join('・'))}<br>所持 ${a} / ${b}種</p>
           <button type="button" class="btn gold" data-open="${pk.id}" ${none ? 'disabled' : ''}>ひらく（チケット1枚）</button>
         </div>`;
@@ -1291,7 +1291,8 @@ function onMon(uid) {
     if (m === me.active) {
       DEF[m.id].atk.forEach((a, i) => {
         const info = attackInfo(g, me, i);
-        buttons.push({ html: `<span class="ab">${atkLineHTML(a)}</span>`, cls: 'atk', disabled: !info.ok, note: info.reason, fn: () => doMove({ t: 'attack', i }, true) });
+        const cut = info.ok && me.t.costCut && a.costArr.includes('none') ? 'データ圧縮で、無色エネルギーが1個少なくてよい' : '';
+        buttons.push({ html: `<span class="ab">${atkLineHTML(a)}</span>`, cls: 'atk', disabled: !info.ok, note: info.reason || cut, fn: () => doMove({ t: 'attack', i }, true) });
       });
       const r = retreatInfo(g, me);
       buttons.push({ html: `<span class="ab center">にげる <span class="cost">${r.cost ? eI('none', 's').repeat(r.cost) : '（コストなし）'}</span></span>`, disabled: !r.ok, note: r.reason, fn: () => chooseTarget(me.bench, 'バトル場に出すベンチのユニットを選んでください', b => doMove({ t: 'retreat', to: b.uid })) });

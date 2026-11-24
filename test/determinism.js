@@ -13,7 +13,7 @@ const run = async (seed, a, b) => {
 };
 (async () => {
   let same = 0, n = 0;
-  const pairs = [['p_turing', 'p_neumann'], ['p_ai', 'p_chain'], ['p_net', 'p_quantum'], ['p_data', 'p_compile']];
+  const pairs = [['p_turing', 'p_neumann'], ['p_ai', 'p_chain'], ['p_net', 'p_quantum'], ['p_data', 'p_compile'], ['p_shannon', 'p_turing']];
   for (const [a, b] of pairs) for (const seed of [1, 42, 9999]) {
     const x = await run(seed, a, b), y = await run(seed, a, b);
     n++; if (x === y) same++; else console.log('DIFF', a, b, seed);

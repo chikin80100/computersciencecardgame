@@ -96,7 +96,7 @@ function makeDeck(cards) {
   return out;
 }
 function freshT() {
-  return { energyDone: false, supporterDone: false, retreatDone: false, retreatDiscount: 0, dmgBonus: 0, aiBonus: 0, abilityUsed: [] };
+  return { energyDone: false, supporterDone: false, retreatDone: false, retreatDiscount: 0, dmgBonus: 0, aiBonus: 0, costCut: 0, abilityUsed: [] };
 }
 function newGame(cfg) {
   const g = { players: [], cur: 0, first: 0, turn: 0, over: false, winner: null, reason: '', io: cfg.io || NOOP_IO, log: [] };
@@ -157,6 +157,8 @@ function heal(g, m, n) {
 }
 function setStatus(g, m, s) {
   if (!m) return;
+  const ab = DEF[m.id].ability;
+  if (ab && ab.noStatus) { L(g, `${nm(m)}は特性「${ab.name}」で、${STATUS[s].name}にならない`, 'status'); return; }
   if (s === 'sleep' || s === 'freeze' || s === 'garble') {
     m.status.sleep = false; m.status.freeze = false; m.status.garble = false;
   }
@@ -243,6 +245,7 @@ function mkCtx(g, p, me, atk, dry) {
     g, p, o, me, atk, dry, foe: o.active, target: o.active, dmg: atk.dmg || 0, flag: null,
     flip: async () => (await flipCoins(g, 1, atk.name, dry))[0],
     heads: async n => (await flipCoins(g, n, atk.name, dry)).filter(Boolean).length,
+    coins: async n => flipCoins(g, n, atk.name, dry), // [オモテ?, オモテ?, ...] の順番つき
     headsUntilTails: async () => flipUntilTails(g, atk.name, dry),
     usedLastTurn: name => !!(me.lastAtk && me.lastAtk.name === name && me.lastAtk.turn === g.turn - 2),
     hpLeft, maxHp,
@@ -342,6 +345,14 @@ async function dealAttackDamage(g, p, me, target, base, atk) {
     me.dmg += 20;
     L(g, `ハニーポットの反撃！ ${nm(me)}に20ダメージ`, 'dmg');
     g.io.fx(me.uid, 'hit', 20);
+    await g.io.pause(300);
+  }
+  if (isActive && d > 0 && target.tool && target.tool.id === 'ultimate' && p.active === me) {
+    o.discard.push(target.tool);
+    target.tool = null;
+    L(g, `究極の機械が作動！ 箱から手が出てきて、${nm(me)}のスイッチを切った`, 'status');
+    g.io.say('カチッ');
+    setStatus(g, me, 'freeze');
     await g.io.pause(300);
   }
 }
@@ -600,7 +611,7 @@ function handInfo(g, p, card) {
       if (!t.length) res.reason = '手札のv3ユニットに進化できるv1ユニットがいない'; else { res.ok = true; res.targets = t; }
       break;
     }
-    case 'ram': case 'honeypot': case 'ups': {
+    case 'ram': case 'honeypot': case 'ups': case 'ultimate': {
       const t = inPlay(p).filter(m => !m.tool);
       if (!t.length) res.reason = 'どうぐをつけられるユニットがいない'; else { res.ok = true; res.targets = t; res.label = 'つける'; }
       break;
@@ -627,19 +638,30 @@ function handInfo(g, p, card) {
       if (!o.hand.length) res.reason = '相手の手札がない'; else res.ok = true; break;
     case 'turtest':
       if (!p.active || DEF[p.active.id].type !== 'ai') res.reason = 'バトル場のユニットがAIタイプではない'; else res.ok = true; break;
+    case 'shannon':
+      if (!p.deck.length) res.reason = '山札がない'; else res.ok = true; break;
+    case 'compress':
+      if (p.t.costCut) res.reason = 'この番はもう使った'; else if (!p.active) res.reason = 'バトル場にユニットがいない'; else res.ok = true; break;
     default:
       res.ok = true;
   }
   return res;
 }
 
+/* この番にワザを使うのに必要なエネルギー（データ圧縮を使っていれば、無色を1個へらす） */
+function atkCost(p, a) {
+  const cost = a.costArr.slice();
+  if (p.t.costCut && cost.includes('none')) cost.splice(cost.lastIndexOf('none'), 1);
+  return cost;
+}
 function attackInfo(g, p, idx) {
   const m = p.active;
   if (!m) return { ok: false, reason: 'バトル場にユニットがいない' };
   const a = DEF[m.id].atk[idx];
   if (m.status.sleep) return { ok: false, reason: 'スリープ中はワザを使えない' };
   if (m.status.freeze) return { ok: false, reason: 'フリーズ中はワザを使えない' };
-  if (!canPay(m.energy, a.costArr)) return { ok: false, reason: 'エネルギーが足りない' };
+  if (a.once && m.onceUsed && m.onceUsed.includes(a.name)) return { ok: false, reason: 'このワザはもう使った（1回だけ）' };
+  if (!canPay(m.energy, atkCost(p, a))) return { ok: false, reason: 'エネルギーが足りない' };
   if (a.copy) {
     const foe = other(g, p).active;
     if (!foe || !DEF[foe.id].atk.some(x => !x.copy)) return { ok: false, reason: 'コピーできるワザがない' };
@@ -869,6 +891,27 @@ async function actTrainer(g, p, card, target) {
     case 'neumann':
       await recallCommands(g, p, 2, 'neumann', 'ジョン・フォン・ノイマン');
       break;
+    case 'shannon': {
+      // 山札の上から5枚を見て、2枚まで手札に加える
+      const top = p.deck.slice(0, 5);
+      L(g, `山札の上から${top.length}枚を見た`);
+      for (let k = 0; k < 2 && !g.over; k++) {
+        const left = top.filter(x => p.deck.includes(x));
+        if (!left.length) break;
+        const c = await pick(g, p, `クロード・シャノン：手札に加えるカードを選んでください（${k + 1}枚目）`,
+          left.map(x => ({ label: DEF[x.id].name, value: x, cardId: x.id })), () => aiTutorPick(g, p, left), { cancel: k > 0 });
+        if (!c || !p.deck.includes(c)) break;
+        p.deck.splice(p.deck.indexOf(c), 1);
+        p.hand.push(c);
+        L(g, `${DEF[c.id].name}を手札に加えた`);
+      }
+      shuffle(p.deck);
+      break;
+    }
+    case 'compress':
+      p.t.costCut = 1;
+      L(g, 'この番、ワザに必要な無色エネルギーが1個少なくなった');
+      break;
     case 'codebreak': {
       const c = await pick(g, p, '暗号解読：相手の手札から、山札にもどすカードを選んでください',
         o.hand.map(x => ({ label: DEF[x.id].name, value: x, cardId: x.id })), () => aiCodebreakPick(g, p));
@@ -927,6 +970,7 @@ async function actAttack(g, p, idx) {
     }
   }
   const usedName = atk.name;
+  if (atk.once) me.onceUsed = (me.onceUsed || []).concat(atk.name);
   if (atk.copy) {
     const foe = o.active;
     const list = foe ? DEF[foe.id].atk.filter(a => !a.copy) : [];
@@ -1010,6 +1054,7 @@ async function readiness(g, p, m) {
   let best = 0;
   for (const a of DEF[m.id].atk) {
     if (!canPay(m.energy, a.costArr)) continue;
+    if (a.once && m.onceUsed && m.onceUsed.includes(a.name)) continue; // 1回だけのワザを使ったあと
     const s = await scoreAttack(g, p, m, a);
     if (s > best) best = s;
   }
@@ -1072,9 +1117,9 @@ function cmdValue(g, p, c) {
   const d = DEF[c.id];
   const o = other(g, p);
   const table = {
-    alan: 24, hackathon: 22, pentest: 16, opensource: 16, codebreak: 14, gametheory: 13, pair: 13, debug: 12, optimize: 9, lb: 9, neumann: 10,
-    update: 12, import: 11, grep: 11, ctrlz: 8, search: 8, patch: 7, turtest: 7, alttab: 4, reboot: o.hand.length >= 5 ? 9 : 3,
-    ram: 9, honeypot: 8, ups: 10,
+    alan: 24, hackathon: 22, shannon: 20, pentest: 16, opensource: 16, codebreak: 14, gametheory: 13, pair: 13, debug: 12, optimize: 9, lb: 9, neumann: 10,
+    update: 12, import: 11, grep: 11, ctrlz: 8, search: 8, patch: 7, turtest: 7, compress: 6, alttab: 4, reboot: o.hand.length >= 5 ? 9 : 3,
+    ram: 9, honeypot: 8, ups: 10, ultimate: 10,
   };
   let v = table[d.id] === undefined ? 6 : table[d.id];
   if (d.id === 'turtest' && !inPlay(p).some(m => DEF[m.id].type === 'ai')) v = 1;
@@ -1103,7 +1148,7 @@ function aiPentestTarget(g, p, cands) {
 }
 
 function attacksFor(p, m) {
-  const list = DEF[m.id].atk.slice();
+  const list = DEF[m.id].atk.filter(a => !(a.once && m.onceUsed && m.onceUsed.includes(a.name)));
   for (const d of descendantsOf(DEF[m.id].name)) list.push(...d.atk);
   return list;
 }
@@ -1256,6 +1301,7 @@ async function aiSupporter(g, p, phase) {
     const best = Math.max(...p.deck.map(c => aiTutorScore(g, p, c)));
     if (best >= 30 || (phase === 'late' && p.hand.length <= 3)) return actTrainer(g, p, has('alan'));
   }
+  if (has('shannon') && p.deck.length >= 2 && (phase === 'early' || p.hand.length <= 5)) return actTrainer(g, p, has('shannon'));
   if (has('hackathon') && m) {
     const strongest = DEF[m.id].atk.reduce((a, b) => (b.costArr.length >= a.costArr.length ? b : a));
     if (deficit(m.energy, strongest.costArr) >= 1) return actTrainer(g, p, has('hackathon'));
@@ -1281,6 +1327,17 @@ async function aiSupporter(g, p, phase) {
 async function aiLateItems(g, p) {
   const tt = p.hand.find(c => c.id === 'turtest');
   if (tt && !p.t.aiBonus && handInfo(g, p, tt).ok && DEF[p.active.id].atk.some((a, i) => attackInfo(g, p, i).ok)) return actTrainer(g, p, tt);
+  // データ圧縮：使えば、今より強いワザが使えるようになるときだけ
+  const cz = p.hand.find(c => c.id === 'compress');
+  if (cz && handInfo(g, p, cz).ok) {
+    const atks = DEF[p.active.id].atk;
+    const best = () => Math.max(-1, ...atks.map((a, i) => (attackInfo(g, p, i).ok ? a.costArr.length * 100 + a.dmg : -1)));
+    const now = best();
+    p.t.costCut = 1;
+    const then = best();
+    p.t.costCut = 0;
+    if (then > now) return actTrainer(g, p, cz);
+  }
   return false;
 }
 

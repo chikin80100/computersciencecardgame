@@ -114,6 +114,7 @@ def setup(page):
 
 DROP = sys.argv[1] if len(sys.argv) > 1 else '0.3'
 EXTRA = sys.argv[2] if len(sys.argv) > 2 else ''
+DECKS = (sys.argv[3] if len(sys.argv) > 3 else 'p_turing,p_neumann').split(',')  # 部屋をつくる人,入る人 のデッキ
 with sync_playwright() as p:
     b = launch(p)
     ctx = b.new_context(viewport={'width': 390, 'height': 844})
@@ -126,7 +127,7 @@ with sync_playwright() as p:
     host.goto(URL + '?u=alice&lag=60#select'); host.evaluate('localStorage.clear()'); host.goto('about:blank')
     host.goto(URL + '?u=alice&lag=60#select'); guest.goto(URL + f'?u=bob&lag=250&drop={DROP}{EXTRA}#select')
     host.wait_for_timeout(600)
-    click(host, '[data-pick="me"][data-id="p_turing"]'); click(guest, '[data-pick="me"][data-id="p_neumann"]')
+    click(host, f'[data-pick="me"][data-id="{DECKS[0]}"]'); click(guest, f'[data-pick="me"][data-id="{DECKS[1]}"]')
     click(host, '[data-vs="online"]'); click(guest, '[data-vs="online"]')
     host.wait_for_selector('[data-net="create"]', timeout=15000)
     host.screenshot(path=str(OUT / 'o_lobby.png'))

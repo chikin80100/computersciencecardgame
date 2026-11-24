@@ -749,6 +749,77 @@ const MONSTERS = [
     }],
     desc: '対戦ゲームで「相手は自分にいちばん不利な手を選ぶ」と考え、その中で損がいちばん小さくなる手を選ぶ方法。将棋やチェスのAIの基本で、もとになる「ミニマックス定理」は1928年にフォン・ノイマンが証明した。',
   },
+  /* ===== 「コンピュータの父」シリーズ：クロード・シャノン ===== */
+  {
+    id: 'bit', set: 'father', name: 'ビット', en: 'Bit', type: 'none', stage: 1, hp: 50, retreat: 1,
+    atk: [{
+      name: '3ビット', cost: 'CC', dmg: 0, label: '10×', text: 'コインを3回投げる。オモテを1、ウラを0として、出た順に3けたの2進数として読み、その数×10ダメージ（例：オモテ・ウラ・オモテ → 101 → 5 → 50ダメージ）。',
+      dmgFn: async c => {
+        const r = await c.coins(3);
+        const v = r.reduce((s, h) => s * 2 + (h ? 1 : 0), 0);
+        c.dmg = 10 * v;
+        c.log(`2進数の${r.map(h => (h ? 1 : 0)).join('')}は${v}`);
+        c.say(`${r.map(h => (h ? 1 : 0)).join('')} → ${v}`);
+      },
+    }],
+    desc: '0か1かの、情報のいちばん小さな単位（binary digit の略）。コインを1回投げた結果は、ちょうど1ビットの情報になる。1948年にシャノンが論文で使い、情報の量をはかる単位として広まった（名前を考えたのは同僚のジョン・テューキー）。8ビットで1バイト。',
+  },
+  {
+    id: 'parity', set: 'father', name: 'パリティビット', en: 'Parity bit', type: 'data', stage: 1, hp: 60, retreat: 1,
+    atk: [{
+      name: 'パリティチェック', cost: 'DC', dmg: 20, label: '20+', text: '自分の手札の枚数が偶数（0枚もふくむ）なら、30ダメージ追加。',
+      dmgFn: async c => { if (c.p.hand.length % 2 === 0) c.dmg += 30; },
+    }],
+    desc: 'データの誤りを見つけるために足す1ビット。たとえば「1の数がいつも偶数になる」ように最後の1ビットを決めておくと、とちゅうで1か所だけビットが反転したとき、1の数が奇数になって誤りに気づける。',
+  },
+  {
+    id: 'hamming', set: 'father', name: 'ハミング符号', en: 'Hamming code', type: 'data', stage: 2, from: 'パリティビット', hp: 90, retreat: 1,
+    atk: [{
+      name: '1ビット訂正', cost: 'DC', dmg: 40, text: 'このユニットのHPを20回復する。',
+      after: async c => { c.heal(c.me, 20); },
+      ai: (g, p, m) => (m.dmg > 0 ? 8 : 0),
+    }],
+    desc: '1950年にベル研究所のリチャード・ハミングが発表した、誤りを見つけるだけでなく直せる符号。4ビットのデータに3ビットのパリティを足して7ビットにすると、どこか1ビットが反転しても、その位置がわかって元にもどせる。今もサーバーのメモリ（ECCメモリ）などで使われている。',
+  },
+  {
+    id: 'ldpc', set: 'father', name: 'LDPC符号', en: 'Low-density parity-check code', type: 'data', stage: 3, from: 'ハミング符号', hp: 150, retreat: 2,
+    ability: { name: '誤り訂正', kind: 'passive', noStatus: true, text: 'このユニットは特殊状態にならない。' },
+    atk: [
+      { name: '反復復号', cost: 'C', dmg: 30 },
+      { name: 'シャノン限界', cost: 'DDC', dmg: 100 },
+    ],
+    desc: 'たくさんのパリティを、少しずつ（低い密度で）組み合わせた誤り訂正符号。受け取った側が推測を何度もくり返して直していく。1960年代はじめにロバート・ギャラガーが考え、1990年代に再発見されると、シャノンが示した限界（通信路容量）にかなり近い性能が出ることがわかった。今はWi-Fiや5G、衛星放送などで使われている。',
+  },
+  {
+    id: 'relay', set: 'father', name: 'リレー回路', en: 'Relay circuit', type: 'hw', stage: 1, hp: 80, retreat: 2,
+    atk: [
+      {
+        name: 'AND回路', cost: 'H', dmg: 0, label: '70', text: 'コインを2回投げ、2回ともオモテなら70ダメージ。',
+        dmgFn: async c => { const r = await c.coins(2); c.dmg = r[0] && r[1] ? 70 : 0; },
+      },
+      {
+        name: 'OR回路', cost: 'HC', dmg: 0, label: '50', text: 'コインを2回投げ、1回でもオモテなら50ダメージ。',
+        dmgFn: async c => { const r = await c.coins(2); c.dmg = r[0] || r[1] ? 50 : 0; },
+      },
+    ],
+    desc: '電磁石の力でスイッチを入れたり切ったりする部品「リレー」をつないだ回路。1937年、21歳のシャノンは修士論文で、スイッチを直列につなぐとAND（両方オンのときだけオン）、並列につなぐとOR（どちらかがオンならオン）になり、回路の設計を論理の計算（ブール代数）で考えられることを示した。これがデジタル回路の設計の土台になった。',
+  },
+  {
+    id: 'theseus', set: 'father', name: 'テセウス', en: 'Theseus', type: 'ai', stage: 1, hp: 60, retreat: 1,
+    atk: [{
+      name: '迷路学習', cost: 'IC', dmg: 20, label: '20+', text: '前の自分の番にも、このユニットが「迷路学習」を使っていたら、50ダメージ追加。',
+      dmgFn: async c => { if (c.usedLastTurn('迷路学習')) c.dmg += 50; },
+    }],
+    desc: '1950年にシャノンがつくった、迷路を解く機械のネズミ。迷路の床の下にあるリレー回路が、どの道を通ったかを覚えていて、2回目からはまよわずにゴールへ向かった。機械が「学習」できることを見せた、初期の例として知られる。',
+  },
+  {
+    id: 'otp', set: 'father', name: 'ワンタイムパッド', en: 'One-time pad', type: 'sec', stage: 1, hp: 60, retreat: 1,
+    atk: [
+      { name: '暗号化', cost: 'C', dmg: 10 },
+      { name: '一度きりの鍵', cost: 'SC', dmg: 70, once: true, text: 'このワザは、このユニットが場にいるあいだに1回しか使えない。' },
+    ],
+    desc: '送りたい文と同じ長さの、まったくでたらめな鍵を使い、その鍵を一度しか使わない暗号。1949年にシャノンは、この方法なら、どれだけ計算しても元の文の手がかりが何も得られない（完全秘匿）ことを証明した。鍵を安全にわたすのが大変なので、ふだんの通信ではあまり使われない。',
+  },
 ];
 
 /* ---------- コマンド ---------- */
@@ -777,6 +848,9 @@ const TRAINERS = [
   { id: 'codebreak', set: 'father', name: '暗号解読', en: 'Cryptanalysis', kind: 'sup', rar: 3, text: '相手の手札をすべて見て、その中から1枚選び、相手の山札にもどして切る。そのあと、自分の山札を1枚引く。', desc: '鍵を知らないまま、暗号文から元の文を見つけ出すこと。文字の出てくる回数のかたよりや、文に入っていそうな言葉などを手がかりにする。第二次世界大戦中の暗号解読は、戦争の行方に大きな影響を与えたといわれる。' },
   { id: 'neumann', set: 'father', leg: true, name: 'ジョン・フォン・ノイマン', en: 'John von Neumann', kind: 'sup', rar: 4, text: '自分のトラッシュから、コマンドを2枚まで選んで手札に加える（「ジョン・フォン・ノイマン」はのぞく）。', desc: 'ハンガリー生まれのアメリカの数学者（1903〜1957年）。1945年の報告書で、プログラムをデータと同じようにメモリにしまって実行する「ノイマン型コンピュータ」の設計をまとめた。ゲーム理論をつくったひとりで、マージソートやモンテカルロ法の研究でも知られる。' },
   { id: 'gametheory', set: 'father', name: 'ゲーム理論', en: 'Game theory', kind: 'sup', rar: 3, text: '相手は自分の手札を1枚選んでトラッシュする。そのあと、自分の山札を1枚引く。', desc: 'たがいの行動を読み合いながら決める状況を、数学で分析する学問。1944年のフォン・ノイマンとモルゲンシュテルンの本から本格的に始まった。一方の得が、そのままもう一方の損になる状況を「ゼロサムゲーム」という。' },
+  { id: 'shannon', set: 'father', leg: true, name: 'クロード・シャノン', en: 'Claude Shannon', kind: 'sup', rar: 4, text: '自分の山札の上から5枚を見て、その中から2枚まで選んで手札に加える。残りは山札にもどして切る。', desc: 'アメリカの数学者・技術者（1916〜2001年）。1948年の論文「通信の数学的理論」で、情報の量を「ビット」ではかる方法と、雑音（ノイズ）のある通信路でどこまで正確に速く送れるかの限界を示し、「情報理論の父」と呼ばれる。21歳のときの修士論文では、デジタル回路の設計のもとをつくった。ジャグリングや一輪車が好きで、おもしろい機械をたくさんつくった。' },
+  { id: 'compress', set: 'father', name: 'データ圧縮', en: 'Data compression', kind: 'item', rar: 2, text: 'この番、自分のワザに必要な無色エネルギーを1個少なくする（この番に何枚使っても1個まで）。', desc: '情報を、中身を変えずに、より少ないビットで表すこと。よく出る記号に短い符号を、まれな記号に長い符号をわりあてると短くできる（ハフマン符号など）。シャノンは、どこまで短くできるかの限界が「エントロピー（情報量）」で決まることを示した。ZIPやPNGなどで使われている。' },
+  { id: 'ultimate', set: 'father', name: '究極の機械', en: 'Ultimate machine', kind: 'tool', rar: 3, text: 'これをつけたユニットがバトル場で相手のワザのダメージを受けたとき、ワザを使ったユニットをフリーズにする。そのあと、このどうぐをトラッシュする。', desc: 'スイッチが1つだけついた箱。スイッチを入れると、ふたが開いて中から手が出てきて、スイッチを切ってまたひっこむ。それしかしない機械。人工知能の研究者マービン・ミンスキーのアイデアを、シャノンが1950年代につくった。' },
 ];
 
 const KIND = {
@@ -848,6 +922,11 @@ const PRESETS = [
     cards: { punch: 2, diffeng: 2, analytic: 2, stored: 1, eniac: 2, vacuum: 1, neumann: 1, gametheory: 1, pair: 2, import: 2, grep: 1, update: 1, hackathon: 1, optimize: 1 },
   },
   {
+    id: 'p_shannon', name: '情報理論研究室', energy: ['data', 'hw'], key: ['ldpc', 'relay'],
+    blurb: 'ビットの2進数でダメージを出しながら、パリティビットをLDPC符号まで育てる。データ圧縮でワザを早く使い、シャノンで山札から欲しいカードを選ぶ。',
+    cards: { bit: 2, parity: 2, hamming: 2, ldpc: 2, relay: 1, shannon: 1, compress: 2, ultimate: 1, pair: 2, import: 2, grep: 1, update: 1, debug: 1 },
+  },
+  {
     id: 'p_compile', name: 'コンパイラ工房', energy: ['net'], key: ['compiler', 'lambda'],
     blurb: 'コンパイラexのビルドでベンチを育て、低コストのラムダ式で攻める。無色だけのデッキ。',
     cards: { hello: 2, ifstmt: 2, func: 2, lambda: 2, compiler: 2, pair: 2, opensource: 1, import: 2, grep: 1, hackathon: 1, debug: 1, ram: 1, alttab: 1 },
@@ -858,7 +937,7 @@ const PRESETS = [
 const RARITY_MARK = { 1: '◆', 2: '◆◆', 3: '◆◆◆', 4: '◆◆◆◆' };
 function rarityOf(d) { return d.kind === 'mon' ? (d.ex ? 4 : d.stage) : (d.rar || 1); }
 const SERIES = [
-  { id: 'father', name: '「コンピュータの父」シリーズ', isNew: true, blurb: 'コンピュータ科学の土台をきずいた2人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
+  { id: 'father', name: '「コンピュータの父」シリーズ', isNew: true, blurb: 'コンピュータ科学の土台をきずいた3人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
   { id: 'base', name: 'スタンダード', blurb: 'ふつうのカードとコマンドが入ったパック。' },
 ];
 const PACKS = [
@@ -871,6 +950,11 @@ const PACKS = [
     id: 'neumann', series: 'father', name: 'ジョン・フォン・ノイマン', en: 'JOHN VON NEUMANN', cover: 'neumann', feature: 'neumann', c1: '#2c5fae', c2: '#4a2f7a',
     tagline: 'コンピュータの設計・ゲーム理論',
     ids: ['neumann', 'punch', 'diffeng', 'analytic', 'stored', 'eniac', 'montecarlo', 'minimax', 'gametheory', 'bubble', 'merge', 'mainmem'],
+  },
+  {
+    id: 'shannon', series: 'father', name: 'クロード・シャノン', en: 'CLAUDE SHANNON', cover: 'shannon', feature: 'shannon', c1: '#1f7a8c', c2: '#8a2f3c', isNew: true,
+    tagline: '情報理論・デジタル回路・誤り訂正',
+    ids: ['shannon', 'bit', 'parity', 'hamming', 'ldpc', 'relay', 'theseus', 'otp', 'compress', 'ultimate', 'transistor', 'gate'],
   },
   { id: 'logic', series: 'base', name: '論理と構造', en: 'LOGIC & STRUCTURE', types: ['algo', 'data', 'none'], cover: 'astar', c1: '#2f8a4f', c2: '#2c5fae' },
   { id: 'world', series: 'base', name: 'つながる世界', en: 'CONNECTED WORLD', types: ['net', 'sec'], cover: 'ransom', c1: '#b07f06', c2: '#c0392b' },
