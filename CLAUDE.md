@@ -169,7 +169,7 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 ## 公開のしかた
 
 - **GitHub Pages**：`python3 build.py` → docs/index.html を commit して push。リポジトリの Settings → Pages → 「Deploy from a branch」→ `main` の `/docs`。
-- **Claude のアーティファクト**：slug `bab068e2-cfa2-4379-bf49-c553dfd2e285`（https://claude.ai/artifact/Q45rL3wkYszVFoTaqEKWRa）。だれでも見られる共有になっている。使っている機能（capabilities）は `{db:{}, user:{}, room:{topics:{mv:'interact', need:'interact'}}}`。アーティファクトを公開する道具は claude.ai のチャットにあるので、更新するときはそちらで dist/index.html をわたし「このアーティファクトに新しい版として公開して」とたのむ（共有中なので `shared_live:'public'` と今のタイトル「CS用語カードバトル」が要る）。最後に公開したのは「遍在する計算機」シリーズを入れた版（2026年11月24日、版 `__PUBLISHED__`）。
+- **Claude のアーティファクト**：slug `bab068e2-cfa2-4379-bf49-c553dfd2e285`（https://claude.ai/artifact/Q45rL3wkYszVFoTaqEKWRa）。だれでも見られる共有になっている。使っている機能（capabilities）は `{db:{}, user:{}, room:{topics:{mv:'interact', need:'interact'}}}`。アーティファクトを公開する道具は claude.ai のチャットにあるので、更新するときはそちらで dist/index.html をわたし「このアーティファクトに新しい版として公開して」とたのむ（共有中なので `shared_live:'public'` と今のタイトル「CS用語カードバトル」が要る）。最後に公開したのは「遍在する計算機」シリーズを入れた版（2026年11月24日、版 `1795506705-9ef3`）。
 
 ## 生きている人にかかわるカード（落合陽一・TRON など）
 
