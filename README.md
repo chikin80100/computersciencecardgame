@@ -1,1 +1,28 @@
-# computersciencecardgame
+# CS用語カードバトル
+
+コンピュータ科学の用語をカードにした対戦カードゲーム。ルールは「ポケモンカードゲーム ポケット（ポケポケ）」を参考にしたオリジナルです。
+「クイックソート」「公開鍵暗号」「大規模言語モデル」などの用語がユニットになって戦い、カードの説明を読むと用語の意味がわかります。
+
+- ユニット114種類・コマンド39種類（あわせて153種類）。絵はすべてコードで描いたドット絵
+- パック開封（パックチケット）、図鑑、デッキ編集、CPU戦、この端末で2人対戦、オンライン対戦
+- 「コンピュータの父」シリーズ：「アラン・チューリング」「ジョン・フォン・ノイマン」「クロード・シャノン」の3つのパック
+- 「プログラミングの先駆者」シリーズ：「エイダ・ラブレス」「グレース・ホッパー」の2つのパック
+- 「遍在する計算機」シリーズ：「マーク・ワイザー」「TRON」「落合陽一」の3つのパック。場に1枚だけ置ける「フィールド」のカードや、ベンチにいるだけで働くユニットが入っています
+
+## 遊ぶ
+
+- `docs/index.html` をブラウザで開くだけで遊べます（1つのファイルにすべて入っています）。
+- Webで公開するなら GitHub Pages：Settings → Pages → 「Deploy from a branch」→ `main` ブランチの `/docs`。
+- Claude 版（アカウントに保存・Claudeの中で対戦）：https://claude.ai/artifact/Q45rL3wkYszVFoTaqEKWRa
+
+オンライン対戦は、Claude 版では「あいことば（6けた）」、Webに置いた版では「つなぐためのコード」をコピーして送り合います。
+
+## つくる
+
+```bash
+python3 build.py      # src/ → dist/index.html と docs/index.html
+bash test/check.sh    # ビルドと、すぐ終わるテスト
+```
+
+いるもの：Python 3、Node.js（テスト）。画面のテストには Playwright（`pip install playwright && python3 -m playwright install chromium`）。
+しくみ・決まり・テストの一覧は [CLAUDE.md](CLAUDE.md) にあります。
