@@ -47,6 +47,9 @@ h1, h2, h3 { text-wrap: balance; }
 .grow { flex: 1; }
 .iconbtn { background: transparent; border: 1px solid rgba(230, 238, 226, .35); color: var(--silk); border-radius: 5px; padding: 4px 9px; font-size: 11.5px; min-height: 36px; cursor: pointer; white-space: nowrap; }
 .iconbtn[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+.fieldchip { display: inline-flex; align-items: center; gap: 5px; max-width: 42%; border-color: #9d8bd0; color: #e4dcff; padding: 2px 8px 2px 3px; }
+.fieldchip span { overflow: hidden; text-overflow: ellipsis; }
+.fieldchip img { width: 26px; height: 26px; flex: none; image-rendering: pixelated; }
 .iconbtn.sq { min-width: 44px; min-height: 44px; font-size: 16px; font-weight: 700; padding: 4px 8px; }
 button:focus-visible, input:focus-visible, .zone:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .linkbtn { background: none; border: 0; color: var(--gold); text-decoration: underline; padding: 0; cursor: pointer; font: inherit; }
@@ -1461,6 +1464,102 @@ const MONSTERS = [
     atk: [{ name: 'リレーにはさまる', cost: 'C', dmg: 10, text: '相手のバトル場のユニットをバグにする。', after: async c => { if (c.foeAlive()) c.status(c.foe, 'bug'); } }],
     desc: '1947年、計算機ハーバード・マークIIのリレーに蛾がはさまって、正しく動かなくなった。ホッパーのチームは蛾を作業日誌にテープで貼り「バグ（虫）が見つかった最初の本物の例」と書いた。「バグ」という言葉はそれより前からあったが、この話で有名になった。',
   },
+  /* ===== 「遍在する計算機」シリーズ：マーク・ワイザー ===== */
+  {
+    id: 'pc', set: 'ubicomp', name: 'パソコン', en: 'Personal computer', type: 'hw', stage: 1, hp: 70, retreat: 1,
+    atk: [{ name: '1人1台', cost: 'HC', dmg: 30 }],
+    desc: '1人が1台を使うコンピュータ（パーソナルコンピュータ）。ワイザーは、コンピュータの時代を、1台をみんなで使う「メインフレーム」、1人1台の「パソコン」、1人のまわりにたくさんある「ユビキタス」の3つに分けた。',
+  },
+  {
+    id: 'ubiq', set: 'ubicomp', name: 'ユビキタス', en: 'Ubiquitous computing', type: 'hw', stage: 2, from: 'パソコン', hp: 100, retreat: 1,
+    atk: [{
+      name: 'どこにでもある', cost: 'HC', dmg: 0, label: '20×', text: '自分の場にいるユニットの数×20ダメージ。',
+      dmgFn: async c => { c.dmg = 20 * [c.p.active, ...c.p.bench].filter(Boolean).length; },
+    }],
+    desc: 'コンピュータが、家具や道具や壁の中など、身のまわりのあらゆる所に入りこみ、意識しなくても使える状態。ワイザーの言う3つめの時代で、1人のまわりにたくさんのコンピュータがある。今は「IoT」とも呼ばれる。',
+  },
+  ...[['tab', 'タブ', 'Tab', 50, 0, 'C', 10, '手のひらサイズの小さなコンピュータ。動く付せんのように、部屋のあちこちで気軽に使うことを考えていた。研究所では「タブ」「パッド」「ボード」の大きさのちがう3種類をそろえ、部屋じゅうで使う実験をした。'],
+    ['pad', 'パッド', 'Pad', 60, 1, 'C', 20, 'ノートくらいの大きさのコンピュータ。紙のノートのように、机の上に何枚も置いて使うことを考えていた。今のタブレットにつながる考え方。'],
+    ['board', 'ボード', 'Board', 90, 2, 'NCC', 30, '黒板くらいの大きさのコンピュータ。ペンで書きこめる大きな画面で、部屋にいるみんなが同じ画面を見ながら話し合えた。今の電子黒板につながる考え方。'],
+  ].map(([id, name, en, hp, retreat, cost, dmg, desc]) => ({
+    id, set: 'ubicomp', name, en, type: 'net', stage: 1, hp, retreat,
+    atk: [{
+      name: 'そろう', cost, dmg, label: `${dmg}+`, text: '自分の場に「タブ」「パッド」「ボード」のうち2種類がいれば20ダメージ、3種類そろっていれば40ダメージ追加。',
+      dmgFn: async c => { const ids = new Set([c.p.active, ...c.p.bench].filter(Boolean).map(m => m.id)); const n = ['tab', 'pad', 'board'].filter(x => ids.has(x)).length; if (n === 3) c.dmg += 40; else if (n === 2) c.dmg += 20; },
+    }],
+    desc: `1990年代のはじめに、ワイザーたちの研究所（ゼロックスのパロアルト研究所）でつくられた、${desc}`,
+  })),
+  {
+    id: 'sensor', set: 'ubicomp', name: 'センサー', en: 'Sensor', type: 'net', stage: 1, hp: 30, retreat: 1,
+    ability: { name: '見張り', kind: 'passive', watch: true, text: 'このユニットがベンチにいるとき、相手のワザで自分のバトル場のユニットがダメージを受けたら、ワザを使ったユニットに10ダメージ。' },
+    atk: [{ name: 'はかる', cost: 'C', dmg: 10 }],
+    desc: '温度・光・動き・音などをはかって、電気の信号にかえる部品。ユビキタスやIoTでは、たくさんのセンサーがまわりのようすを見張り、データを送りつづける。',
+  },
+  /* ===== 「遍在する計算機」シリーズ：TRON ===== */
+  {
+    id: 'tronex', set: 'ubicomp', name: 'TRON', en: 'TRON', type: 'none', stage: 1, ex: true, hp: 140, retreat: 2,
+    ability: { name: '組込みOS', kind: 'passive', embed: true, text: 'このユニットがベンチにいるとき、自分のワザの、相手のバトル場のユニットへのダメージを+10する。' },
+    atk: [
+      { name: 'リアルタイム処理', cost: 'CC', dmg: 30 },
+      { name: 'どこでもコンピュータ', cost: 'CCC', dmg: 80 },
+    ],
+    desc: '1984年に坂村健が始めた、日本のコンピュータのプロジェクト。家電や自動車、工場の機械など、あらゆる物の中にコンピュータが入る「どこでもコンピュータ」の社会をめざした。物の中で動く組込み用のOSは、カメラや自動車のエンジン制御など、世界中の機器で使われている。2018年には、そのしくみがIEEEの国際標準になった。',
+  },
+  {
+    id: 'embedded', set: 'ubicomp', name: '組込みシステム', en: 'Embedded system', type: 'hw', stage: 1, hp: 70, retreat: 1,
+    atk: [{ name: '決められた仕事', cost: 'H', dmg: 20 }],
+    desc: '電子レンジ・炊飯器・自動車・エレベーターなど、機械の中に組みこまれて、決まった仕事をするコンピュータ。ふだんは見えないが、身のまわりのコンピュータのほとんどはこちら。',
+  },
+  {
+    id: 'rtos', set: 'ubicomp', name: 'リアルタイムOS', en: 'Real-time OS', type: 'algo', stage: 1, hp: 60, retreat: 1,
+    atk: [{ name: '締め切りを守る', cost: 'AC', dmg: 40, sure: true, text: 'このワザは、文字化けでも失敗しない。' }],
+    desc: '決められた時間までに、必ず処理を終わらせることを大事にするOS。エンジンの点火やブレーキの制御のように、少しでも遅れるとこまる機械で使われる。TRONの組込み用のOS（ITRONなど）もこの仲間。',
+  },
+  {
+    id: 'iot', set: 'ubicomp', name: 'IoT', en: 'Internet of Things', type: 'net', stage: 1, hp: 50, retreat: 1,
+    atk: [{
+      name: 'モノのインターネット', cost: 'CCC', dmg: 0, label: '10×', text: 'おたがいの場にいるユニットの数×10ダメージ。',
+      dmgFn: async c => { c.dmg = 10 * [c.p, c.o].reduce((n, pl) => n + [pl.active, ...pl.bench].filter(Boolean).length, 0); },
+    }],
+    desc: 'Internet of Things（モノのインターネット）の略。家電・車・センサーなど、コンピュータ以外の「モノ」がインターネットにつながり、データをやりとりすること。1999年ごろから使われはじめた言葉。',
+  },
+  /* ===== 「遍在する計算機」シリーズ：落合陽一 ===== */
+  {
+    id: 'dnature', set: 'ubicomp', name: 'デジタルネイチャー', en: 'Digital nature', type: 'hw', stage: 3, from: 'ユビキタス', hp: 150, retreat: 2,
+    ability: { name: '境界がない', kind: 'passive', noWeak: true, text: 'このユニットには弱点がない。' },
+    atk: [
+      { name: '溶け合う', cost: 'CC', dmg: 40 },
+      { name: '計算機自然', cost: 'HHC', dmg: 100 },
+    ],
+    desc: '落合陽一が提唱する、コンピュータと人間・自然の区別がなくなっていく未来の世界像（計算機自然）。物と情報、自然と人工が溶け合った新しい「自然」の姿。コンピュータがまわりに溶けこむユビキタスの考えを、人間や自然にまで広げたものともいえる。',
+  },
+  {
+    id: 'levitation', set: 'ubicomp', name: '音響浮揚', en: 'Acoustic levitation', type: 'hw', stage: 1, hp: 50, retreat: 1,
+    ability: { name: '浮遊', kind: 'passive', float: true, text: 'このユニットがベンチにいるとき、自分のバトル場のユニットがにげるのに必要なエネルギーを1個少なくする。' },
+    atk: [{ name: '粒を浮かせる', cost: 'C', dmg: 10 }],
+    desc: '強い超音波を重ね合わせて、小さな粒を空中に浮かせたり動かしたりする技術。落合陽一たちは、空中に浮かべた粒で絵や文字をえがく研究を発表した（2014年）。',
+  },
+  {
+    id: 'hologram', set: 'ubicomp', name: '計算機ホログラム', en: 'Computer-generated hologram', type: 'data', stage: 1, hp: 60, retreat: 1,
+    ability: { name: '実体がない', kind: 'passive', phantom: true, text: 'このユニットが最初に受けるワザのダメージは0になる（1回だけ）。' },
+    atk: [{ name: '光をえがく', cost: 'DC', dmg: 30 }],
+    desc: '光の波の重なり方をコンピュータで計算してつくるホログラム。目の前に立体が浮かんで見えたり、光の形を自由に変えたりできる。落合陽一の研究テーマの1つ。',
+  },
+  {
+    id: 'twin', set: 'ubicomp', name: 'デジタルツイン', en: 'Digital twin', type: 'data', stage: 1, hp: 70, retreat: 1,
+    ability: { name: '分身', kind: 'passive', twin: true, text: 'このユニットがダウンしたとき、自分の山札から「デジタルツイン」を1枚、ベンチに出す（ベンチがあいていれば）。' },
+    atk: [{ name: '写しとる', cost: 'DC', dmg: 30 }],
+    desc: '現実の物や人を、センサーのデータをもとにコンピュータの中にそっくり写しとった「双子」。工場や町のようすをコンピュータの中で試してから、現実に反映するのに使われる。',
+  },
+  {
+    id: 'null2', set: 'ubicomp', name: 'null²', en: 'null²', type: 'none', stage: 1, ex: true, hp: 150, retreat: 2,
+    ability: { name: '鏡', kind: 'passive', mirror: true, text: 'このユニットがバトル場で相手のワザのダメージを受けたとき、そのダメージの半分（一の位は切り捨て）を、ワザを使ったユニットにもあたえる。' },
+    atk: [
+      { name: 'ミラー膜', cost: 'CC', dmg: 40 },
+      { name: 'null', cost: 'CCC', dmg: 70, text: '相手のバトル場のユニットについているどうぐをトラッシュする。', after: async c => { if (c.foeAlive() && c.foe.tool) { c.o.discard.push(c.foe.tool); c.log(`${DEF[c.foe.tool.id].name}を null にした（トラッシュ）`); c.foe.tool = null; } } },
+    ],
+    desc: '2025年の大阪・関西万博で、落合陽一がプロデュースしたパビリオン。外がわは伸び縮みする鏡のような膜でおおわれ、形が変わる。名前の「null」はプログラミングで「値がない」ことを表す言葉で、ヌルの2乗で「ヌルヌル」と読む。',
+  },
 ];
 
 /* ---------- コマンド ---------- */
@@ -1497,6 +1596,13 @@ const TRAINERS = [
   { id: 'hopper', set: 'pioneer', leg: true, name: 'グレース・ホッパー', en: 'Grace Hopper', kind: 'sup', rar: 4, text: '自分の山札から、進化ユニット（v2・v3）を2枚まで選んで手札に加える。そのあと山札を切る。', desc: 'アメリカの計算機科学者で、海軍の軍人（1906〜1992年）。最初期の計算機「ハーバード・マークI」のプログラマーになり、1952年には、プログラムを自動で機械語に変換する初期のコンパイラ「A-0」をつくった。英語に近い言葉で書けるプログラミング言語を進め、COBOLのもとをつくった。最後は海軍少将になった。' },
   { id: 'nanosec', set: 'pioneer', name: 'ナノ秒の針金', en: 'Nanosecond wire', kind: 'item', rar: 2, text: '自分のユニットについているエネルギーを1個、別の自分のユニットにつけかえる。', desc: 'ホッパーは講演で、長さ約30cmの針金を配った。光や電気の信号が1ナノ秒（10億分の1秒）に進むのが、ちょうどそのくらいだから。「遠くまでつなぐと、それだけ時間がかかる」ことを、目で見えるようにした。' },
   { id: 'logbook', set: 'pioneer', name: '作業日誌', en: 'Logbook', kind: 'tool', rar: 2, text: 'これをつけたユニットが特殊状態になるとき、かわりにならない。そのあと、このどうぐをトラッシュする。', desc: 'コンピュータの作業や、起きたトラブルを書きとめておく記録（ログ）。いつ何が起きたかを残しておくと、原因を見つけて直しやすくなる。ハーバード・マークIIの作業日誌には、本物のバグ（蛾）がテープで貼られている。' },
+  { id: 'weiser', set: 'ubicomp', leg: true, name: 'マーク・ワイザー', en: 'Mark Weiser', kind: 'sup', rar: 4, text: '自分のベンチにいるユニットの数だけ、山札を引く。', desc: 'アメリカの計算機科学者（1952〜1999年）。ゼロックスのパロアルト研究所で、1988年ごろ「ユビキタスコンピューティング」という考えを打ち出した。1991年の論文「21世紀のコンピュータ」では、すぐれた技術ほど生活に溶けこんで見えなくなると書き、たくさんの小さなコンピュータが身のまわりにある未来をえがいた。' },
+  { id: 'calm', set: 'ubicomp', name: 'カーム・テクノロジー', en: 'Calm technology', kind: 'sup', rar: 2, text: '自分のバトル場のユニットと、ベンチのユニット1体を入れかえる（にげるエネルギーはいらない）。そのあと、山札を1枚引く。', desc: 'ワイザーとジョン・シーリー・ブラウンが1995年ごろに唱えた考え。すぐれた技術は、必要なときだけ注意の中心に出てきて、ふだんはまわり（周辺）で静かにはたらく。' },
+  { id: 'ictag', set: 'ubicomp', name: 'ICタグ', en: 'RFID tag', kind: 'item', rar: 1, text: 'この番、自分のバトル場のユニットがにげるのに、エネルギーはいらない。', desc: '電波で読み書きできる、小さなICチップとアンテナ。電池がなくても、読み取り機の電波から電気をもらって動く。交通系ICカードや、お店の商品管理、図書館の本の貸し出しなどで使われている。' },
+  { id: 'harvest', set: 'ubicomp', name: '環境発電', en: 'Energy harvesting', kind: 'tool', rar: 2, text: 'これをつけたユニットがベンチにいるとき、自分の番のはじめに、エネルギーゾーンからエネルギーを1個つける。', desc: '光・振動・熱・電波など、まわりにある小さなエネルギーを集めて電気をつくる技術。電池を取りかえなくても、センサーなどを長く動かしつづけられる。' },
+  { id: 'tronhouse', set: 'ubicomp', name: 'TRONハウス', en: 'TRON House', kind: 'field', rar: 3, text: '場にあるあいだ、番のおわりに、おたがいのベンチのユニット全員のHPを10回復する。', desc: '1989年に東京に建てられた、TRONの考えで家じゅうにコンピュータとセンサーを組みこんだ実験住宅。窓・照明・空調などが連携して、住む人に合わせて自動で動いた。' },
+  { id: 'ochiai', set: 'ubicomp', leg: true, name: '落合陽一', en: 'Yoichi Ochiai', kind: 'sup', rar: 4, text: 'この番、自分のワザは、相手のバトル場のユニットの弱点を必ず突く（+20）。そのあと、山札を1枚引く。', desc: '日本の研究者・メディアアーティスト（1987年〜）。コンピュータと人間や自然が溶け合っていく未来の世界像「デジタルネイチャー（計算機自然）」を提唱し、超音波・レーザー・ホログラムなどを使った研究と作品をつくっている。2025年の大阪・関西万博では、パビリオン「null²」をプロデュースした。' },
+  { id: 'plasma', set: 'ubicomp', name: '空中プラズマ', en: 'Aerial plasma', kind: 'item', rar: 2, text: '相手のベンチのユニット1体に、20ダメージ。', desc: 'とても短い時間（フェムト秒）だけ光るレーザーを空気中の1点に集めて、さわれる光の点（プラズマ）をつくる技術。落合陽一たちは、空中に光の点でえがいた絵にさわれる研究を発表した（2015年）。' },
   { id: 'ultimate', set: 'father', name: '究極の機械', en: 'Ultimate machine', kind: 'tool', rar: 3, text: 'これをつけたユニットがバトル場で相手のワザのダメージを受けたとき、ワザを使ったユニットをフリーズにする。そのあと、このどうぐをトラッシュする。', desc: 'スイッチが1つだけついた箱。スイッチを入れると、ふたが開いて中から手が出てきて、スイッチを切ってまたひっこむ。それしかしない機械。人工知能の研究者マービン・ミンスキーのアイデアを、シャノンが1950年代につくった。' },
 ];
 
@@ -1504,6 +1610,7 @@ const KIND = {
   item: { name: 'グッズ', c: '#4f6b7a', rule: 'グッズは自分の番に何枚でも使える。' },
   sup: { name: 'サポート', c: '#9a4f2c', rule: 'サポートは自分の番に1枚しか使えない。' },
   tool: { name: 'どうぐ', c: '#2f7a72', rule: 'どうぐは自分のユニットに1体につき1枚までつけられる。' },
+  field: { name: 'フィールド', c: '#5b4a8a', rule: 'フィールドは場に1枚だけ置けて、おたがいに効く。新しいフィールドを出すと、前のフィールドはトラッシュへ。' },
 };
 
 /* ---------- プリセットデッキ（各20枚・同名2枚まで） ---------- */
@@ -1584,6 +1691,21 @@ const PRESETS = [
     cards: { machinecode: 2, flowmatic: 2, cobol: 2, mark1: 1, moth: 1, compiler: 1, hopper: 1, nanosec: 2, logbook: 1, pair: 2, import: 2, grep: 1, update: 1, debug: 1 },
   },
   {
+    id: 'p_weiser', name: 'ユビキタス研究室', energy: ['net', 'hw'], key: ['ubiq', 'board'],
+    blurb: 'タブ・パッド・ボードは、種類をそろえるほど強くなる。ベンチのセンサーが見張り、パソコンをユビキタスへ。ワイザーはベンチが多いほどたくさん引ける。',
+    cards: { pc: 2, ubiq: 2, dnature: 1, tab: 2, pad: 2, board: 1, sensor: 2, weiser: 1, calm: 1, pair: 2, import: 2, grep: 1, debug: 1 },
+  },
+  {
+    id: 'p_tron', name: 'どこでもコンピュータ', energy: ['hw', 'algo'], key: ['tronex', 'embedded'],
+    blurb: 'ベンチのTRONがワザのダメージを底上げし、環境発電でベンチにエネルギーをためる。IoTは場のユニットが多いほど強い。TRONハウスを置けば、ベンチは毎番回復。',
+    cards: { tronex: 2, embedded: 2, rtos: 2, iot: 1, pc: 2, ubiq: 1, ictag: 1, harvest: 2, tronhouse: 1, pair: 2, import: 2, grep: 1, debug: 1 },
+  },
+  {
+    id: 'p_ochiai', name: '溶け合う世界', energy: ['hw', 'data'], key: ['dnature', 'null2'],
+    blurb: 'ベンチの音響浮揚で入れかえやすく、ホログラムとデジタルツインはしぶとい。null²はダメージを鏡ではね返す。落合陽一でどのタイプの弱点も突く。',
+    cards: { levitation: 2, hologram: 2, twin: 2, null2: 1, pc: 2, ubiq: 2, dnature: 2, ochiai: 1, plasma: 2, pair: 2, import: 2 },
+  },
+  {
     id: 'p_compile', name: 'コンパイラ工房', energy: ['net'], key: ['compiler', 'lambda'],
     blurb: 'コンパイラexのビルドでベンチを育て、低コストのラムダ式で攻める。無色だけのデッキ。',
     cards: { hello: 2, ifstmt: 2, func: 2, lambda: 2, compiler: 2, pair: 2, opensource: 1, import: 2, grep: 1, hackathon: 1, debug: 1, ram: 1, alttab: 1 },
@@ -1594,7 +1716,8 @@ const PRESETS = [
 const RARITY_MARK = { 1: '◆', 2: '◆◆', 3: '◆◆◆', 4: '◆◆◆◆' };
 function rarityOf(d) { return d.kind === 'mon' ? (d.ex ? 4 : d.stage) : (d.rar || 1); }
 const SERIES = [
-  { id: 'pioneer', name: '「プログラミングの先駆者」シリーズ', short: 'プログラミングの先駆者', isNew: true, blurb: '「プログラムを書く」ことを切りひらいた人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
+  { id: 'ubicomp', name: '「遍在する計算機」シリーズ', short: '遍在する計算機', isNew: true, blurb: '「遍在（へんざい）」は、どこにでもあること。コンピュータが見えなくなり、物の中に入り、やがて自然と区別がつかなくなっていく流れをたどるパック。シリーズのカードは、このパックからしか出ない。' },
+  { id: 'pioneer', name: '「プログラミングの先駆者」シリーズ', short: 'プログラミングの先駆者', blurb: '「プログラムを書く」ことを切りひらいた人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
   { id: 'father', name: '「コンピュータの父」シリーズ', short: 'コンピュータの父', blurb: 'コンピュータ科学の土台をきずいた3人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
   { id: 'base', name: 'スタンダード', blurb: 'ふつうのカードとコマンドが入ったパック。' },
 ];
@@ -1615,14 +1738,29 @@ const PACKS = [
     ids: ['shannon', 'bit', 'parity', 'hamming', 'ldpc', 'relay', 'theseus', 'otp', 'compress', 'ultimate', 'transistor', 'gate'],
   },
   {
-    id: 'ada', series: 'pioneer', name: 'エイダ・ラブレス', en: 'ADA LOVELACE', cover: 'ada', feature: 'ada', c1: '#6b3fa0', c2: '#b03a5b', isNew: true,
+    id: 'ada', series: 'pioneer', name: 'エイダ・ラブレス', en: 'ADA LOVELACE', cover: 'ada', feature: 'ada', c1: '#6b3fa0', c2: '#b03a5b',
     tagline: '世界初のプログラム・ループ・詩的科学',
     ids: ['ada', 'noteg', 'nestloop', 'jacquard', 'compose', 'adalang', 'poetical', 'lovelace', 'loop', 'variable', 'func'],
   },
   {
-    id: 'hopper', series: 'pioneer', name: 'グレース・ホッパー', en: 'GRACE HOPPER', cover: 'hopper', feature: 'hopper', c1: '#1f3a68', c2: '#a8742a', isNew: true,
+    id: 'hopper', series: 'pioneer', name: 'グレース・ホッパー', en: 'GRACE HOPPER', cover: 'hopper', feature: 'hopper', c1: '#1f3a68', c2: '#a8742a',
     tagline: 'コンパイラ・COBOL・バグの語源',
     ids: ['hopper', 'machinecode', 'flowmatic', 'cobol', 'mark1', 'moth', 'nanosec', 'logbook', 'compiler', 'hello', 'debug'],
+  },
+  {
+    id: 'weiser', series: 'ubicomp', name: 'マーク・ワイザー', en: 'MARK WEISER', cover: 'weiser', feature: 'weiser', c1: '#2f7d6b', c2: '#c98a2e', isNew: true,
+    tagline: 'ユビキタス・見えなくなるコンピュータ',
+    ids: ['weiser', 'pc', 'ubiq', 'tab', 'pad', 'board', 'sensor', 'calm', 'wlan', 'router'],
+  },
+  {
+    id: 'tron', series: 'ubicomp', name: 'TRON', en: 'TRON PROJECT', cover: 'tronex', feature: 'tronex', c1: '#b23a3a', c2: '#2b2f6b', isNew: true,
+    tagline: 'どこでもコンピュータ・組込み・IoT',
+    ids: ['tronex', 'embedded', 'rtos', 'iot', 'ictag', 'harvest', 'tronhouse', 'cache', 'mainmem'],
+  },
+  {
+    id: 'ochiai', series: 'ubicomp', name: '落合陽一', en: 'YOICHI OCHIAI', cover: 'ochiai', feature: 'ochiai', c1: '#3c4a5c', c2: '#7fb7c9', isNew: true,
+    tagline: 'デジタルネイチャー・浮遊・ホログラム',
+    ids: ['ochiai', 'dnature', 'levitation', 'hologram', 'twin', 'null2', 'plasma', 'gpu', 'array'],
   },
   { id: 'logic', series: 'base', name: '論理と構造', en: 'LOGIC & STRUCTURE', types: ['algo', 'data', 'none'], cover: 'astar', c1: '#2f8a4f', c2: '#2c5fae' },
   { id: 'world', series: 'base', name: 'つながる世界', en: 'CONNECTED WORLD', types: ['net', 'sec'], cover: 'ransom', c1: '#b07f06', c2: '#c0392b' },
@@ -1732,10 +1870,10 @@ function makeDeck(cards) {
   return out;
 }
 function freshT() {
-  return { energyDone: false, supporterDone: false, retreatDone: false, retreatDiscount: 0, dmgBonus: 0, aiBonus: 0, costCut: 0, anyColor: 0, abilityUsed: [] };
+  return { energyDone: false, supporterDone: false, retreatDone: false, retreatDiscount: 0, dmgBonus: 0, aiBonus: 0, costCut: 0, anyColor: 0, freeRetreat: 0, allWeak: 0, abilityUsed: [] };
 }
 function newGame(cfg) {
-  const g = { players: [], cur: 0, first: 0, turn: 0, over: false, winner: null, reason: '', io: cfg.io || NOOP_IO, log: [] };
+  const g = { players: [], cur: 0, first: 0, turn: 0, over: false, winner: null, reason: '', io: cfg.io || NOOP_IO, log: [], field: null };
   cfg.players.forEach((pc, idx) => {
     g.players.push({
       idx, name: pc.name, isCPU: !!pc.isCPU, isRemote: !!pc.isRemote, deckName: pc.deckName || '',
@@ -1863,6 +2001,8 @@ function reduction(g, m) {
   return r;
 }
 
+/* ベンチにいるあいだ働く特性（センサー・TRON・音響浮揚）を持つユニットの数 */
+const benchWith = (pl, key) => pl.bench.filter(b => { const ab = DEF[b.id].ability; return ab && ab[key]; }).length;
 function ownerOfMon(g, m) { return g.players.find(pl => inPlay(pl).includes(m)); }
 /* ワザのダメージを実際にのせる（UPSの判定もここ） */
 function applyAttackDamage(g, target, d) {
@@ -1875,6 +2015,11 @@ function applyAttackDamage(g, target, d) {
     L(g, `UPSが作動！ ${nm(target)}はHP10で持ちこたえた`, 'heal');
   }
   const ab = DEF[target.id].ability;
+  if (ab && ab.phantom && !target.phantomUsed) {
+    target.phantomUsed = true;
+    L(g, `${nm(target)}は特性「${ab.name}」で、ダメージを受けなかった`, 'status');
+    return 0;
+  }
   if (ab && ab.endure && !target.endured && target.dmg + d >= maxHp(target) && hpLeft(target) > 10) {
     d = hpLeft(target) - 10;
     target.endured = true;
@@ -1961,8 +2106,12 @@ function mkCtx(g, p, me, atk, dry) {
 }
 
 function isWeakHit(me, target, atk) {
+  const ab = DEF[target.id].ability;
+  if (ab && ab.noWeak) return false;
   return !!(atk.alwaysWeak || (WEAK[DEF[target.id].type] && WEAK[DEF[target.id].type] === DEF[me.id].type));
 }
+/* 落合陽一を使った番は、弱点のないユニット（デジタルネイチャー）以外の弱点を必ず突く */
+const ochiaiHit = (p, target) => { const ab = DEF[target.id].ability; return !!(p.t.allWeak && !(ab && ab.noWeak)); };
 function finalDamage(g, p, me, target, base, atk) {
   if (base <= 0) return 0;
   const o = other(g, p);
@@ -1970,7 +2119,8 @@ function finalDamage(g, p, me, target, base, atk) {
   if (target === o.active) {
     d += p.t.dmgBonus;
     if (p.t.aiBonus && DEF[me.id].type === 'ai') d += p.t.aiBonus;
-    if (isWeakHit(me, target, atk)) d += 20;
+    if (isWeakHit(me, target, atk) || ochiaiHit(p, target)) d += 20;
+    d += 10 * benchWith(p, 'embed');
   }
   if (!atk.pierce) d -= reduction(g, target);
   if (lovelaceHit(me, target)) d -= 30;
@@ -1981,13 +2131,14 @@ const lovelaceHit = (me, target) => !!(target.tool && target.tool.id === 'lovela
 async function dealAttackDamage(g, p, me, target, base, atk) {
   const o = other(g, p);
   const isActive = target === o.active;
-  const weak = isActive && isWeakHit(me, target, atk);
+  const weak = isActive && (isWeakHit(me, target, atk) || ochiaiHit(p, target));
   const red = atk.pierce ? 0 : reduction(g, target);
   const d = applyAttackDamage(g, target, finalDamage(g, p, me, target, base, atk));
   const notes = [];
   if (isActive && p.t.dmgBonus) notes.push(`最適化+${p.t.dmgBonus}`);
   if (isActive && p.t.aiBonus && DEF[me.id].type === 'ai') notes.push(`チューリングテスト+${p.t.aiBonus}`);
-  if (weak) notes.push(atk.alwaysWeak && WEAK[DEF[target.id].type] !== DEF[me.id].type ? '特徴抽出+20' : '弱点+20');
+  if (weak) notes.push(!isWeakHit(me, target, atk) ? '落合陽一+20' : atk.alwaysWeak && WEAK[DEF[target.id].type] !== DEF[me.id].type ? '特徴抽出+20' : '弱点+20');
+  if (isActive && benchWith(p, 'embed')) notes.push(`組込みOS+${10 * benchWith(p, 'embed')}`);
   if (red) notes.push(`軽減-${red}`);
   if (lovelaceHit(me, target)) notes.push('ラブレスの反論-30');
   L(g, `${nm(target)}に${d}ダメージ${notes.length ? `（${notes.join('・')}）` : ''}`, 'dmg');
@@ -2005,6 +2156,23 @@ async function dealAttackDamage(g, p, me, target, base, atk) {
     L(g, `究極の機械が作動！ 箱から手が出てきて、${nm(me)}のスイッチを切った`, 'status');
     g.io.say('カチッ');
     setStatus(g, me, 'freeze');
+    await g.io.pause(300);
+  }
+  const tab = DEF[target.id].ability;
+  if (isActive && d > 0 && tab && tab.mirror && p.active === me) {
+    const r = Math.floor(d / 2 / 10) * 10;
+    if (r > 0) {
+      me.dmg += r;
+      L(g, `${nm(target)}の「${tab.name}」！ ${nm(me)}に${r}ダメージをはね返した`, 'dmg');
+      g.io.fx(me.uid, 'hit', r);
+      await g.io.pause(300);
+    }
+  }
+  const watch = benchWith(o, 'watch');
+  if (isActive && d > 0 && watch && p.active === me) {
+    me.dmg += 10 * watch;
+    L(g, `センサーが見張っていた！ ${nm(me)}に${10 * watch}ダメージ`, 'dmg');
+    g.io.fx(me.uid, 'hit', 10 * watch);
     await g.io.pause(300);
   }
 }
@@ -2036,6 +2204,16 @@ async function checkKOs(g) {
         opp.points += pts;
         opp.kos++;
         L(g, `${pl.name}の${d.name}はダウンした！ ${opp.name}は${pts}ポイント獲得`, 'ko');
+        if (d.ability && d.ability.twin && pl.bench.length < BENCH_MAX) {
+          const c = pl.deck.find(x => x.id === m.id);
+          if (c) {
+            pl.deck.splice(pl.deck.indexOf(c), 1);
+            const nmn = mkMon(c, g.turn);
+            pl.bench.push(nmn);
+            L(g, `「${d.ability.name}」で、山札から${d.name}がベンチに出た`, 'trainer');
+            g.io.fx(nmn.uid, 'enter');
+          }
+        }
       }
     }
   }
@@ -2172,6 +2350,7 @@ async function beginTurn(g) {
     p.energyCur = p.energyNext || rollEnergy(p);
     if (energyLocked(g, p)) L(g, `${p.name}はランサムウェアの影響で、この番エネルギーをつけられない`, 'status');
     p.energyNext = rollEnergy(p);
+    for (const b of p.bench) if (b.tool && b.tool.id === 'harvest') { L(g, `環境発電で、${nm(b)}が電気を集めた`, 'energy'); attachFromZone(g, p, b, 1); }
   }
   g.io.render();
 }
@@ -2203,6 +2382,11 @@ async function checkup(g) {
 async function finishTurn(g) {
   const p = g.players[g.cur];
   p.energyCur = null;
+  if (g.field && g.field.card.id === 'tronhouse') {
+    let n = 0;
+    for (const pl of g.players) for (const b of pl.bench) if (b.dmg > 0) { b.dmg = Math.max(0, b.dmg - 10); n++; }
+    if (n) L(g, `TRONハウス：ベンチのユニット${n}体のHPが10回復した`, 'heal');
+  }
   await checkup(g);
   if (g.over) return;
   if (g.turn >= TURN_LIMIT) { endGame(g, null, `${TURN_LIMIT}ターンが経過したため引き分け`); return; }
@@ -2278,7 +2462,7 @@ function handInfo(g, p, card) {
       if (!t.length) res.reason = '手札のv3ユニットに進化できるv1ユニットがいない'; else { res.ok = true; res.targets = t; }
       break;
     }
-    case 'ram': case 'honeypot': case 'ups': case 'ultimate': case 'lovelace': case 'logbook': {
+    case 'ram': case 'honeypot': case 'ups': case 'ultimate': case 'lovelace': case 'logbook': case 'harvest': {
       const t = inPlay(p).filter(m => !m.tool);
       if (!t.length) res.reason = 'どうぐをつけられるユニットがいない'; else { res.ok = true; res.targets = t; res.label = 'つける'; }
       break;
@@ -2315,6 +2499,18 @@ function handInfo(g, p, card) {
       if (!p.deck.some(c => DEF[c.id].kind === 'mon' && DEF[c.id].stage >= 2)) res.reason = '山札に進化ユニットがない'; else res.ok = true; break;
     case 'poetical':
       if (p.t.anyColor) res.reason = 'この番はもう使った'; else if (!p.active) res.reason = 'バトル場にユニットがいない'; else res.ok = true; break;
+    case 'weiser':
+      if (!p.deck.length) res.reason = '山札がない'; else if (!p.bench.length) res.reason = 'ベンチにユニットがいない'; else res.ok = true; break;
+    case 'calm':
+      if (!p.active || !p.bench.length) res.reason = '入れかえるベンチのユニットがいない'; else res.ok = true; break;
+    case 'ochiai':
+      if (!p.active) res.reason = 'バトル場にユニットがいない'; else res.ok = true; break;
+    case 'ictag':
+      if (p.t.freeRetreat) res.reason = 'この番はもう使った'; else if (!p.active || !p.bench.length) res.reason = 'にげる先のベンチのユニットがいない'; else res.ok = true; break;
+    case 'plasma':
+      if (!o.bench.length) res.reason = '相手のベンチにユニットがいない'; else res.ok = true; break;
+    case 'tronhouse':
+      if (g.field && g.field.card.id === card.id) res.reason = 'もう場に出ている'; else res.ok = true; break;
     case 'nanosec': {
       const units = inPlay(p);
       if (units.length < 2) res.reason = 'つけかえる先のユニットがいない';
@@ -2351,7 +2547,8 @@ function attackInfo(g, p, idx) {
   return { ok: true, reason: '' };
 }
 function retreatCost(g, p) {
-  return p.active ? Math.max(0, DEF[p.active.id].retreat - p.t.retreatDiscount) : 0;
+  if (!p.active || p.t.freeRetreat) return 0;
+  return Math.max(0, DEF[p.active.id].retreat - p.t.retreatDiscount - benchWith(p, 'float'));
 }
 function retreatInfo(g, p) {
   const m = p.active;
@@ -2478,6 +2675,13 @@ async function actTrainer(g, p, card, target) {
     g.io.fx(target.uid, 'tool');
     return true;
   }
+  if (d.kind === 'field') {
+    if (g.field) { g.players[g.field.owner].discard.push(g.field.card); L(g, `「${DEF[g.field.card.id].name}」はトラッシュされた`); }
+    g.field = { card, owner: g.players.indexOf(p) };
+    L(g, `${p.name}はフィールド「${d.name}」を場に出した`, 'trainer');
+    g.io.say(d.name);
+    return true;
+  }
   p.discard.push(card);
   L(g, `${p.name}は「${d.name}」を使った`, 'trainer');
   g.io.say(d.name);
@@ -2600,6 +2804,41 @@ async function actTrainer(g, p, card, target) {
     case 'hopper':
       await tutorFromDeck(g, p, 2, c => DEF[c.id].kind === 'mon' && DEF[c.id].stage >= 2, 'グレース・ホッパー：手札に加える進化ユニットを選んでください');
       break;
+    case 'weiser':
+      L(g, `ベンチのユニットは${p.bench.length}体`);
+      drawCards(g, p, p.bench.length);
+      break;
+    case 'calm': {
+      const m = await pick(g, p, 'カーム・テクノロジー：バトル場に出すベンチのユニットを選んでください',
+        p.bench.map(b => ({ label: nm(b), value: b, mon: b })), () => aiNewActive(g, p));
+      const to = m && p.bench.includes(m) ? m : p.bench[0];
+      const old = p.active;
+      switchActive(g, p, to);
+      L(g, `${nm(old)}と${nm(to)}を入れかえた`);
+      g.io.fx(to.uid, 'enter');
+      drawCards(g, p, 1);
+      break;
+    }
+    case 'ochiai':
+      p.t.allWeak = 1;
+      L(g, 'この番、ワザは相手の弱点を必ず突く');
+      drawCards(g, p, 1);
+      break;
+    case 'ictag':
+      p.t.freeRetreat = 1;
+      L(g, 'この番、にげるのにエネルギーはいらない');
+      break;
+    case 'plasma': {
+      const m = await pick(g, p, '空中プラズマ：ダメージをあたえる相手のベンチのユニットを選んでください',
+        o.bench.map(b => ({ label: nm(b), value: b, mon: b })), () => o.bench.slice().sort((a, b) => hpLeft(a) - hpLeft(b) || (DEF[b.id].ex ? 1 : 0) - (DEF[a.id].ex ? 1 : 0))[0]);
+      const t = m && o.bench.includes(m) ? m : o.bench[0];
+      t.dmg += 20;
+      L(g, `${nm(t)}に20ダメージ`, 'dmg');
+      g.io.fx(t.uid, 'hit', 20);
+      await g.io.pause(300);
+      await checkKOs(g);
+      break;
+    }
     case 'poetical':
       p.t.anyColor = 1;
       L(g, 'この番、ワザにはどの色のエネルギーでも使える');
@@ -2670,7 +2909,7 @@ async function actAttack(g, p, idx) {
   L(g, `${p.name}の${nm(me)}の「${atk.name}」！`, 'atk');
   g.io.fx(me.uid, 'attack');
   await g.io.pause(320);
-  if (me.status.garble) {
+  if (me.status.garble && !atk.sure) {
     const r = await flipCoins(g, 1, '文字化けチェック（ウラなら失敗）', false);
     if (!r[0]) {
       L(g, '文字化けしていて、ワザは失敗した…');
@@ -2828,9 +3067,9 @@ function cmdValue(g, p, c) {
   const d = DEF[c.id];
   const o = other(g, p);
   const table = {
-    alan: 24, ada: 22, hackathon: 22, shannon: 20, hopper: 20, pentest: 16, opensource: 16, codebreak: 14, gametheory: 13, pair: 13, debug: 12, optimize: 9, lb: 9, neumann: 10,
-    update: 12, import: 11, grep: 11, ctrlz: 8, search: 8, patch: 7, turtest: 7, compress: 6, poetical: 6, nanosec: 5, alttab: 4, reboot: o.hand.length >= 5 ? 9 : 3,
-    ram: 9, honeypot: 8, ups: 10, ultimate: 10, logbook: 6, lovelace: inPlay(o).some(m => DEF[m.id].type === 'ai') ? 10 : 2,
+    alan: 24, ada: 22, hackathon: 22, shannon: 20, hopper: 20, weiser: p.bench.length >= 2 ? 18 : 8, ochiai: 12, calm: 9, pentest: 16, opensource: 16, codebreak: 14, gametheory: 13, pair: 13, debug: 12, optimize: 9, lb: 9, neumann: 10,
+    update: 12, import: 11, grep: 11, ctrlz: 8, search: 8, patch: 7, turtest: 7, compress: 6, poetical: 6, nanosec: 5, plasma: 8, tronhouse: 7, ictag: 3, alttab: 4, reboot: o.hand.length >= 5 ? 9 : 3,
+    ram: 9, honeypot: 8, ups: 10, ultimate: 10, logbook: 6, harvest: 9, lovelace: inPlay(o).some(m => DEF[m.id].type === 'ai') ? 10 : 2,
   };
   let v = table[d.id] === undefined ? 6 : table[d.id];
   if (d.id === 'turtest' && !inPlay(p).some(m => DEF[m.id].type === 'ai')) v = 1;
@@ -2962,7 +3201,12 @@ async function aiDevelop(g, p) {
     }
     if (c.id === 'reboot' && other(g, p).hand.length >= 5) { if (await actTrainer(g, p, c)) return true; }
     if (c.id === 'search') { if (await actTrainer(g, p, c)) return true; }
+    if (c.id === 'plasma') { if (await actTrainer(g, p, c)) return true; }
     if (c.id === 'ctrlz' && (!p.hand.some(isBasic) || p.bench.length < BENCH_MAX)) { if (await actTrainer(g, p, c)) return true; }
+  }
+  // フィールド（まだ場にないなら出す）
+  for (const c of p.hand.slice()) {
+    if (DEF[c.id].kind === 'field' && handInfo(g, p, c).ok && p.bench.length && await actTrainer(g, p, c)) return true;
   }
   // どうぐ
   for (const c of p.hand.slice()) {
@@ -2970,6 +3214,13 @@ async function aiDevelop(g, p) {
     if (d.kind !== 'tool') continue;
     const info = handInfo(g, p, c);
     if (!info.ok) continue;
+    if (c.id === 'harvest') {
+      // 環境発電はベンチで働く：エネルギーがまだ足りないベンチのユニットに
+      const need = m => Math.max(0, ...attacksFor(p, m).map(a => deficit(m.energy, a.costArr)));
+      const t = info.targets.filter(x => x !== p.active).sort((a, b) => need(b) - need(a))[0];
+      if (t && await actTrainer(g, p, c, t)) return true;
+      continue;
+    }
     const prefer = info.targets.slice().sort((a, b) => ((b === p.active) * 2 + (DEF[b.id].ex ? 1 : 0)) - ((a === p.active) * 2 + (DEF[a.id].ex ? 1 : 0)))[0];
     if (await actTrainer(g, p, c, prefer)) return true;
   }
@@ -3014,6 +3265,16 @@ async function aiSupporter(g, p, phase) {
   }
   if (has('shannon') && p.deck.length >= 2 && (phase === 'early' || p.hand.length <= 5)) return actTrainer(g, p, has('shannon'));
   if (has('ada') && handInfo(g, p, has('ada')).ok && (phase === 'early' || p.hand.length <= 4)) return actTrainer(g, p, has('ada'));
+  if (has('weiser') && handInfo(g, p, has('weiser')).ok && p.bench.length >= 2) return actTrainer(g, p, has('weiser'));
+  if (has('calm') && m && p.bench.length && !m.status.sleep) {
+    // ただで入れかえられる：今のユニットより、ベンチのほうがずっと戦えるとき
+    const cur = await readiness(g, p, m);
+    let best = -Infinity;
+    for (const b of p.bench) best = Math.max(best, await readiness(g, p, b));
+    if (best > cur + 30 || (hpLeft(m) <= 30 && best > 15)) return actTrainer(g, p, has('calm'));
+  }
+  if (has('ochiai') && phase === 'late' && m && other(g, p).active && DEF[m.id].atk.some((a, i) => attackInfo(g, p, i).ok)
+    && !isWeakHit(m, other(g, p).active, {}) && ochiaiHit({ t: { allWeak: 1 } }, other(g, p).active)) return actTrainer(g, p, has('ochiai'));
   if (has('hopper') && handInfo(g, p, has('hopper')).ok && (phase === 'early' || p.hand.length <= 5)) return actTrainer(g, p, has('hopper'));
   if (has('hackathon') && m) {
     const strongest = DEF[m.id].atk.reduce((a, b) => (b.costArr.length >= a.costArr.length ? b : a));
@@ -3086,7 +3347,8 @@ async function aiMaybeRetreat(g, p) {
   }
   const base = retreatCost(g, p);
   const alt = p.hand.find(c => c.id === 'alttab');
-  const eff = alt && base > 0 ? base - 1 : base;
+  const tag = p.hand.find(c => c.id === 'ictag' && handInfo(g, p, c).ok);
+  const eff = tag && base > 0 ? 0 : alt && base > 0 ? base - 1 : base;
   if (m.energy.length < eff) return false;
   const lostValue = eff * 12;
   const should = (cur <= 0 && candS > 15) ||
@@ -3094,7 +3356,8 @@ async function aiMaybeRetreat(g, p) {
     (m.status.garble && candS > cur * 0.7 && candS > 10) ||
     (DEF[m.id].ex && hpLeft(m) <= 40 && candS > 10 && eff <= 1);
   if (!should) return false;
-  if (alt && eff < base) await actTrainer(g, p, alt);
+  if (tag && base > 0) await actTrainer(g, p, tag);
+  else if (alt && eff < base) await actTrainer(g, p, alt);
   if (!retreatInfo(g, p).ok) return false;
   return actRetreat(g, p, cand);
 }
@@ -4567,6 +4830,170 @@ ART.logbook = g => {
   g.thick(21, 4, 15, 19, 'y', 2); g.set(14, 20, 'K'); g.set(21, 3, 'n'); g.set(22, 3, 'n');
 };
 
+/* ===== 「遍在する計算機」シリーズ ===== */
+// 電波の弧（右上に向かって3本）
+const waves = (g, x, y, c) => { g.set(x + 1, y - 1, c); g.set(x + 2, y, c); g.set(x + 1, y - 3, c); g.set(x + 3, y - 2, c); g.set(x + 4, y, c); g.set(x + 1, y - 5, c); g.set(x + 3, y - 4, c); g.set(x + 5, y - 2, c); g.set(x + 6, y, c); };
+// マーク・ワイザー：部屋の中のボード（大）・パッド（中）・タブ（小）が、電波でつながっている
+ART.weiser = g => {
+  g.rect(1, 1, 22, 15, 'l'); g.rect(1, 16, 22, 6, 't'); g.hl(1, 16, 22, 'T');
+  g.rect(3, 3, 11, 8, 'k'); g.rect(4, 4, 9, 6, 'C'); g.line(5, 8, 8, 5, 'w'); g.line(8, 5, 11, 8, 'y');
+  g.rect(14, 12, 6, 6, 'K'); g.rect(15, 13, 4, 4, 'u'); g.set(16, 14, 'w');
+  g.rect(5, 15, 3, 4, 'K'); g.rect(6, 16, 1, 2, 'e');
+  waves(g, 15, 9, 'o'); g.set(9, 13, 'o'); g.set(10, 14, 'o');
+};
+// パソコン：1人1台のデスクトップ
+ART.pc = g => {
+  g.rect(3, 2, 18, 13, 's'); g.rect(5, 4, 14, 9, 'B'); g.rect(6, 5, 12, 7, 'b'); g.hl(7, 6, 6, 'u'); g.hl(7, 8, 9, 'u'); g.hl(7, 10, 4, 'u');
+  g.hl(3, 14, 18, 'S'); g.rect(10, 15, 4, 2, 'S');
+  g.rect(2, 18, 20, 4, 's'); for (let x = 3; x <= 20; x += 2) { g.set(x, 19, 'S'); g.set(x + 1, 20, 'S'); }
+};
+// ユビキタス：人のまわりの、たくさんの小さなコンピュータ（点線でつながる）
+ART.ubiq = g => {
+  g.rect(0, 0, 24, 24, 'w');
+  const dev = [[1, 1, 'b'], [19, 1, 'e'], [0, 10, 'y'], [20, 10, 'r'], [2, 19, 'p'], [18, 19, 'c']];
+  dev.forEach(([x, y]) => { const n = 12; for (let i = 2; i < n - 2; i += 2) g.set(Math.round(x + 1.5 + (12 - x - 1.5) * i / n), Math.round(y + 1.5 + (12 - y - 1.5) * i / n), 'm'); });
+  dev.forEach(([x, y, c]) => { g.rect(x, y, 4, 4, 'K'); g.rect(x + 1, y + 1, 2, 2, c); });
+  g.disc(12, 7.5, 2.6, 'S'); g.rect(9, 11, 7, 6, 'o'); g.rect(10, 17, 2, 4, 'K'); g.rect(13, 17, 2, 4, 'K');
+};
+// タブ：手のひらサイズ
+ART.tab = g => {
+  g.vl(11, 1, 6, 'r'); g.vl(12, 1, 6, 'r');
+  g.rect(7, 7, 10, 15, 'K'); g.rect(8, 8, 8, 9, 'c'); g.hl(9, 10, 5, 'w'); g.hl(9, 12, 3, 'w'); g.hl(9, 14, 4, 'w');
+  for (let x = 8; x <= 14; x += 3) g.rect(x, 18, 2, 2, 'm');
+};
+// パッド：ノートサイズ（ペンつき）
+ART.pad = g => {
+  g.rect(3, 3, 16, 19, 'K'); g.rect(4, 4, 14, 16, 'w'); for (let y = 6; y <= 18; y += 3) g.hl(5, y, 12, 'u');
+  g.line(6, 16, 10, 11, 'b'); g.line(10, 11, 13, 14, 'b');
+  g.thick(21, 3, 18, 15, 'y', 2); g.set(17, 16, 'K');
+};
+// ボード：黒板サイズの大きな画面と、話し合う2人
+ART.board = g => {
+  g.rect(1, 2, 22, 13, 'K'); g.rect(2, 3, 20, 11, 'E'); g.line(4, 11, 9, 6, 'w'); g.line(9, 6, 13, 9, 'w'); g.line(13, 9, 19, 5, 'y'); g.rect(16, 10, 4, 2, 'w');
+  g.vl(6, 15, 4, 'M'); g.vl(17, 15, 4, 'M');
+  g.disc(4, 18, 1.6, 'S'); g.rect(3, 20, 3, 3, 'b'); g.disc(20, 18, 1.6, 'S'); g.rect(19, 20, 3, 3, 'r');
+};
+// センサー：まわりを見張る小さな部品（電波を出している）
+ART.sensor = g => {
+  g.rect(5, 10, 10, 10, 'E'); for (let y = 11; y <= 18; y += 2) { g.set(4, y, 'M'); g.set(15, y, 'M'); }
+  g.disc(10, 15, 3, 'k'); g.disc(10, 15, 2, 'C'); g.set(9, 14, 'w');
+  waves(g, 13, 8, 'c'); waves(g, 3, 7, 'c');
+  g.rect(16, 19, 6, 2, 'g');
+};
+// カーム・テクノロジー：ネットワークの流れで静かにゆれる、天井からたれたひも
+ART.calm = g => {
+  g.rect(0, 0, 24, 24, 'v'); g.disc(12, 13, 9, 'w');
+  g.rect(8, 0, 8, 2, 'T'); g.rect(11, 2, 2, 1, 'K');
+  for (let y = 3; y <= 21; y++) { const x = Math.round(12 + 3 * Math.sin((y - 3) / 2.6)); g.set(x, y, 'r'); g.set(x + 1, y, 'R'); }
+};
+// TRON：「TRON」と書かれたチップと、のびる配線
+ART.tronex = g => {
+  for (let i = 3; i <= 19; i += 4) { g.vl(i + 1, 0, 4, 'Y'); g.vl(i + 1, 20, 4, 'Y'); g.hl(0, i + 1, 4, 'Y'); g.hl(20, i + 1, 4, 'Y'); }
+  g.rect(4, 4, 16, 16, 'K'); g.rect(5, 5, 14, 14, 'k');
+  g.text(5, 9, 'TR', 'r'); g.text(12, 9, 'ON', 'w');
+  g.hl(6, 16, 12, 'R'); g.set(18, 6, 'y');
+};
+// 組込みシステム：電子レンジの中に、小さなコンピュータ
+ART.embedded = g => {
+  g.rect(1, 5, 22, 15, 'm'); g.hl(1, 5, 22, 'w'); g.rect(2, 7, 14, 11, 'K'); g.rect(3, 8, 12, 9, 'M'); g.disc(9, 13, 3, 'y');
+  g.rect(17, 7, 5, 4, 'k'); g.text(17, 7, '88', 'e'); g.rect(18, 13, 3, 3, 'E'); g.set(19, 14, 'y');
+  g.rect(3, 20, 3, 2, 'K'); g.rect(18, 20, 3, 2, 'K');
+};
+// リアルタイムOS：締め切りの時計と、間に合った旗
+ART.rtos = g => {
+  g.rect(10, 1, 4, 2, 'M'); g.disc(12, 12, 9, 'k'); g.disc(12, 12, 8, 'w');
+  for (let a = 0; a < 12; a++) g.set(Math.round(12 + 6.8 * Math.sin(a * Math.PI / 6)), Math.round(12 - 6.8 * Math.cos(a * Math.PI / 6)), 'M');
+  g.thick(12, 12, 12, 6, 'K', 1); g.thick(12, 12, 16, 14, 'r', 1); g.rect(11, 11, 2, 2, 'K');
+  g.vl(19, 15, 8, 'T'); g.rect(20, 15, 3, 3, 'e');
+};
+// IoT：電球・家・車が、まん中につながる
+ART.iot = g => {
+  g.line(12, 12, 5, 5, 'C'); g.line(12, 12, 19, 5, 'C'); g.line(12, 12, 12, 20, 'C');
+  g.disc(12, 12, 2.5, 'c'); g.set(12, 12, 'w');
+  g.disc(5, 4, 2.6, 'y'); g.rect(4, 7, 3, 2, 'M');
+  g.rect(16, 5, 6, 4, 'w'); g.line(15, 5, 19, 1, 'r'); g.line(19, 1, 22, 5, 'r'); g.rect(18, 7, 2, 2, 'T');
+  g.rect(8, 18, 9, 3, 'b'); g.rect(10, 16, 5, 2, 'u'); g.set(9, 21, 'K'); g.set(15, 21, 'K');
+};
+// ICタグ：うずまきのアンテナと、小さなチップ
+ART.ictag = g => {
+  g.rect(2, 4, 20, 16, 'w');
+  for (let k = 0; k < 4; k++) { const x0 = 4 + k * 2, y0 = 6 + k * 2, x1 = 19 - k * 2, y1 = 17 - k * 2; g.hl(x0, y0, x1 - x0 + 1, 'O'); g.hl(x0, y1, x1 - x0 + 1, 'O'); g.vl(x0, y0, y1 - y0 + 1, 'O'); g.vl(x1, y0, y1 - y0 + 1, 'O'); }
+  g.rect(10, 10, 4, 4, 'k'); g.set(11, 11, 'm');
+};
+// 環境発電：小さな太陽電池と、まわりの光・振動から集めた電気
+ART.harvest = g => {
+  g.disc(5, 5, 3, 'y'); [[5, 0], [0, 5], [9, 1], [1, 9], [10, 5]].forEach(([x, y]) => g.set(x, y, 'Y'));
+  g.rect(8, 11, 14, 9, 'B'); for (let x = 11; x <= 19; x += 4) g.vl(x, 11, 9, 'u'); g.hl(8, 15, 14, 'u');
+  g.thick(4, 13, 7, 17, 'y', 2); g.thick(7, 17, 3, 20, 'y', 2);
+  g.rect(13, 20, 4, 2, 'M');
+};
+// TRONハウス：家じゅうにコンピュータとセンサーがある家
+ART.tronhouse = g => {
+  g.thick(1, 11, 12, 2, 'r', 2); g.thick(12, 2, 23, 11, 'r', 2);
+  g.rect(3, 11, 18, 11, 'w'); g.hl(3, 21, 18, 'l');
+  [[5, 13], [15, 13]].forEach(([x, y]) => { g.rect(x, y, 4, 4, 'u'); g.set(x + 1, y + 1, 'w'); });
+  g.rect(10, 15, 4, 7, 'T'); g.set(13, 18, 'y');
+  [[12, 7], [4, 19], [20, 19], [7, 11], [17, 11]].forEach(([x, y]) => g.set(x, y, 'e'));
+  g.set(12, 6, 'c');
+};
+// 落合陽一：鏡（銅鏡のようなまるい鏡）に映る、ピクセルの自然の景色（自然と計算機が溶け合う）
+ART.ochiai = g => {
+  g.disc(12, 11.5, 10.5, 'Y'); g.ring(12, 11.5, 10.5, 1, 'O');
+  for (let y = 2; y <= 21; y++) for (let x = 2; x <= 22; x++) {
+    const dx = x - 12, dy = y - 11.5;
+    if (dx * dx + dy * dy > 8.4 * 8.4) continue;
+    const ridge = 13 + Math.round(2.5 * Math.sin(x / 2.2) + (x > 13 ? -2 : 0));
+    g.set(x, y, y >= ridge ? ((x + y) % 4 === 0 ? 'f' : 'e') : y >= 9 ? 'c' : 'u');
+  }
+  g.disc(15.5, 6.5, 1.6, 'y');
+  [[6, 5], [9, 8], [18, 10], [7, 17], [16, 18]].forEach(([x, y]) => g.set(x, y, 'w'));
+  g.rect(10, 21, 4, 2, 'O');
+};
+// デジタルネイチャー：葉がピクセル、根が配線の木
+ART.dnature = g => {
+  for (let y = 2; y <= 12; y++) for (let x = 3; x <= 20; x++) { const dx = (x - 11.5) / 9, dy = (y - 7.5) / 5.8; if (dx * dx + dy * dy <= 1) g.set(x, y, (x * 7 + y * 3) % 5 === 0 ? 'c' : (x + y) % 3 === 0 ? 'f' : 'e'); }
+  g.rect(10, 12, 3, 6, 'T');
+  g.hl(5, 19, 14, 'Y'); g.line(11, 17, 6, 19, 'Y'); g.line(12, 17, 17, 19, 'Y'); g.vl(5, 19, 3, 'Y'); g.vl(18, 19, 3, 'Y'); g.vl(11, 18, 4, 'Y');
+  [[5, 21], [18, 21], [11, 21]].forEach(([x, y]) => g.set(x, y, 'y'));
+};
+// 音響浮揚：上下の超音波の装置のあいだに、浮かぶ小さな粒
+ART.levitation = g => {
+  g.rect(1, 4, 22, 16, 'B');
+  for (let x = 1; x <= 20; x += 3) { g.rect(x, 1, 3, 3, 'M'); g.set(x + 1, 2, 'k'); g.rect(x, 20, 3, 3, 'M'); g.set(x + 1, 21, 'k'); }
+  for (let y = 6; y <= 18; y += 4) for (let x = 3; x <= 20; x += 2) g.set(x, y, 'C');
+  [[5, 8], [9, 7], [13, 8], [17, 7], [7, 12], [11, 12], [15, 12], [9, 16], [13, 16]].forEach(([x, y]) => { g.rect(x, y, 2, 2, 'w'); });
+};
+// 計算機ホログラム：台の上に浮かぶ、光でできた立体
+ART.hologram = g => {
+  g.rect(4, 19, 16, 3, 'K'); g.hl(4, 19, 16, 'M'); g.rect(10, 18, 4, 1, 'c');
+  g.line(10, 18, 6, 10, 'u'); g.line(14, 18, 18, 10, 'u');
+  const C = 'c';
+  g.hl(8, 6, 8, C); g.hl(8, 13, 8, C); g.vl(8, 6, 8, C); g.vl(15, 6, 8, C);
+  g.line(8, 6, 11, 3, C); g.line(15, 6, 18, 3, C); g.hl(11, 3, 8, C); g.vl(18, 3, 8, C); g.line(15, 13, 18, 10, C);
+  g.set(11, 9, 'w'); g.set(13, 11, 'w');
+};
+// デジタルツイン：本物（左）と、データで写しとった分身（右）
+ART.twin = g => {
+  g.disc(6, 6, 2.6, 'S'); g.rect(3, 9, 7, 8, 'o'); g.rect(3, 17, 3, 5, 'K'); g.rect(7, 17, 3, 5, 'K');
+  const C = 'c';
+  g.ring(17, 6, 2.6, 1, C); g.hl(14, 9, 7, C); g.hl(14, 16, 7, C); g.vl(14, 9, 8, C); g.vl(20, 9, 8, C); g.vl(15, 17, 5, C); g.vl(19, 17, 5, C);
+  for (let x = 15; x <= 19; x += 2) for (let y = 11; y <= 15; y += 2) g.set(x, y, 'u');
+  g.set(11, 12, 'C'); g.set(12, 12, 'C');
+};
+// null²：伸び縮みする鏡の膜でおおわれた、キューブを積んだ建物
+ART.null2 = g => {
+  const cube = (x, y, s) => { g.rect(x, y, s, s, 'm'); g.hl(x, y, s, 'w'); g.vl(x, y, s, 'w'); g.line(x + 1, y + s - 2, x + s - 2, y + 1, 'u'); g.rect(x + s - 2, y + s - 2, 2, 2, 'M'); };
+  cube(2, 12, 9); cube(11, 12, 9); cube(6, 3, 9); cube(15, 5, 6);
+  g.set(9, 6, 'c'); g.set(4, 15, 'c'); g.set(14, 15, 'v');
+};
+// 空中プラズマ：レーザーを集めた点が光る（さわれる光）
+ART.plasma = g => {
+  g.rect(0, 0, 24, 24, 'k');
+  g.line(4, 0, 11, 11, 'P'); g.line(19, 0, 12, 11, 'P'); g.line(11, 0, 11, 10, 'p');
+  [[11, 12], [8, 16], [14, 16], [11, 20], [5, 19], [17, 19]].forEach(([x, y], i) => { g.disc(x + 0.5, y, i ? 1 : 1.6, 'w'); if (i) g.set(x + 2, y, 'v'); });
+  g.disc(20, 21, 1.4, 's'); g.set(18, 20, 's');
+};
+
 ART._missing = g => { g.rect(6, 6, 12, 12, 'g'); g.text(10, 10, '?', 'w'); };
 
 /* ---------- 画像に変換 ---------- */
@@ -5216,7 +5643,7 @@ function renderTitle() {
     <nav class="menu" aria-label="メニュー">
       <button type="button" class="btn gold big" data-nav="select" data-vs="cpu">対戦する<small>CPUと対戦</small></button>
       <button type="button" class="btn gold big" data-nav="select" data-vs="online">対人戦<small>オンライン ・ この端末で2人</small></button>
-      <button type="button" class="btn gold big" data-nav="packs">パックをひらく<small>新シリーズ「プログラミングの先駆者」登場！ ・ チケット ${STORE.tickets}枚</small></button>
+      <button type="button" class="btn gold big" data-nav="packs">パックをひらく<small>新シリーズ「遍在する計算機」登場！ ・ チケット ${STORE.tickets}枚</small></button>
       <button type="button" class="btn" data-nav="dex">カード図鑑<small>${ownedKinds()} / ${ALL_IDS.length}種</small></button>
       <button type="button" class="btn" data-nav="decks">デッキをつくる</button>
       <button type="button" class="btn wide" data-nav="rules">あそびかた</button>
@@ -5581,7 +6008,7 @@ function renderRules() {
             <li>手札のv1ユニットをベンチに出す（ベンチは3体まで）</li>
             <li>ユニットを進化させる（v1→v2→v3）。出したばかりのユニットと、最初の自分の番は進化できない</li>
             <li>エネルギーゾーンのエネルギーを、自分のユニット1体につける（1ターンに1回）</li>
-            <li>コマンドを使う：グッズは何枚でも、サポートは1枚まで、どうぐはユニット1体に1枚まで</li>
+            <li>コマンドを使う：グッズは何枚でも、サポートは1枚まで、どうぐはユニット1体に1枚まで。<b>フィールド</b>は場に1枚だけ置けて、おたがいに効く（新しいフィールドを出すと、前のものはトラッシュへ）</li>
             <li>特性を使う</li>
             <li><b>にげる</b>：にげるコストの数だけエネルギーをトラッシュして、バトル場とベンチのユニットを入れ替える（1ターンに1回）</li>
           </ul>
@@ -5622,7 +6049,7 @@ function renderRules() {
       <li>レア度は ◆（v1など）・◆◆（v2など）・◆◆◆（v3など）・◆◆◆◆（ex）。ごくまれに、キラキラの<b>☆ホロ</b>カードや、全部レアの<b>ゴッドパック</b>が出る。</li>
       <li>パックを1つひらくたびにパックポイント+${PACK_POINT}。図鑑で、ほしいカードと交換できる（◆${EXCHANGE_COST[1]}pt〜◆◆◆◆${EXCHANGE_COST[4]}pt）。</li>
       <li>自分で作るデッキには、持っているカードしか入れられない。プリセットデッキはいつでも使える。</li>
-      <li>「コンピュータの父」シリーズ（「アラン・チューリング」パック・「ジョン・フォン・ノイマン」パック・「クロード・シャノン」パック）と、「プログラミングの先駆者」シリーズ（「エイダ・ラブレス」パック・「グレース・ホッパー」パック）のカードは、そのシリーズのパックからしか出ない。</li>
+      <li>「コンピュータの父」シリーズ（「アラン・チューリング」パック・「ジョン・フォン・ノイマン」パック・「クロード・シャノン」パック）、「プログラミングの先駆者」シリーズ（「エイダ・ラブレス」パック・「グレース・ホッパー」パック）、「遍在する計算機」シリーズ（「マーク・ワイザー」パック・「TRON」パック・「落合陽一」パック）のカードは、そのシリーズのパックからしか出ない。</li>
     </ul></section>
     <div class="cta"><button type="button" class="btn gold big" data-nav="select">対戦する</button></div>
   </div>`;
@@ -6048,7 +6475,8 @@ function midHTML(g) {
   else if (UI.mode === 'target') main = `<b>選択</b><span class="tk wrap">${esc(UI.targetLabel)}</span>`;
   else if (g.turn === 0) main = '<b>準備中</b>';
   else main = `<b>${esc(turnLabel(g.players[g.cur]))}</b><span class="tk">${esc(UI.lastLog)}</span>`;
-  return `<span class="turn">T${String(g.turn).padStart(2, '0')}</span><span class="midtxt">${main}</span><button type="button" class="iconbtn" data-act="log">ログ</button>`;
+  const field = g.field ? `<button type="button" class="iconbtn fieldchip" data-act="field" aria-label="フィールド「${esc(DEF[g.field.card.id].name)}」の説明">${artImg(g.field.card.id)}<span>${esc(DEF[g.field.card.id].name)}</span></button>` : '';
+  return `<span class="turn">T${String(g.turn).padStart(2, '0')}</span><span class="midtxt">${main}</span>${field}<button type="button" class="iconbtn" data-act="log">ログ</button>`;
 }
 
 function renderBattle() {
@@ -6110,6 +6538,7 @@ $('#scr-battle').addEventListener('click', e => {
   const uid = el.dataset.uid ? +el.dataset.uid : 0;
   if (act === 'menu') return openMenu();
   if (act === 'log') return toggleLog(true);
+  if (act === 'field') return UI.g && UI.g.field && openCardInfo(UI.g.field.card.id);
   if (act === 'speed') { UI.fast = !UI.fast; renderActbar(); return; }
   if (act === 'trash') return openTrash(g.players[+el.dataset.p]);
   if (act === 'result') return showResult(g);
@@ -6530,7 +6959,7 @@ function netAfterForcedEnd() {
 /* 2人の画面がずれていないかを確かめるための、盤面のしるし */
 function stateHash(g) {
   const mon = m => (m ? [m.uid, m.id, m.dmg, m.energy.join(''), m.tool ? m.tool.id : '', Object.keys(m.status).filter(k => m.status[k] === true).sort().join('')].join(':') : '-');
-  const str = JSON.stringify([g.turn, g.cur, g.players.map(p => [p.points, p.deck.map(c => c.uid).join(','), p.hand.map(c => c.uid).join(','), p.discard.length, p.energyCur, p.energyNext, mon(p.active), p.bench.map(mon)])]);
+  const str = JSON.stringify([g.turn, g.cur, g.field ? g.field.card.uid : '', g.players.map(p => [p.points, p.deck.map(c => c.uid).join(','), p.hand.map(c => c.uid).join(','), p.discard.length, p.energyCur, p.energyNext, mon(p.active), p.bench.map(mon)])]);
   let h = 5381;
   for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
   return h;

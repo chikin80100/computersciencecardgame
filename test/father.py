@@ -74,6 +74,8 @@ with sync_playwright() as p:
         h.click(force=True); page.wait_for_timeout(80)
     click(page, '#actbar [data-act="ready"]')
     r = wait_my_turn(page)
+    while r == 'choice':  # 先攻のCPUがゲーム理論などを使うと、はじめに選ぶ画面が出る
+        page.click('#choice .copt[data-i="0"]', force=True); page.wait_for_timeout(300); r = wait_my_turn(page)
     assert r is True, r
     [alan, code, neu] = give(page, 0, ['alan', 'codebreak', 'neumann'])
     give(page, 0, ['pair', 'hackathon', 'patch'], 'discard')

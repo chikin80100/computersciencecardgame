@@ -278,7 +278,7 @@ function renderTitle() {
     <nav class="menu" aria-label="メニュー">
       <button type="button" class="btn gold big" data-nav="select" data-vs="cpu">対戦する<small>CPUと対戦</small></button>
       <button type="button" class="btn gold big" data-nav="select" data-vs="online">対人戦<small>オンライン ・ この端末で2人</small></button>
-      <button type="button" class="btn gold big" data-nav="packs">パックをひらく<small>新シリーズ「プログラミングの先駆者」登場！ ・ チケット ${STORE.tickets}枚</small></button>
+      <button type="button" class="btn gold big" data-nav="packs">パックをひらく<small>新シリーズ「遍在する計算機」登場！ ・ チケット ${STORE.tickets}枚</small></button>
       <button type="button" class="btn" data-nav="dex">カード図鑑<small>${ownedKinds()} / ${ALL_IDS.length}種</small></button>
       <button type="button" class="btn" data-nav="decks">デッキをつくる</button>
       <button type="button" class="btn wide" data-nav="rules">あそびかた</button>
@@ -643,7 +643,7 @@ function renderRules() {
             <li>手札のv1ユニットをベンチに出す（ベンチは3体まで）</li>
             <li>ユニットを進化させる（v1→v2→v3）。出したばかりのユニットと、最初の自分の番は進化できない</li>
             <li>エネルギーゾーンのエネルギーを、自分のユニット1体につける（1ターンに1回）</li>
-            <li>コマンドを使う：グッズは何枚でも、サポートは1枚まで、どうぐはユニット1体に1枚まで</li>
+            <li>コマンドを使う：グッズは何枚でも、サポートは1枚まで、どうぐはユニット1体に1枚まで。<b>フィールド</b>は場に1枚だけ置けて、おたがいに効く（新しいフィールドを出すと、前のものはトラッシュへ）</li>
             <li>特性を使う</li>
             <li><b>にげる</b>：にげるコストの数だけエネルギーをトラッシュして、バトル場とベンチのユニットを入れ替える（1ターンに1回）</li>
           </ul>
@@ -684,7 +684,7 @@ function renderRules() {
       <li>レア度は ◆（v1など）・◆◆（v2など）・◆◆◆（v3など）・◆◆◆◆（ex）。ごくまれに、キラキラの<b>☆ホロ</b>カードや、全部レアの<b>ゴッドパック</b>が出る。</li>
       <li>パックを1つひらくたびにパックポイント+${PACK_POINT}。図鑑で、ほしいカードと交換できる（◆${EXCHANGE_COST[1]}pt〜◆◆◆◆${EXCHANGE_COST[4]}pt）。</li>
       <li>自分で作るデッキには、持っているカードしか入れられない。プリセットデッキはいつでも使える。</li>
-      <li>「コンピュータの父」シリーズ（「アラン・チューリング」パック・「ジョン・フォン・ノイマン」パック・「クロード・シャノン」パック）と、「プログラミングの先駆者」シリーズ（「エイダ・ラブレス」パック・「グレース・ホッパー」パック）のカードは、そのシリーズのパックからしか出ない。</li>
+      <li>「コンピュータの父」シリーズ（「アラン・チューリング」パック・「ジョン・フォン・ノイマン」パック・「クロード・シャノン」パック）、「プログラミングの先駆者」シリーズ（「エイダ・ラブレス」パック・「グレース・ホッパー」パック）、「遍在する計算機」シリーズ（「マーク・ワイザー」パック・「TRON」パック・「落合陽一」パック）のカードは、そのシリーズのパックからしか出ない。</li>
     </ul></section>
     <div class="cta"><button type="button" class="btn gold big" data-nav="select">対戦する</button></div>
   </div>`;
@@ -1110,7 +1110,8 @@ function midHTML(g) {
   else if (UI.mode === 'target') main = `<b>選択</b><span class="tk wrap">${esc(UI.targetLabel)}</span>`;
   else if (g.turn === 0) main = '<b>準備中</b>';
   else main = `<b>${esc(turnLabel(g.players[g.cur]))}</b><span class="tk">${esc(UI.lastLog)}</span>`;
-  return `<span class="turn">T${String(g.turn).padStart(2, '0')}</span><span class="midtxt">${main}</span><button type="button" class="iconbtn" data-act="log">ログ</button>`;
+  const field = g.field ? `<button type="button" class="iconbtn fieldchip" data-act="field" aria-label="フィールド「${esc(DEF[g.field.card.id].name)}」の説明">${artImg(g.field.card.id)}<span>${esc(DEF[g.field.card.id].name)}</span></button>` : '';
+  return `<span class="turn">T${String(g.turn).padStart(2, '0')}</span><span class="midtxt">${main}</span>${field}<button type="button" class="iconbtn" data-act="log">ログ</button>`;
 }
 
 function renderBattle() {
@@ -1172,6 +1173,7 @@ $('#scr-battle').addEventListener('click', e => {
   const uid = el.dataset.uid ? +el.dataset.uid : 0;
   if (act === 'menu') return openMenu();
   if (act === 'log') return toggleLog(true);
+  if (act === 'field') return UI.g && UI.g.field && openCardInfo(UI.g.field.card.id);
   if (act === 'speed') { UI.fast = !UI.fast; renderActbar(); return; }
   if (act === 'trash') return openTrash(g.players[+el.dataset.p]);
   if (act === 'result') return showResult(g);
@@ -1592,7 +1594,7 @@ function netAfterForcedEnd() {
 /* 2人の画面がずれていないかを確かめるための、盤面のしるし */
 function stateHash(g) {
   const mon = m => (m ? [m.uid, m.id, m.dmg, m.energy.join(''), m.tool ? m.tool.id : '', Object.keys(m.status).filter(k => m.status[k] === true).sort().join('')].join(':') : '-');
-  const str = JSON.stringify([g.turn, g.cur, g.players.map(p => [p.points, p.deck.map(c => c.uid).join(','), p.hand.map(c => c.uid).join(','), p.discard.length, p.energyCur, p.energyNext, mon(p.active), p.bench.map(mon)])]);
+  const str = JSON.stringify([g.turn, g.cur, g.field ? g.field.card.uid : '', g.players.map(p => [p.points, p.deck.map(c => c.uid).join(','), p.hand.map(c => c.uid).join(','), p.discard.length, p.energyCur, p.energyNext, mon(p.active), p.bench.map(mon)])]);
   let h = 5381;
   for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
   return h;

@@ -91,7 +91,9 @@ with sync_playwright() as p:
     host.goto(URL + '#select'); host.evaluate('localStorage.clear()'); host.goto('about:blank')
     host.goto(URL + '#select'); guest.goto(URL + '#select'); host.wait_for_timeout(400)
     print('transport:', host.evaluate('TRANSPORT()'))
-    click(host, '[data-pick="me"][data-id="p_turing"]'); click(guest, '[data-pick="me"][data-id="p_neumann"]')
+    DECKS = (_s.argv[2] if len(_s.argv) > 2 else 'p_turing,p_neumann').split(',')  # 部屋をつくる人,入る人 のデッキ
+    print('decks:', DECKS)
+    click(host, f'[data-pick="me"][data-id="{DECKS[0]}"]'); click(guest, f'[data-pick="me"][data-id="{DECKS[1]}"]')
     click(host, '[data-vs="online"]'); click(guest, '[data-vs="online"]')
     host.screenshot(path=str(OUT / 'p_lobby.png'))
     t0 = time.time()
@@ -122,6 +124,11 @@ with sync_playwright() as p:
     hs, gs = state(host), state(guest)
     print('game1 host ', hs); print('game1 guest', gs)
     print('game1 same:', hs['h'] == gs['h'] and hs['w'] == gs['w'], 'turns', turns, '| dropped moves:', host.evaluate('window.__dropped || 0'), guest.evaluate('window.__dropped || 0'))
+    # 新しいしくみ（フィールド・ベンチで働く特性など）が、2人の画面で同じ回数おきたか
+    KEYS = ['フィールド「', 'TRONハウス：', '環境発電で', '組込みOS+', 'センサーが見張って', '」！ ', '実体がない', '「分身」', '落合陽一+20', '「空中プラズマ」', '「カーム・テクノロジー」', '「ICタグ」', '「マーク・ワイザー」']
+    cnt = lambda pg: pg.evaluate("keys => keys.map(k => UI.g.log.filter(l => String(l.msg || l).includes(k)).length)", KEYS)
+    ch, cg = cnt(host), cnt(guest)
+    print('events', {k: v for k, v, w in zip(KEYS, ch, cg) if v or w}, 'same:', ch == cg)
     host.screenshot(path=str(OUT / 'p_result.png'))
     # 再戦（コードの交換なし）
     click(guest, '#result [data-r="again2"]'); guest.wait_for_timeout(300)

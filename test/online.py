@@ -158,6 +158,11 @@ with sync_playwright() as p:
     gs = guest.evaluate('UI.g ? { w: UI.g.winner, pts: UI.g.players.map(p => p.points), turn: UI.g.turn, h: stateHash(UI.g), desync: !!UI.g.desync, reason: UI.g.reason, t: STORE.tickets } : null')
     print('host ', hs); print('guest', gs)
     print('turns', turns, 'same result:', hs and gs and hs['w'] == gs['w'] and hs['pts'] == gs['pts'] and hs['h'] == gs['h'])
+    # 新しいしくみ（フィールド・ベンチで働く特性など）が、2人の画面で同じ回数おきたか
+    KEYS = ['フィールド「', 'TRONハウス：', '環境発電で', '組込みOS+', 'センサーが見張って', '」！ ', '実体がない', '「分身」', '落合陽一+20', '「空中プラズマ」', '「カーム・テクノロジー」', '「ICタグ」', '「マーク・ワイザー」', '「究極の機械」', '詩的科学', 'レガシー']
+    cnt = lambda pg: pg.evaluate("keys => keys.map(k => UI.g.log.filter(l => String(l.msg || l).includes(k)).length)", KEYS)
+    ch, cg = cnt(host), cnt(guest)
+    print('events', {k: v for k, v, w in zip(KEYS, ch, cg) if v or w}, 'same:', ch == cg)
     print('moves sent', host.evaluate('NET.mine.length'), guest.evaluate('NET.mine.length'), '| room doc left:', host.evaluate("Object.keys(JSON.parse(localStorage.getItem('__fakedb2__'))).filter(k => k.startsWith('pvp/'))"))
     b.close()
 print('errors:', errors[:8])

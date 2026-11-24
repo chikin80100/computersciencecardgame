@@ -38,7 +38,9 @@ async function play(da, db) {
       if (!g) return;
       for (const p of g.players) {
         const inPlay = E.inPlay(p);
-        const count = p.deck.length + p.hand.length + p.discard.length + inPlay.reduce((s, m) => s + m.cards.length + (m.tool ? 1 : 0), 0);
+        // 場のフィールドは、出した人のカードとして数える
+        const fieldMine = g.field && g.players[g.field.owner] === p ? 1 : 0;
+        const count = p.deck.length + p.hand.length + p.discard.length + fieldMine + inPlay.reduce((s, m) => s + m.cards.length + (m.tool ? 1 : 0), 0);
         if (count !== 20) problems.push(`カード枚数が${count}枚 (turn ${g.turn}, ${p.deckName})`);
         if (p.bench.length > 3) problems.push(`ベンチ${p.bench.length}体`);
         for (const m of inPlay) {

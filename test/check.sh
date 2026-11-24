@@ -13,6 +13,8 @@ echo '== shannon.js（シャノンのパックのカードの効果）'
 node test/shannon.js
 echo '== pioneer.js（プログラミングの先駆者シリーズのカードの効果）'
 node test/pioneer.js
+echo '== ubicomp.js（遍在する計算機シリーズのカードの効果）'
+node test/ubicomp.js
 echo '== odds.js（パックから全カードが出るか）'
 node test/odds.js | grep -E 'never pulled|no pack|god'
 echo 'OK'

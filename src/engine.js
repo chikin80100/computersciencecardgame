@@ -96,10 +96,10 @@ function makeDeck(cards) {
   return out;
 }
 function freshT() {
-  return { energyDone: false, supporterDone: false, retreatDone: false, retreatDiscount: 0, dmgBonus: 0, aiBonus: 0, costCut: 0, anyColor: 0, abilityUsed: [] };
+  return { energyDone: false, supporterDone: false, retreatDone: false, retreatDiscount: 0, dmgBonus: 0, aiBonus: 0, costCut: 0, anyColor: 0, freeRetreat: 0, allWeak: 0, abilityUsed: [] };
 }
 function newGame(cfg) {
-  const g = { players: [], cur: 0, first: 0, turn: 0, over: false, winner: null, reason: '', io: cfg.io || NOOP_IO, log: [] };
+  const g = { players: [], cur: 0, first: 0, turn: 0, over: false, winner: null, reason: '', io: cfg.io || NOOP_IO, log: [], field: null };
   cfg.players.forEach((pc, idx) => {
     g.players.push({
       idx, name: pc.name, isCPU: !!pc.isCPU, isRemote: !!pc.isRemote, deckName: pc.deckName || '',
@@ -227,6 +227,8 @@ function reduction(g, m) {
   return r;
 }
 
+/* ベンチにいるあいだ働く特性（センサー・TRON・音響浮揚）を持つユニットの数 */
+const benchWith = (pl, key) => pl.bench.filter(b => { const ab = DEF[b.id].ability; return ab && ab[key]; }).length;
 function ownerOfMon(g, m) { return g.players.find(pl => inPlay(pl).includes(m)); }
 /* ワザのダメージを実際にのせる（UPSの判定もここ） */
 function applyAttackDamage(g, target, d) {
@@ -239,6 +241,11 @@ function applyAttackDamage(g, target, d) {
     L(g, `UPSが作動！ ${nm(target)}はHP10で持ちこたえた`, 'heal');
   }
   const ab = DEF[target.id].ability;
+  if (ab && ab.phantom && !target.phantomUsed) {
+    target.phantomUsed = true;
+    L(g, `${nm(target)}は特性「${ab.name}」で、ダメージを受けなかった`, 'status');
+    return 0;
+  }
   if (ab && ab.endure && !target.endured && target.dmg + d >= maxHp(target) && hpLeft(target) > 10) {
     d = hpLeft(target) - 10;
     target.endured = true;
@@ -325,8 +332,12 @@ function mkCtx(g, p, me, atk, dry) {
 }
 
 function isWeakHit(me, target, atk) {
+  const ab = DEF[target.id].ability;
+  if (ab && ab.noWeak) return false;
   return !!(atk.alwaysWeak || (WEAK[DEF[target.id].type] && WEAK[DEF[target.id].type] === DEF[me.id].type));
 }
+/* 落合陽一を使った番は、弱点のないユニット（デジタルネイチャー）以外の弱点を必ず突く */
+const ochiaiHit = (p, target) => { const ab = DEF[target.id].ability; return !!(p.t.allWeak && !(ab && ab.noWeak)); };
 function finalDamage(g, p, me, target, base, atk) {
   if (base <= 0) return 0;
   const o = other(g, p);
@@ -334,7 +345,8 @@ function finalDamage(g, p, me, target, base, atk) {
   if (target === o.active) {
     d += p.t.dmgBonus;
     if (p.t.aiBonus && DEF[me.id].type === 'ai') d += p.t.aiBonus;
-    if (isWeakHit(me, target, atk)) d += 20;
+    if (isWeakHit(me, target, atk) || ochiaiHit(p, target)) d += 20;
+    d += 10 * benchWith(p, 'embed');
   }
   if (!atk.pierce) d -= reduction(g, target);
   if (lovelaceHit(me, target)) d -= 30;
@@ -345,13 +357,14 @@ const lovelaceHit = (me, target) => !!(target.tool && target.tool.id === 'lovela
 async function dealAttackDamage(g, p, me, target, base, atk) {
   const o = other(g, p);
   const isActive = target === o.active;
-  const weak = isActive && isWeakHit(me, target, atk);
+  const weak = isActive && (isWeakHit(me, target, atk) || ochiaiHit(p, target));
   const red = atk.pierce ? 0 : reduction(g, target);
   const d = applyAttackDamage(g, target, finalDamage(g, p, me, target, base, atk));
   const notes = [];
   if (isActive && p.t.dmgBonus) notes.push(`最適化+${p.t.dmgBonus}`);
   if (isActive && p.t.aiBonus && DEF[me.id].type === 'ai') notes.push(`チューリングテスト+${p.t.aiBonus}`);
-  if (weak) notes.push(atk.alwaysWeak && WEAK[DEF[target.id].type] !== DEF[me.id].type ? '特徴抽出+20' : '弱点+20');
+  if (weak) notes.push(!isWeakHit(me, target, atk) ? '落合陽一+20' : atk.alwaysWeak && WEAK[DEF[target.id].type] !== DEF[me.id].type ? '特徴抽出+20' : '弱点+20');
+  if (isActive && benchWith(p, 'embed')) notes.push(`組込みOS+${10 * benchWith(p, 'embed')}`);
   if (red) notes.push(`軽減-${red}`);
   if (lovelaceHit(me, target)) notes.push('ラブレスの反論-30');
   L(g, `${nm(target)}に${d}ダメージ${notes.length ? `（${notes.join('・')}）` : ''}`, 'dmg');
@@ -369,6 +382,23 @@ async function dealAttackDamage(g, p, me, target, base, atk) {
     L(g, `究極の機械が作動！ 箱から手が出てきて、${nm(me)}のスイッチを切った`, 'status');
     g.io.say('カチッ');
     setStatus(g, me, 'freeze');
+    await g.io.pause(300);
+  }
+  const tab = DEF[target.id].ability;
+  if (isActive && d > 0 && tab && tab.mirror && p.active === me) {
+    const r = Math.floor(d / 2 / 10) * 10;
+    if (r > 0) {
+      me.dmg += r;
+      L(g, `${nm(target)}の「${tab.name}」！ ${nm(me)}に${r}ダメージをはね返した`, 'dmg');
+      g.io.fx(me.uid, 'hit', r);
+      await g.io.pause(300);
+    }
+  }
+  const watch = benchWith(o, 'watch');
+  if (isActive && d > 0 && watch && p.active === me) {
+    me.dmg += 10 * watch;
+    L(g, `センサーが見張っていた！ ${nm(me)}に${10 * watch}ダメージ`, 'dmg');
+    g.io.fx(me.uid, 'hit', 10 * watch);
     await g.io.pause(300);
   }
 }
@@ -400,6 +430,16 @@ async function checkKOs(g) {
         opp.points += pts;
         opp.kos++;
         L(g, `${pl.name}の${d.name}はダウンした！ ${opp.name}は${pts}ポイント獲得`, 'ko');
+        if (d.ability && d.ability.twin && pl.bench.length < BENCH_MAX) {
+          const c = pl.deck.find(x => x.id === m.id);
+          if (c) {
+            pl.deck.splice(pl.deck.indexOf(c), 1);
+            const nmn = mkMon(c, g.turn);
+            pl.bench.push(nmn);
+            L(g, `「${d.ability.name}」で、山札から${d.name}がベンチに出た`, 'trainer');
+            g.io.fx(nmn.uid, 'enter');
+          }
+        }
       }
     }
   }
@@ -536,6 +576,7 @@ async function beginTurn(g) {
     p.energyCur = p.energyNext || rollEnergy(p);
     if (energyLocked(g, p)) L(g, `${p.name}はランサムウェアの影響で、この番エネルギーをつけられない`, 'status');
     p.energyNext = rollEnergy(p);
+    for (const b of p.bench) if (b.tool && b.tool.id === 'harvest') { L(g, `環境発電で、${nm(b)}が電気を集めた`, 'energy'); attachFromZone(g, p, b, 1); }
   }
   g.io.render();
 }
@@ -567,6 +608,11 @@ async function checkup(g) {
 async function finishTurn(g) {
   const p = g.players[g.cur];
   p.energyCur = null;
+  if (g.field && g.field.card.id === 'tronhouse') {
+    let n = 0;
+    for (const pl of g.players) for (const b of pl.bench) if (b.dmg > 0) { b.dmg = Math.max(0, b.dmg - 10); n++; }
+    if (n) L(g, `TRONハウス：ベンチのユニット${n}体のHPが10回復した`, 'heal');
+  }
   await checkup(g);
   if (g.over) return;
   if (g.turn >= TURN_LIMIT) { endGame(g, null, `${TURN_LIMIT}ターンが経過したため引き分け`); return; }
@@ -642,7 +688,7 @@ function handInfo(g, p, card) {
       if (!t.length) res.reason = '手札のv3ユニットに進化できるv1ユニットがいない'; else { res.ok = true; res.targets = t; }
       break;
     }
-    case 'ram': case 'honeypot': case 'ups': case 'ultimate': case 'lovelace': case 'logbook': {
+    case 'ram': case 'honeypot': case 'ups': case 'ultimate': case 'lovelace': case 'logbook': case 'harvest': {
       const t = inPlay(p).filter(m => !m.tool);
       if (!t.length) res.reason = 'どうぐをつけられるユニットがいない'; else { res.ok = true; res.targets = t; res.label = 'つける'; }
       break;
@@ -679,6 +725,18 @@ function handInfo(g, p, card) {
       if (!p.deck.some(c => DEF[c.id].kind === 'mon' && DEF[c.id].stage >= 2)) res.reason = '山札に進化ユニットがない'; else res.ok = true; break;
     case 'poetical':
       if (p.t.anyColor) res.reason = 'この番はもう使った'; else if (!p.active) res.reason = 'バトル場にユニットがいない'; else res.ok = true; break;
+    case 'weiser':
+      if (!p.deck.length) res.reason = '山札がない'; else if (!p.bench.length) res.reason = 'ベンチにユニットがいない'; else res.ok = true; break;
+    case 'calm':
+      if (!p.active || !p.bench.length) res.reason = '入れかえるベンチのユニットがいない'; else res.ok = true; break;
+    case 'ochiai':
+      if (!p.active) res.reason = 'バトル場にユニットがいない'; else res.ok = true; break;
+    case 'ictag':
+      if (p.t.freeRetreat) res.reason = 'この番はもう使った'; else if (!p.active || !p.bench.length) res.reason = 'にげる先のベンチのユニットがいない'; else res.ok = true; break;
+    case 'plasma':
+      if (!o.bench.length) res.reason = '相手のベンチにユニットがいない'; else res.ok = true; break;
+    case 'tronhouse':
+      if (g.field && g.field.card.id === card.id) res.reason = 'もう場に出ている'; else res.ok = true; break;
     case 'nanosec': {
       const units = inPlay(p);
       if (units.length < 2) res.reason = 'つけかえる先のユニットがいない';
@@ -715,7 +773,8 @@ function attackInfo(g, p, idx) {
   return { ok: true, reason: '' };
 }
 function retreatCost(g, p) {
-  return p.active ? Math.max(0, DEF[p.active.id].retreat - p.t.retreatDiscount) : 0;
+  if (!p.active || p.t.freeRetreat) return 0;
+  return Math.max(0, DEF[p.active.id].retreat - p.t.retreatDiscount - benchWith(p, 'float'));
 }
 function retreatInfo(g, p) {
   const m = p.active;
@@ -842,6 +901,13 @@ async function actTrainer(g, p, card, target) {
     g.io.fx(target.uid, 'tool');
     return true;
   }
+  if (d.kind === 'field') {
+    if (g.field) { g.players[g.field.owner].discard.push(g.field.card); L(g, `「${DEF[g.field.card.id].name}」はトラッシュされた`); }
+    g.field = { card, owner: g.players.indexOf(p) };
+    L(g, `${p.name}はフィールド「${d.name}」を場に出した`, 'trainer');
+    g.io.say(d.name);
+    return true;
+  }
   p.discard.push(card);
   L(g, `${p.name}は「${d.name}」を使った`, 'trainer');
   g.io.say(d.name);
@@ -964,6 +1030,41 @@ async function actTrainer(g, p, card, target) {
     case 'hopper':
       await tutorFromDeck(g, p, 2, c => DEF[c.id].kind === 'mon' && DEF[c.id].stage >= 2, 'グレース・ホッパー：手札に加える進化ユニットを選んでください');
       break;
+    case 'weiser':
+      L(g, `ベンチのユニットは${p.bench.length}体`);
+      drawCards(g, p, p.bench.length);
+      break;
+    case 'calm': {
+      const m = await pick(g, p, 'カーム・テクノロジー：バトル場に出すベンチのユニットを選んでください',
+        p.bench.map(b => ({ label: nm(b), value: b, mon: b })), () => aiNewActive(g, p));
+      const to = m && p.bench.includes(m) ? m : p.bench[0];
+      const old = p.active;
+      switchActive(g, p, to);
+      L(g, `${nm(old)}と${nm(to)}を入れかえた`);
+      g.io.fx(to.uid, 'enter');
+      drawCards(g, p, 1);
+      break;
+    }
+    case 'ochiai':
+      p.t.allWeak = 1;
+      L(g, 'この番、ワザは相手の弱点を必ず突く');
+      drawCards(g, p, 1);
+      break;
+    case 'ictag':
+      p.t.freeRetreat = 1;
+      L(g, 'この番、にげるのにエネルギーはいらない');
+      break;
+    case 'plasma': {
+      const m = await pick(g, p, '空中プラズマ：ダメージをあたえる相手のベンチのユニットを選んでください',
+        o.bench.map(b => ({ label: nm(b), value: b, mon: b })), () => o.bench.slice().sort((a, b) => hpLeft(a) - hpLeft(b) || (DEF[b.id].ex ? 1 : 0) - (DEF[a.id].ex ? 1 : 0))[0]);
+      const t = m && o.bench.includes(m) ? m : o.bench[0];
+      t.dmg += 20;
+      L(g, `${nm(t)}に20ダメージ`, 'dmg');
+      g.io.fx(t.uid, 'hit', 20);
+      await g.io.pause(300);
+      await checkKOs(g);
+      break;
+    }
     case 'poetical':
       p.t.anyColor = 1;
       L(g, 'この番、ワザにはどの色のエネルギーでも使える');
@@ -1034,7 +1135,7 @@ async function actAttack(g, p, idx) {
   L(g, `${p.name}の${nm(me)}の「${atk.name}」！`, 'atk');
   g.io.fx(me.uid, 'attack');
   await g.io.pause(320);
-  if (me.status.garble) {
+  if (me.status.garble && !atk.sure) {
     const r = await flipCoins(g, 1, '文字化けチェック（ウラなら失敗）', false);
     if (!r[0]) {
       L(g, '文字化けしていて、ワザは失敗した…');
@@ -1192,9 +1293,9 @@ function cmdValue(g, p, c) {
   const d = DEF[c.id];
   const o = other(g, p);
   const table = {
-    alan: 24, ada: 22, hackathon: 22, shannon: 20, hopper: 20, pentest: 16, opensource: 16, codebreak: 14, gametheory: 13, pair: 13, debug: 12, optimize: 9, lb: 9, neumann: 10,
-    update: 12, import: 11, grep: 11, ctrlz: 8, search: 8, patch: 7, turtest: 7, compress: 6, poetical: 6, nanosec: 5, alttab: 4, reboot: o.hand.length >= 5 ? 9 : 3,
-    ram: 9, honeypot: 8, ups: 10, ultimate: 10, logbook: 6, lovelace: inPlay(o).some(m => DEF[m.id].type === 'ai') ? 10 : 2,
+    alan: 24, ada: 22, hackathon: 22, shannon: 20, hopper: 20, weiser: p.bench.length >= 2 ? 18 : 8, ochiai: 12, calm: 9, pentest: 16, opensource: 16, codebreak: 14, gametheory: 13, pair: 13, debug: 12, optimize: 9, lb: 9, neumann: 10,
+    update: 12, import: 11, grep: 11, ctrlz: 8, search: 8, patch: 7, turtest: 7, compress: 6, poetical: 6, nanosec: 5, plasma: 8, tronhouse: 7, ictag: 3, alttab: 4, reboot: o.hand.length >= 5 ? 9 : 3,
+    ram: 9, honeypot: 8, ups: 10, ultimate: 10, logbook: 6, harvest: 9, lovelace: inPlay(o).some(m => DEF[m.id].type === 'ai') ? 10 : 2,
   };
   let v = table[d.id] === undefined ? 6 : table[d.id];
   if (d.id === 'turtest' && !inPlay(p).some(m => DEF[m.id].type === 'ai')) v = 1;
@@ -1326,7 +1427,12 @@ async function aiDevelop(g, p) {
     }
     if (c.id === 'reboot' && other(g, p).hand.length >= 5) { if (await actTrainer(g, p, c)) return true; }
     if (c.id === 'search') { if (await actTrainer(g, p, c)) return true; }
+    if (c.id === 'plasma') { if (await actTrainer(g, p, c)) return true; }
     if (c.id === 'ctrlz' && (!p.hand.some(isBasic) || p.bench.length < BENCH_MAX)) { if (await actTrainer(g, p, c)) return true; }
+  }
+  // フィールド（まだ場にないなら出す）
+  for (const c of p.hand.slice()) {
+    if (DEF[c.id].kind === 'field' && handInfo(g, p, c).ok && p.bench.length && await actTrainer(g, p, c)) return true;
   }
   // どうぐ
   for (const c of p.hand.slice()) {
@@ -1334,6 +1440,13 @@ async function aiDevelop(g, p) {
     if (d.kind !== 'tool') continue;
     const info = handInfo(g, p, c);
     if (!info.ok) continue;
+    if (c.id === 'harvest') {
+      // 環境発電はベンチで働く：エネルギーがまだ足りないベンチのユニットに
+      const need = m => Math.max(0, ...attacksFor(p, m).map(a => deficit(m.energy, a.costArr)));
+      const t = info.targets.filter(x => x !== p.active).sort((a, b) => need(b) - need(a))[0];
+      if (t && await actTrainer(g, p, c, t)) return true;
+      continue;
+    }
     const prefer = info.targets.slice().sort((a, b) => ((b === p.active) * 2 + (DEF[b.id].ex ? 1 : 0)) - ((a === p.active) * 2 + (DEF[a.id].ex ? 1 : 0)))[0];
     if (await actTrainer(g, p, c, prefer)) return true;
   }
@@ -1378,6 +1491,16 @@ async function aiSupporter(g, p, phase) {
   }
   if (has('shannon') && p.deck.length >= 2 && (phase === 'early' || p.hand.length <= 5)) return actTrainer(g, p, has('shannon'));
   if (has('ada') && handInfo(g, p, has('ada')).ok && (phase === 'early' || p.hand.length <= 4)) return actTrainer(g, p, has('ada'));
+  if (has('weiser') && handInfo(g, p, has('weiser')).ok && p.bench.length >= 2) return actTrainer(g, p, has('weiser'));
+  if (has('calm') && m && p.bench.length && !m.status.sleep) {
+    // ただで入れかえられる：今のユニットより、ベンチのほうがずっと戦えるとき
+    const cur = await readiness(g, p, m);
+    let best = -Infinity;
+    for (const b of p.bench) best = Math.max(best, await readiness(g, p, b));
+    if (best > cur + 30 || (hpLeft(m) <= 30 && best > 15)) return actTrainer(g, p, has('calm'));
+  }
+  if (has('ochiai') && phase === 'late' && m && other(g, p).active && DEF[m.id].atk.some((a, i) => attackInfo(g, p, i).ok)
+    && !isWeakHit(m, other(g, p).active, {}) && ochiaiHit({ t: { allWeak: 1 } }, other(g, p).active)) return actTrainer(g, p, has('ochiai'));
   if (has('hopper') && handInfo(g, p, has('hopper')).ok && (phase === 'early' || p.hand.length <= 5)) return actTrainer(g, p, has('hopper'));
   if (has('hackathon') && m) {
     const strongest = DEF[m.id].atk.reduce((a, b) => (b.costArr.length >= a.costArr.length ? b : a));
@@ -1450,7 +1573,8 @@ async function aiMaybeRetreat(g, p) {
   }
   const base = retreatCost(g, p);
   const alt = p.hand.find(c => c.id === 'alttab');
-  const eff = alt && base > 0 ? base - 1 : base;
+  const tag = p.hand.find(c => c.id === 'ictag' && handInfo(g, p, c).ok);
+  const eff = tag && base > 0 ? 0 : alt && base > 0 ? base - 1 : base;
   if (m.energy.length < eff) return false;
   const lostValue = eff * 12;
   const should = (cur <= 0 && candS > 15) ||
@@ -1458,7 +1582,8 @@ async function aiMaybeRetreat(g, p) {
     (m.status.garble && candS > cur * 0.7 && candS > 10) ||
     (DEF[m.id].ex && hpLeft(m) <= 40 && candS > 10 && eff <= 1);
   if (!should) return false;
-  if (alt && eff < base) await actTrainer(g, p, alt);
+  if (tag && base > 0) await actTrainer(g, p, tag);
+  else if (alt && eff < base) await actTrainer(g, p, alt);
   if (!retreatInfo(g, p).ok) return false;
   return actRetreat(g, p, cand);
 }

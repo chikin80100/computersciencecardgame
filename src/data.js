@@ -896,6 +896,102 @@ const MONSTERS = [
     atk: [{ name: 'リレーにはさまる', cost: 'C', dmg: 10, text: '相手のバトル場のユニットをバグにする。', after: async c => { if (c.foeAlive()) c.status(c.foe, 'bug'); } }],
     desc: '1947年、計算機ハーバード・マークIIのリレーに蛾がはさまって、正しく動かなくなった。ホッパーのチームは蛾を作業日誌にテープで貼り「バグ（虫）が見つかった最初の本物の例」と書いた。「バグ」という言葉はそれより前からあったが、この話で有名になった。',
   },
+  /* ===== 「遍在する計算機」シリーズ：マーク・ワイザー ===== */
+  {
+    id: 'pc', set: 'ubicomp', name: 'パソコン', en: 'Personal computer', type: 'hw', stage: 1, hp: 70, retreat: 1,
+    atk: [{ name: '1人1台', cost: 'HC', dmg: 30 }],
+    desc: '1人が1台を使うコンピュータ（パーソナルコンピュータ）。ワイザーは、コンピュータの時代を、1台をみんなで使う「メインフレーム」、1人1台の「パソコン」、1人のまわりにたくさんある「ユビキタス」の3つに分けた。',
+  },
+  {
+    id: 'ubiq', set: 'ubicomp', name: 'ユビキタス', en: 'Ubiquitous computing', type: 'hw', stage: 2, from: 'パソコン', hp: 100, retreat: 1,
+    atk: [{
+      name: 'どこにでもある', cost: 'HC', dmg: 0, label: '20×', text: '自分の場にいるユニットの数×20ダメージ。',
+      dmgFn: async c => { c.dmg = 20 * [c.p.active, ...c.p.bench].filter(Boolean).length; },
+    }],
+    desc: 'コンピュータが、家具や道具や壁の中など、身のまわりのあらゆる所に入りこみ、意識しなくても使える状態。ワイザーの言う3つめの時代で、1人のまわりにたくさんのコンピュータがある。今は「IoT」とも呼ばれる。',
+  },
+  ...[['tab', 'タブ', 'Tab', 50, 0, 'C', 10, '手のひらサイズの小さなコンピュータ。動く付せんのように、部屋のあちこちで気軽に使うことを考えていた。研究所では「タブ」「パッド」「ボード」の大きさのちがう3種類をそろえ、部屋じゅうで使う実験をした。'],
+    ['pad', 'パッド', 'Pad', 60, 1, 'C', 20, 'ノートくらいの大きさのコンピュータ。紙のノートのように、机の上に何枚も置いて使うことを考えていた。今のタブレットにつながる考え方。'],
+    ['board', 'ボード', 'Board', 90, 2, 'NCC', 30, '黒板くらいの大きさのコンピュータ。ペンで書きこめる大きな画面で、部屋にいるみんなが同じ画面を見ながら話し合えた。今の電子黒板につながる考え方。'],
+  ].map(([id, name, en, hp, retreat, cost, dmg, desc]) => ({
+    id, set: 'ubicomp', name, en, type: 'net', stage: 1, hp, retreat,
+    atk: [{
+      name: 'そろう', cost, dmg, label: `${dmg}+`, text: '自分の場に「タブ」「パッド」「ボード」のうち2種類がいれば20ダメージ、3種類そろっていれば40ダメージ追加。',
+      dmgFn: async c => { const ids = new Set([c.p.active, ...c.p.bench].filter(Boolean).map(m => m.id)); const n = ['tab', 'pad', 'board'].filter(x => ids.has(x)).length; if (n === 3) c.dmg += 40; else if (n === 2) c.dmg += 20; },
+    }],
+    desc: `1990年代のはじめに、ワイザーたちの研究所（ゼロックスのパロアルト研究所）でつくられた、${desc}`,
+  })),
+  {
+    id: 'sensor', set: 'ubicomp', name: 'センサー', en: 'Sensor', type: 'net', stage: 1, hp: 30, retreat: 1,
+    ability: { name: '見張り', kind: 'passive', watch: true, text: 'このユニットがベンチにいるとき、相手のワザで自分のバトル場のユニットがダメージを受けたら、ワザを使ったユニットに10ダメージ。' },
+    atk: [{ name: 'はかる', cost: 'C', dmg: 10 }],
+    desc: '温度・光・動き・音などをはかって、電気の信号にかえる部品。ユビキタスやIoTでは、たくさんのセンサーがまわりのようすを見張り、データを送りつづける。',
+  },
+  /* ===== 「遍在する計算機」シリーズ：TRON ===== */
+  {
+    id: 'tronex', set: 'ubicomp', name: 'TRON', en: 'TRON', type: 'none', stage: 1, ex: true, hp: 140, retreat: 2,
+    ability: { name: '組込みOS', kind: 'passive', embed: true, text: 'このユニットがベンチにいるとき、自分のワザの、相手のバトル場のユニットへのダメージを+10する。' },
+    atk: [
+      { name: 'リアルタイム処理', cost: 'CC', dmg: 30 },
+      { name: 'どこでもコンピュータ', cost: 'CCC', dmg: 80 },
+    ],
+    desc: '1984年に坂村健が始めた、日本のコンピュータのプロジェクト。家電や自動車、工場の機械など、あらゆる物の中にコンピュータが入る「どこでもコンピュータ」の社会をめざした。物の中で動く組込み用のOSは、カメラや自動車のエンジン制御など、世界中の機器で使われている。2018年には、そのしくみがIEEEの国際標準になった。',
+  },
+  {
+    id: 'embedded', set: 'ubicomp', name: '組込みシステム', en: 'Embedded system', type: 'hw', stage: 1, hp: 70, retreat: 1,
+    atk: [{ name: '決められた仕事', cost: 'H', dmg: 20 }],
+    desc: '電子レンジ・炊飯器・自動車・エレベーターなど、機械の中に組みこまれて、決まった仕事をするコンピュータ。ふだんは見えないが、身のまわりのコンピュータのほとんどはこちら。',
+  },
+  {
+    id: 'rtos', set: 'ubicomp', name: 'リアルタイムOS', en: 'Real-time OS', type: 'algo', stage: 1, hp: 60, retreat: 1,
+    atk: [{ name: '締め切りを守る', cost: 'AC', dmg: 40, sure: true, text: 'このワザは、文字化けでも失敗しない。' }],
+    desc: '決められた時間までに、必ず処理を終わらせることを大事にするOS。エンジンの点火やブレーキの制御のように、少しでも遅れるとこまる機械で使われる。TRONの組込み用のOS（ITRONなど）もこの仲間。',
+  },
+  {
+    id: 'iot', set: 'ubicomp', name: 'IoT', en: 'Internet of Things', type: 'net', stage: 1, hp: 50, retreat: 1,
+    atk: [{
+      name: 'モノのインターネット', cost: 'CCC', dmg: 0, label: '10×', text: 'おたがいの場にいるユニットの数×10ダメージ。',
+      dmgFn: async c => { c.dmg = 10 * [c.p, c.o].reduce((n, pl) => n + [pl.active, ...pl.bench].filter(Boolean).length, 0); },
+    }],
+    desc: 'Internet of Things（モノのインターネット）の略。家電・車・センサーなど、コンピュータ以外の「モノ」がインターネットにつながり、データをやりとりすること。1999年ごろから使われはじめた言葉。',
+  },
+  /* ===== 「遍在する計算機」シリーズ：落合陽一 ===== */
+  {
+    id: 'dnature', set: 'ubicomp', name: 'デジタルネイチャー', en: 'Digital nature', type: 'hw', stage: 3, from: 'ユビキタス', hp: 150, retreat: 2,
+    ability: { name: '境界がない', kind: 'passive', noWeak: true, text: 'このユニットには弱点がない。' },
+    atk: [
+      { name: '溶け合う', cost: 'CC', dmg: 40 },
+      { name: '計算機自然', cost: 'HHC', dmg: 100 },
+    ],
+    desc: '落合陽一が提唱する、コンピュータと人間・自然の区別がなくなっていく未来の世界像（計算機自然）。物と情報、自然と人工が溶け合った新しい「自然」の姿。コンピュータがまわりに溶けこむユビキタスの考えを、人間や自然にまで広げたものともいえる。',
+  },
+  {
+    id: 'levitation', set: 'ubicomp', name: '音響浮揚', en: 'Acoustic levitation', type: 'hw', stage: 1, hp: 50, retreat: 1,
+    ability: { name: '浮遊', kind: 'passive', float: true, text: 'このユニットがベンチにいるとき、自分のバトル場のユニットがにげるのに必要なエネルギーを1個少なくする。' },
+    atk: [{ name: '粒を浮かせる', cost: 'C', dmg: 10 }],
+    desc: '強い超音波を重ね合わせて、小さな粒を空中に浮かせたり動かしたりする技術。落合陽一たちは、空中に浮かべた粒で絵や文字をえがく研究を発表した（2014年）。',
+  },
+  {
+    id: 'hologram', set: 'ubicomp', name: '計算機ホログラム', en: 'Computer-generated hologram', type: 'data', stage: 1, hp: 60, retreat: 1,
+    ability: { name: '実体がない', kind: 'passive', phantom: true, text: 'このユニットが最初に受けるワザのダメージは0になる（1回だけ）。' },
+    atk: [{ name: '光をえがく', cost: 'DC', dmg: 30 }],
+    desc: '光の波の重なり方をコンピュータで計算してつくるホログラム。目の前に立体が浮かんで見えたり、光の形を自由に変えたりできる。落合陽一の研究テーマの1つ。',
+  },
+  {
+    id: 'twin', set: 'ubicomp', name: 'デジタルツイン', en: 'Digital twin', type: 'data', stage: 1, hp: 70, retreat: 1,
+    ability: { name: '分身', kind: 'passive', twin: true, text: 'このユニットがダウンしたとき、自分の山札から「デジタルツイン」を1枚、ベンチに出す（ベンチがあいていれば）。' },
+    atk: [{ name: '写しとる', cost: 'DC', dmg: 30 }],
+    desc: '現実の物や人を、センサーのデータをもとにコンピュータの中にそっくり写しとった「双子」。工場や町のようすをコンピュータの中で試してから、現実に反映するのに使われる。',
+  },
+  {
+    id: 'null2', set: 'ubicomp', name: 'null²', en: 'null²', type: 'none', stage: 1, ex: true, hp: 150, retreat: 2,
+    ability: { name: '鏡', kind: 'passive', mirror: true, text: 'このユニットがバトル場で相手のワザのダメージを受けたとき、そのダメージの半分（一の位は切り捨て）を、ワザを使ったユニットにもあたえる。' },
+    atk: [
+      { name: 'ミラー膜', cost: 'CC', dmg: 40 },
+      { name: 'null', cost: 'CCC', dmg: 70, text: '相手のバトル場のユニットについているどうぐをトラッシュする。', after: async c => { if (c.foeAlive() && c.foe.tool) { c.o.discard.push(c.foe.tool); c.log(`${DEF[c.foe.tool.id].name}を null にした（トラッシュ）`); c.foe.tool = null; } } },
+    ],
+    desc: '2025年の大阪・関西万博で、落合陽一がプロデュースしたパビリオン。外がわは伸び縮みする鏡のような膜でおおわれ、形が変わる。名前の「null」はプログラミングで「値がない」ことを表す言葉で、ヌルの2乗で「ヌルヌル」と読む。',
+  },
 ];
 
 /* ---------- コマンド ---------- */
@@ -932,6 +1028,13 @@ const TRAINERS = [
   { id: 'hopper', set: 'pioneer', leg: true, name: 'グレース・ホッパー', en: 'Grace Hopper', kind: 'sup', rar: 4, text: '自分の山札から、進化ユニット（v2・v3）を2枚まで選んで手札に加える。そのあと山札を切る。', desc: 'アメリカの計算機科学者で、海軍の軍人（1906〜1992年）。最初期の計算機「ハーバード・マークI」のプログラマーになり、1952年には、プログラムを自動で機械語に変換する初期のコンパイラ「A-0」をつくった。英語に近い言葉で書けるプログラミング言語を進め、COBOLのもとをつくった。最後は海軍少将になった。' },
   { id: 'nanosec', set: 'pioneer', name: 'ナノ秒の針金', en: 'Nanosecond wire', kind: 'item', rar: 2, text: '自分のユニットについているエネルギーを1個、別の自分のユニットにつけかえる。', desc: 'ホッパーは講演で、長さ約30cmの針金を配った。光や電気の信号が1ナノ秒（10億分の1秒）に進むのが、ちょうどそのくらいだから。「遠くまでつなぐと、それだけ時間がかかる」ことを、目で見えるようにした。' },
   { id: 'logbook', set: 'pioneer', name: '作業日誌', en: 'Logbook', kind: 'tool', rar: 2, text: 'これをつけたユニットが特殊状態になるとき、かわりにならない。そのあと、このどうぐをトラッシュする。', desc: 'コンピュータの作業や、起きたトラブルを書きとめておく記録（ログ）。いつ何が起きたかを残しておくと、原因を見つけて直しやすくなる。ハーバード・マークIIの作業日誌には、本物のバグ（蛾）がテープで貼られている。' },
+  { id: 'weiser', set: 'ubicomp', leg: true, name: 'マーク・ワイザー', en: 'Mark Weiser', kind: 'sup', rar: 4, text: '自分のベンチにいるユニットの数だけ、山札を引く。', desc: 'アメリカの計算機科学者（1952〜1999年）。ゼロックスのパロアルト研究所で、1988年ごろ「ユビキタスコンピューティング」という考えを打ち出した。1991年の論文「21世紀のコンピュータ」では、すぐれた技術ほど生活に溶けこんで見えなくなると書き、たくさんの小さなコンピュータが身のまわりにある未来をえがいた。' },
+  { id: 'calm', set: 'ubicomp', name: 'カーム・テクノロジー', en: 'Calm technology', kind: 'sup', rar: 2, text: '自分のバトル場のユニットと、ベンチのユニット1体を入れかえる（にげるエネルギーはいらない）。そのあと、山札を1枚引く。', desc: 'ワイザーとジョン・シーリー・ブラウンが1995年ごろに唱えた考え。すぐれた技術は、必要なときだけ注意の中心に出てきて、ふだんはまわり（周辺）で静かにはたらく。' },
+  { id: 'ictag', set: 'ubicomp', name: 'ICタグ', en: 'RFID tag', kind: 'item', rar: 1, text: 'この番、自分のバトル場のユニットがにげるのに、エネルギーはいらない。', desc: '電波で読み書きできる、小さなICチップとアンテナ。電池がなくても、読み取り機の電波から電気をもらって動く。交通系ICカードや、お店の商品管理、図書館の本の貸し出しなどで使われている。' },
+  { id: 'harvest', set: 'ubicomp', name: '環境発電', en: 'Energy harvesting', kind: 'tool', rar: 2, text: 'これをつけたユニットがベンチにいるとき、自分の番のはじめに、エネルギーゾーンからエネルギーを1個つける。', desc: '光・振動・熱・電波など、まわりにある小さなエネルギーを集めて電気をつくる技術。電池を取りかえなくても、センサーなどを長く動かしつづけられる。' },
+  { id: 'tronhouse', set: 'ubicomp', name: 'TRONハウス', en: 'TRON House', kind: 'field', rar: 3, text: '場にあるあいだ、番のおわりに、おたがいのベンチのユニット全員のHPを10回復する。', desc: '1989年に東京に建てられた、TRONの考えで家じゅうにコンピュータとセンサーを組みこんだ実験住宅。窓・照明・空調などが連携して、住む人に合わせて自動で動いた。' },
+  { id: 'ochiai', set: 'ubicomp', leg: true, name: '落合陽一', en: 'Yoichi Ochiai', kind: 'sup', rar: 4, text: 'この番、自分のワザは、相手のバトル場のユニットの弱点を必ず突く（+20）。そのあと、山札を1枚引く。', desc: '日本の研究者・メディアアーティスト（1987年〜）。コンピュータと人間や自然が溶け合っていく未来の世界像「デジタルネイチャー（計算機自然）」を提唱し、超音波・レーザー・ホログラムなどを使った研究と作品をつくっている。2025年の大阪・関西万博では、パビリオン「null²」をプロデュースした。' },
+  { id: 'plasma', set: 'ubicomp', name: '空中プラズマ', en: 'Aerial plasma', kind: 'item', rar: 2, text: '相手のベンチのユニット1体に、20ダメージ。', desc: 'とても短い時間（フェムト秒）だけ光るレーザーを空気中の1点に集めて、さわれる光の点（プラズマ）をつくる技術。落合陽一たちは、空中に光の点でえがいた絵にさわれる研究を発表した（2015年）。' },
   { id: 'ultimate', set: 'father', name: '究極の機械', en: 'Ultimate machine', kind: 'tool', rar: 3, text: 'これをつけたユニットがバトル場で相手のワザのダメージを受けたとき、ワザを使ったユニットをフリーズにする。そのあと、このどうぐをトラッシュする。', desc: 'スイッチが1つだけついた箱。スイッチを入れると、ふたが開いて中から手が出てきて、スイッチを切ってまたひっこむ。それしかしない機械。人工知能の研究者マービン・ミンスキーのアイデアを、シャノンが1950年代につくった。' },
 ];
 
@@ -939,6 +1042,7 @@ const KIND = {
   item: { name: 'グッズ', c: '#4f6b7a', rule: 'グッズは自分の番に何枚でも使える。' },
   sup: { name: 'サポート', c: '#9a4f2c', rule: 'サポートは自分の番に1枚しか使えない。' },
   tool: { name: 'どうぐ', c: '#2f7a72', rule: 'どうぐは自分のユニットに1体につき1枚までつけられる。' },
+  field: { name: 'フィールド', c: '#5b4a8a', rule: 'フィールドは場に1枚だけ置けて、おたがいに効く。新しいフィールドを出すと、前のフィールドはトラッシュへ。' },
 };
 
 /* ---------- プリセットデッキ（各20枚・同名2枚まで） ---------- */
@@ -1019,6 +1123,21 @@ const PRESETS = [
     cards: { machinecode: 2, flowmatic: 2, cobol: 2, mark1: 1, moth: 1, compiler: 1, hopper: 1, nanosec: 2, logbook: 1, pair: 2, import: 2, grep: 1, update: 1, debug: 1 },
   },
   {
+    id: 'p_weiser', name: 'ユビキタス研究室', energy: ['net', 'hw'], key: ['ubiq', 'board'],
+    blurb: 'タブ・パッド・ボードは、種類をそろえるほど強くなる。ベンチのセンサーが見張り、パソコンをユビキタスへ。ワイザーはベンチが多いほどたくさん引ける。',
+    cards: { pc: 2, ubiq: 2, dnature: 1, tab: 2, pad: 2, board: 1, sensor: 2, weiser: 1, calm: 1, pair: 2, import: 2, grep: 1, debug: 1 },
+  },
+  {
+    id: 'p_tron', name: 'どこでもコンピュータ', energy: ['hw', 'algo'], key: ['tronex', 'embedded'],
+    blurb: 'ベンチのTRONがワザのダメージを底上げし、環境発電でベンチにエネルギーをためる。IoTは場のユニットが多いほど強い。TRONハウスを置けば、ベンチは毎番回復。',
+    cards: { tronex: 2, embedded: 2, rtos: 2, iot: 1, pc: 2, ubiq: 1, ictag: 1, harvest: 2, tronhouse: 1, pair: 2, import: 2, grep: 1, debug: 1 },
+  },
+  {
+    id: 'p_ochiai', name: '溶け合う世界', energy: ['hw', 'data'], key: ['dnature', 'null2'],
+    blurb: 'ベンチの音響浮揚で入れかえやすく、ホログラムとデジタルツインはしぶとい。null²はダメージを鏡ではね返す。落合陽一でどのタイプの弱点も突く。',
+    cards: { levitation: 2, hologram: 2, twin: 2, null2: 1, pc: 2, ubiq: 2, dnature: 2, ochiai: 1, plasma: 2, pair: 2, import: 2 },
+  },
+  {
     id: 'p_compile', name: 'コンパイラ工房', energy: ['net'], key: ['compiler', 'lambda'],
     blurb: 'コンパイラexのビルドでベンチを育て、低コストのラムダ式で攻める。無色だけのデッキ。',
     cards: { hello: 2, ifstmt: 2, func: 2, lambda: 2, compiler: 2, pair: 2, opensource: 1, import: 2, grep: 1, hackathon: 1, debug: 1, ram: 1, alttab: 1 },
@@ -1029,7 +1148,8 @@ const PRESETS = [
 const RARITY_MARK = { 1: '◆', 2: '◆◆', 3: '◆◆◆', 4: '◆◆◆◆' };
 function rarityOf(d) { return d.kind === 'mon' ? (d.ex ? 4 : d.stage) : (d.rar || 1); }
 const SERIES = [
-  { id: 'pioneer', name: '「プログラミングの先駆者」シリーズ', short: 'プログラミングの先駆者', isNew: true, blurb: '「プログラムを書く」ことを切りひらいた人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
+  { id: 'ubicomp', name: '「遍在する計算機」シリーズ', short: '遍在する計算機', isNew: true, blurb: '「遍在（へんざい）」は、どこにでもあること。コンピュータが見えなくなり、物の中に入り、やがて自然と区別がつかなくなっていく流れをたどるパック。シリーズのカードは、このパックからしか出ない。' },
+  { id: 'pioneer', name: '「プログラミングの先駆者」シリーズ', short: 'プログラミングの先駆者', blurb: '「プログラムを書く」ことを切りひらいた人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
   { id: 'father', name: '「コンピュータの父」シリーズ', short: 'コンピュータの父', blurb: 'コンピュータ科学の土台をきずいた3人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
   { id: 'base', name: 'スタンダード', blurb: 'ふつうのカードとコマンドが入ったパック。' },
 ];
@@ -1050,14 +1170,29 @@ const PACKS = [
     ids: ['shannon', 'bit', 'parity', 'hamming', 'ldpc', 'relay', 'theseus', 'otp', 'compress', 'ultimate', 'transistor', 'gate'],
   },
   {
-    id: 'ada', series: 'pioneer', name: 'エイダ・ラブレス', en: 'ADA LOVELACE', cover: 'ada', feature: 'ada', c1: '#6b3fa0', c2: '#b03a5b', isNew: true,
+    id: 'ada', series: 'pioneer', name: 'エイダ・ラブレス', en: 'ADA LOVELACE', cover: 'ada', feature: 'ada', c1: '#6b3fa0', c2: '#b03a5b',
     tagline: '世界初のプログラム・ループ・詩的科学',
     ids: ['ada', 'noteg', 'nestloop', 'jacquard', 'compose', 'adalang', 'poetical', 'lovelace', 'loop', 'variable', 'func'],
   },
   {
-    id: 'hopper', series: 'pioneer', name: 'グレース・ホッパー', en: 'GRACE HOPPER', cover: 'hopper', feature: 'hopper', c1: '#1f3a68', c2: '#a8742a', isNew: true,
+    id: 'hopper', series: 'pioneer', name: 'グレース・ホッパー', en: 'GRACE HOPPER', cover: 'hopper', feature: 'hopper', c1: '#1f3a68', c2: '#a8742a',
     tagline: 'コンパイラ・COBOL・バグの語源',
     ids: ['hopper', 'machinecode', 'flowmatic', 'cobol', 'mark1', 'moth', 'nanosec', 'logbook', 'compiler', 'hello', 'debug'],
+  },
+  {
+    id: 'weiser', series: 'ubicomp', name: 'マーク・ワイザー', en: 'MARK WEISER', cover: 'weiser', feature: 'weiser', c1: '#2f7d6b', c2: '#c98a2e', isNew: true,
+    tagline: 'ユビキタス・見えなくなるコンピュータ',
+    ids: ['weiser', 'pc', 'ubiq', 'tab', 'pad', 'board', 'sensor', 'calm', 'wlan', 'router'],
+  },
+  {
+    id: 'tron', series: 'ubicomp', name: 'TRON', en: 'TRON PROJECT', cover: 'tronex', feature: 'tronex', c1: '#b23a3a', c2: '#2b2f6b', isNew: true,
+    tagline: 'どこでもコンピュータ・組込み・IoT',
+    ids: ['tronex', 'embedded', 'rtos', 'iot', 'ictag', 'harvest', 'tronhouse', 'cache', 'mainmem'],
+  },
+  {
+    id: 'ochiai', series: 'ubicomp', name: '落合陽一', en: 'YOICHI OCHIAI', cover: 'ochiai', feature: 'ochiai', c1: '#3c4a5c', c2: '#7fb7c9', isNew: true,
+    tagline: 'デジタルネイチャー・浮遊・ホログラム',
+    ids: ['ochiai', 'dnature', 'levitation', 'hologram', 'twin', 'null2', 'plasma', 'gpu', 'array'],
   },
   { id: 'logic', series: 'base', name: '論理と構造', en: 'LOGIC & STRUCTURE', types: ['algo', 'data', 'none'], cover: 'astar', c1: '#2f8a4f', c2: '#2c5fae' },
   { id: 'world', series: 'base', name: 'つながる世界', en: 'CONNECTED WORLD', types: ['net', 'sec'], cover: 'ransom', c1: '#b07f06', c2: '#c0392b' },

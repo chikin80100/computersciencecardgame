@@ -54,12 +54,11 @@ with sync_playwright() as p:
     page.on('console', lambda m: errors.append(f'console.{m.type}: {m.text}') if m.type == 'error' and 'ERR_' not in m.text else None)
     route_fonts(page)
     page.goto(URL); page.wait_for_timeout(1000)
-    check('プログラミングの先駆者' in page.inner_text('.screen:not([hidden])'), 'タイトルに新シリーズの知らせ')
     click(page, '.screen:not([hidden]) [data-nav="packs"]'); page.wait_for_timeout(300)
-    first = page.evaluate("[...document.querySelectorAll('.screen:not([hidden]) section.series')].map(s => s.querySelector('.ser-h').innerText)")
-    check(first and 'プログラミングの先駆者' in first[0], f'新シリーズがいちばん上 {first}')
-    check(page.query_selector('.pack-btn[data-open="ada"] .pk-new') and page.query_selector('.pack-btn[data-open="hopper"] .pk-new'), 'エイダとホッパーのパックに NEW')
-    check(page.query_selector('.pack-btn[data-open="shannon"] .pk-new') is None, 'シャノンのパックの NEW は消えた')
+    heads = page.evaluate("[...document.querySelectorAll('.screen:not([hidden]) section.series')].map(s => s.querySelector('.ser-h').innerText)")
+    check(any('プログラミングの先駆者' in h for h in heads), f'パックの画面にシリーズがある {heads}')
+    check(page.query_selector('.pack-btn[data-open="ada"]') and page.query_selector('.pack-btn[data-open="hopper"]'), 'エイダとホッパーのパックがある')
+    # NEW の札は、いちばん新しいシリーズだけ（ubicomp_ui.py で確かめる）
     page.screenshot(path=str(OUT / 'p_packs.png'))
     page.screenshot(path=str(OUT / 'p_packs_full.png'), full_page=True)
     # エイダのパック（中身を決めておく）
