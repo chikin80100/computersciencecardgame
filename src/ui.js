@@ -167,7 +167,8 @@ function atkLineHTML(a) {
 
 // 「・」のある名前（人物カード）は「・」のところで改行する
 const nameHTML = d => (d.name.includes('・') ? `<span class="kw">${esc(d.name).replace(/・/g, '・<wbr>')}</span>` : esc(d.name));
-const setTag = d => (d.set === 'father' ? '<span class="c-set">「コンピュータの父」シリーズ</span>' : '');
+const seriesOf = id => SERIES.find(se => se.id === id && se.id !== 'base');
+const setTag = d => { const se = d.set && seriesOf(d.set); return se ? `<span class="c-set">${esc(se.name)}</span>` : ''; };
 function cardHTML(id, opts) {
   opts = opts || {};
   const d = DEF[id];
@@ -277,7 +278,7 @@ function renderTitle() {
     <nav class="menu" aria-label="メニュー">
       <button type="button" class="btn gold big" data-nav="select" data-vs="cpu">対戦する<small>CPUと対戦</small></button>
       <button type="button" class="btn gold big" data-nav="select" data-vs="online">対人戦<small>オンライン ・ この端末で2人</small></button>
-      <button type="button" class="btn gold big" data-nav="packs">パックをひらく<small>新パック「クロード・シャノン」登場！ ・ チケット ${STORE.tickets}枚</small></button>
+      <button type="button" class="btn gold big" data-nav="packs">パックをひらく<small>新シリーズ「プログラミングの先駆者」登場！ ・ チケット ${STORE.tickets}枚</small></button>
       <button type="button" class="btn" data-nav="dex">カード図鑑<small>${ownedKinds()} / ${ALL_IDS.length}種</small></button>
       <button type="button" class="btn" data-nav="decks">デッキをつくる</button>
       <button type="button" class="btn wide" data-nav="rules">あそびかた</button>
@@ -478,12 +479,12 @@ function poolIds() {
     if (UI.poolOwned !== false && !owned(id)) return false;
     if (f === 'all') return true;
     if (f === 'tr') return d.kind !== 'mon';
-    if (f === 'father') return d.set === 'father';
+    if (seriesOf(f)) return d.set === f;
     return d.kind === 'mon' && d.type === f;
   });
 }
 function chipsHTML(cur, attr) {
-  const list = [['all', 'すべて']].concat(TYPE_ORDER.map(t => [t, TYPES[t].name])).concat([['tr', 'コマンド'], ['father', 'コンピュータの父']]);
+  const list = [['all', 'すべて']].concat(TYPE_ORDER.map(t => [t, TYPES[t].name])).concat([['tr', 'コマンド']], SERIES.filter(se => se.short).map(se => [se.id, se.short]));
   return `<div class="chips" role="group" aria-label="絞り込み">${list.map(([k, label]) => `<button type="button" class="chip" ${attr}="${k}" aria-pressed="${cur === k}">${TYPES[k] ? eI(k, 'xs') : ''}${label}</button>`).join('')}</div>`;
 }
 function renderEditor() {
@@ -553,7 +554,7 @@ function renderEditor() {
 /* ---------- 図鑑 ---------- */
 function renderDex() {
   const f = UI.dexFilter;
-  const ids = ALL_IDS.filter(id => { const d = DEF[id]; if (f === 'all') return true; if (f === 'tr') return d.kind !== 'mon'; if (f === 'father') return d.set === 'father'; return d.kind === 'mon' && d.type === f; });
+  const ids = ALL_IDS.filter(id => { const d = DEF[id]; if (f === 'all') return true; if (f === 'tr') return d.kind !== 'mon'; if (seriesOf(f)) return d.set === f; return d.kind === 'mon' && d.type === f; });
   const holoKinds = ALL_IDS.filter(id => STORE.holo[id]).length;
   $('#scr-dex').innerHTML = `<div class="page">
     <header class="top"><button type="button" class="back" data-nav="title">← タイトル</button><h2>カード図鑑</h2></header>
@@ -683,7 +684,7 @@ function renderRules() {
       <li>レア度は ◆（v1など）・◆◆（v2など）・◆◆◆（v3など）・◆◆◆◆（ex）。ごくまれに、キラキラの<b>☆ホロ</b>カードや、全部レアの<b>ゴッドパック</b>が出る。</li>
       <li>パックを1つひらくたびにパックポイント+${PACK_POINT}。図鑑で、ほしいカードと交換できる（◆${EXCHANGE_COST[1]}pt〜◆◆◆◆${EXCHANGE_COST[4]}pt）。</li>
       <li>自分で作るデッキには、持っているカードしか入れられない。プリセットデッキはいつでも使える。</li>
-      <li>「コンピュータの父」シリーズ（「アラン・チューリング」パック・「ジョン・フォン・ノイマン」パック・「クロード・シャノン」パック）のカードは、そのパックからしか出ない。</li>
+      <li>「コンピュータの父」シリーズ（「アラン・チューリング」パック・「ジョン・フォン・ノイマン」パック・「クロード・シャノン」パック）と、「プログラミングの先駆者」シリーズ（「エイダ・ラブレス」パック・「グレース・ホッパー」パック）のカードは、そのシリーズのパックからしか出ない。</li>
     </ul></section>
     <div class="cta"><button type="button" class="btn gold big" data-nav="select">対戦する</button></div>
   </div>`;
@@ -795,11 +796,11 @@ function rollPack(pack) {
   return out;
 }
 function packHTML(pack, big) {
-  const series = pack.series === 'father';
+  const se = seriesOf(pack.series), series = !!se;
   return `<span class="pack ${big ? 'big' : ''} ${series ? 'series' : ''}" style="--c1:${pack.c1};--c2:${pack.c2}">
     <span class="pk-crimp pk-t"></span>
     <span class="pk-body">
-      ${series ? '<span class="pk-ser">コンピュータの父</span>' : ''}
+      ${series ? `<span class="pk-ser">${esc(se.short)}</span>` : ''}
       <span class="pk-en">${esc(pack.en)}</span>
       <span class="pk-art">${artImg(pack.cover)}</span>
       <span class="pk-name kw">${esc(pack.name).replace(/・/g, '・<wbr>')}</span>
@@ -1291,7 +1292,8 @@ function onMon(uid) {
     if (m === me.active) {
       DEF[m.id].atk.forEach((a, i) => {
         const info = attackInfo(g, me, i);
-        const cut = info.ok && me.t.costCut && a.costArr.includes('none') ? 'データ圧縮で、無色エネルギーが1個少なくてよい' : '';
+        const cut = !info.ok ? '' : [me.t.anyColor && a.costArr.some(t => t !== 'none') ? '詩的科学で、どの色のエネルギーでも使える' : '',
+          me.t.costCut && (me.t.anyColor ? a.costArr.length : a.costArr.includes('none')) ? 'データ圧縮で、無色エネルギーが1個少なくてよい' : ''].filter(Boolean).join('・');
         buttons.push({ html: `<span class="ab">${atkLineHTML(a)}</span>`, cls: 'atk', disabled: !info.ok, note: info.reason || cut, fn: () => doMove({ t: 'attack', i }, true) });
       });
       const r = retreatInfo(g, me);

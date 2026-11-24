@@ -1,37 +1,9 @@
 // 「クロード・シャノン」パックのカードの効果を、場面を作って1つずつ確かめる
 //   node test/shannon.js
 // コインの結果は setRNG で決めておく（0.5より小さいとオモテ）
-const fs = require('fs'), vm = require('vm'), path = require('path');
-const src = ['data.js', 'engine.js'].map(f => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
-const ctx = { console, module: { exports: {} }, Math, setTimeout, Promise };
-vm.createContext(ctx); vm.runInContext(src, ctx);
-const E = ctx.module.exports;
-const X = ctx; // engine.js の関数（actAttack など）は、ここから呼べる
-
-let fails = 0, passes = 0;
-function ok(cond, msg) { if (cond) passes++; else { fails++; console.log('NG', msg); } }
-const H = 0.1, T = 0.9; // オモテ・ウラ
-function coins(...seq) { let i = 0; E.setRNG(() => (i < seq.length ? seq[i++] : 0.3)); }
-
-let UID = 10000; // テストで作るカードの番号（エンジンの番号と重ならないように大きくする）
-// 2人の場を用意する。me がワザを使う側（番の人）
-function scene(meId, foeId, opt = {}) {
-  E.resetUid();
-  const g = E.newGame({ io: E.NOOP_IO, players: [
-    { name: 'A', isCPU: true, deck: { pair: 2, import: 2 }, energy: ['data'] },
-    { name: 'B', isCPU: true, deck: { pair: 2, import: 2 }, energy: ['data'] },
-  ] });
-  const [p, o] = g.players;
-  g.turn = 5; g.cur = 0; p.turns = 3; o.turns = 3;
-  const card = id => ({ uid: ++UID, id });
-  p.active = X.mkMon(card(meId), 1);
-  o.active = X.mkMon(card(foeId), 1);
-  p.hand = []; o.hand = [];
-  if (opt.energy) p.active.energy = opt.energy.slice();
-  if (opt.bench) o.bench = opt.bench.map(id => X.mkMon(card(id), 1));
-  return { g, p, o, card };
-}
-const ATK = (m, name) => E.DEF[m.id].atk.findIndex(a => a.name === name);
+const { E, X, ok, report, H, T, coins, card, scene: scene0, ATK } = require('./_scene.js');
+// shannon.js の場面は、相手のベンチを opt.bench で作る
+const scene = (meId, foeId, opt = {}) => { const r = scene0(meId, foeId, { energy: opt.energy, foeBench: opt.bench }); return Object.assign(r, { card }); };
 
 (async () => {
   // ビット：オモテ・ウラ・オモテ → 101 → 5 → 50ダメージ
@@ -178,6 +150,5 @@ const ATK = (m, name) => E.DEF[m.id].atk.findIndex(a => a.name === name);
     ok(asked.join() === 'false,true', `シャノン：1枚目は必ず、2枚目は選ばなくてもよい: ${asked}`);
     ok(p.hand.length === 1 && p.hand[0].id === 'parity', `シャノン：選んだ1枚だけ: ${p.hand.map(c => c.id)}`);
   }
-  console.log(`shannon cards: ${passes} ok, ${fails} NG`);
-  if (fails) process.exitCode = 1;
+  report('shannon cards');
 })();

@@ -1385,6 +1385,82 @@ const MONSTERS = [
     ],
     desc: '送りたい文と同じ長さの、まったくでたらめな鍵を使い、その鍵を一度しか使わない暗号。1949年にシャノンは、この方法なら、どれだけ計算しても元の文の手がかりが何も得られない（完全秘匿）ことを証明した。鍵を安全にわたすのが大変なので、ふだんの通信ではあまり使われない。',
   },
+  /* ===== 「プログラミングの先駆者」シリーズ：エイダ・ラブレス ===== */
+  {
+    id: 'noteg', set: 'pioneer', name: 'ノートG', en: 'Note G', type: 'algo', stage: 1, ex: true, hp: 150, retreat: 2,
+    atk: [
+      { name: '変数の表', cost: 'A', dmg: 20 },
+      {
+        name: 'ベルヌーイ数', cost: 'AC', dmg: 40, label: '40×', text: 'このユニットがこのワザを使うのが何回目かを数え、その回数×40ダメージ（1回目40、2回目80、3回目120…）。',
+        dmgFn: async c => { c.dmg = 40 * ((c.me.loops || 0) + 1); },
+        after: async c => { c.me.loops = (c.me.loops || 0) + 1; c.say(`ループ ${c.me.loops}回目`); },
+      },
+    ],
+    desc: 'エイダの注釈のうち、最後の「ノートG」に書かれた、解析機関でベルヌーイ数という数を計算する手順（1843年）。同じ計算をくり返す「ループ」を使っていて、コンピュータのために書かれた世界で最初のプログラムといわれる。解析機関は完成しなかったので、当時は動かせなかった。',
+  },
+  {
+    id: 'nestloop', set: 'pioneer', name: '二重ループ', en: 'Nested loop', type: 'none', stage: 2, from: 'ループ', hp: 90, retreat: 1,
+    atk: [{
+      name: 'n²回のくり返し', cost: 'CCC', dmg: 0, label: '20×', text: 'コインを3回投げる。オモテの数を2乗した数×20ダメージ（オモテ2回なら 2×2=4 → 80ダメージ）。',
+      dmgFn: async c => { const h = (await c.coins(3)).filter(Boolean).length; c.dmg = 20 * h * h; c.say(`${h}×${h}＝${h * h}回`); },
+    }],
+    desc: 'ループの中にループを入れたもの。外側が n 回、内側が n 回まわると、中の命令は n×n 回くり返される。表のすべてのマスを順に調べるときなどに使う。エイダのノートにも、くり返しの中のくり返し（cycle of cycles）が出てくる。',
+  },
+  {
+    id: 'jacquard', set: 'pioneer', name: 'ジャカード織機', en: 'Jacquard loom', type: 'hw', stage: 1, hp: 80, retreat: 2,
+    atk: [{
+      name: '模様を織る', cost: 'HC', dmg: 30, label: '30+', text: 'コインを4回投げる。オモテとウラが交互に出たら（オウオウ・ウオウオ）、70ダメージ追加。',
+      dmgFn: async c => { const r = await c.coins(4); if (r.every((h, i) => i === 0 || h !== r[i - 1])) { c.dmg += 70; c.say('市松模様！'); } },
+    }],
+    desc: '1804年ごろ、フランスのジョゼフ・マリー・ジャカールが発明した織機。穴をあけたカード（パンチカード）を順に読みこんで糸の上げ下げを決め、複雑な模様を自動で織る。カードを取りかえれば、ちがう模様が織れる。エイダは「解析機関は、ジャカード織機が花や葉を織るように、代数の模様を織る」と書いた。',
+  },
+  {
+    id: 'compose', set: 'pioneer', name: '自動作曲', en: 'Algorithmic composition', type: 'ai', stage: 1, hp: 60, retreat: 1,
+    atk: [{
+      name: 'ハーモニー', cost: 'IC', dmg: 0, label: '20×', text: '自分の場にいるユニットのタイプの数×20ダメージ（同じタイプは1つと数える）。',
+      dmgFn: async c => { c.dmg = 20 * new Set([c.p.active, ...c.p.bench].filter(Boolean).map(m => DEF[m.id].type)).size; },
+    }],
+    desc: 'コンピュータが曲をつくること。エイダは1843年に、音の高さや和音の関係を記号であらわせれば、解析機関は複雑な曲をつくれるかもしれないと書いた。今はAIがメロディや伴奏をつくるようになっている。',
+  },
+  {
+    id: 'adalang', set: 'pioneer', name: 'Ada言語', en: 'Ada (programming language)', type: 'sec', stage: 1, hp: 60, retreat: 1,
+    ability: { name: '型チェック', kind: 'passive', reduce: 20, text: 'このユニットが受けるワザのダメージを-20する。' },
+    atk: [{ name: '安全な実行', cost: 'SC', dmg: 30 }],
+    desc: 'アメリカ国防総省のために作られ、エイダの名前がつけられたプログラミング言語（1980年に規格になった。規格の番号「1815」は、エイダが生まれた年）。まちがいをプログラムを動かす前に見つけるしくみが強く、飛行機や鉄道など、止まってはこまるシステムで使われてきた。',
+  },
+  /* ===== 「プログラミングの先駆者」シリーズ：グレース・ホッパー ===== */
+  {
+    id: 'machinecode', set: 'pioneer', name: '機械語', en: 'Machine code', type: 'data', stage: 1, hp: 60, retreat: 1,
+    atk: [{ name: '0と1の命令', cost: 'D', dmg: 20 }],
+    desc: 'CPUが直接読める、0と1の並びでできた命令。人には読みにくいので、最初のころのプログラマーは、命令を数字の表とくらべながら1つずつ書いていた。',
+  },
+  {
+    id: 'flowmatic', set: 'pioneer', name: 'FLOW-MATIC', en: 'FLOW-MATIC', type: 'data', stage: 2, from: '機械語', hp: 80, retreat: 1,
+    atk: [{ name: '英語で書く', cost: 'DC', dmg: 40, text: '自分の山札を1枚引く。', after: async c => { c.draw(1); } }],
+    desc: '1955年ごろからホッパーのチームがつくった、英語に近い言葉で事務の計算が書ける、最初のプログラミング言語。「数式が苦手な人にも使えるように」という考えから生まれ、COBOLのもとになった。',
+  },
+  {
+    id: 'cobol', set: 'pioneer', name: 'COBOL', en: 'COBOL', type: 'data', stage: 3, from: 'FLOW-MATIC', hp: 120, retreat: 2,
+    ability: { name: 'レガシー', kind: 'passive', endure: true, text: 'このユニットがワザのダメージでダウンするとき、1回だけ、かわりにHPが10残る（残りHPが10以下のときははたらかない）。' },
+    atk: [
+      { name: '事務処理', cost: 'CC', dmg: 40 },
+      { name: '大量のデータ処理', cost: 'DDC', dmg: 80 },
+    ],
+    desc: '1959年に生まれた、事務の仕事のためのプログラミング言語（COmmon Business-Oriented Language の略）。英語の文のように書ける。60年以上たった今も、銀行や役所の大きなシステムで動きつづけている。',
+  },
+  {
+    id: 'mark1', set: 'pioneer', name: 'ハーバード・マークI', en: 'Harvard Mark I', type: 'hw', stage: 1, ex: true, hp: 160, retreat: 3,
+    atk: [
+      { name: '歯車の計算', cost: 'HC', dmg: 30 },
+      { name: '紙テープの命令', cost: 'HHC', dmg: 120, text: '次の自分の番、このユニットはワザを使えない。', after: async c => { c.me.restTurn = c.g.turn + 2; } },
+    ],
+    desc: '1944年に動きはじめた、リレーと歯車で動く大きな計算機（長さ約15m、重さ約5トン）。紙テープの命令を読んで計算した。足し算に約0.3秒、かけ算に約6秒かかった。ホッパーは、この機械の最初のプログラマーの1人だった。',
+  },
+  {
+    id: 'moth', set: 'pioneer', name: '本物のバグ', en: 'The first actual bug', type: 'none', stage: 1, hp: 40, retreat: 1,
+    atk: [{ name: 'リレーにはさまる', cost: 'C', dmg: 10, text: '相手のバトル場のユニットをバグにする。', after: async c => { if (c.foeAlive()) c.status(c.foe, 'bug'); } }],
+    desc: '1947年、計算機ハーバード・マークIIのリレーに蛾がはさまって、正しく動かなくなった。ホッパーのチームは蛾を作業日誌にテープで貼り「バグ（虫）が見つかった最初の本物の例」と書いた。「バグ」という言葉はそれより前からあったが、この話で有名になった。',
+  },
 ];
 
 /* ---------- コマンド ---------- */
@@ -1415,6 +1491,12 @@ const TRAINERS = [
   { id: 'gametheory', set: 'father', name: 'ゲーム理論', en: 'Game theory', kind: 'sup', rar: 3, text: '相手は自分の手札を1枚選んでトラッシュする。そのあと、自分の山札を1枚引く。', desc: 'たがいの行動を読み合いながら決める状況を、数学で分析する学問。1944年のフォン・ノイマンとモルゲンシュテルンの本から本格的に始まった。一方の得が、そのままもう一方の損になる状況を「ゼロサムゲーム」という。' },
   { id: 'shannon', set: 'father', leg: true, name: 'クロード・シャノン', en: 'Claude Shannon', kind: 'sup', rar: 4, text: '自分の山札の上から5枚を見て、その中から2枚まで選んで手札に加える。残りは山札にもどして切る。', desc: 'アメリカの数学者・技術者（1916〜2001年）。1948年の論文「通信の数学的理論」で、情報の量を「ビット」ではかる方法と、雑音（ノイズ）のある通信路でどこまで正確に速く送れるかの限界を示し、「情報理論の父」と呼ばれる。21歳のときの修士論文では、デジタル回路の設計のもとをつくった。ジャグリングや一輪車が好きで、おもしろい機械をたくさんつくった。' },
   { id: 'compress', set: 'father', name: 'データ圧縮', en: 'Data compression', kind: 'item', rar: 2, text: 'この番、自分のワザに必要な無色エネルギーを1個少なくする（この番に何枚使っても1個まで）。', desc: '情報を、中身を変えずに、より少ないビットで表すこと。よく出る記号に短い符号を、まれな記号に長い符号をわりあてると短くできる（ハフマン符号など）。シャノンは、どこまで短くできるかの限界が「エントロピー（情報量）」で決まることを示した。ZIPやPNGなどで使われている。' },
+  { id: 'ada', set: 'pioneer', leg: true, name: 'エイダ・ラブレス', en: 'Ada Lovelace', kind: 'sup', rar: 4, text: '自分の山札から、コマンドを2枚まで選んで手札に加える（「エイダ・ラブレス」はのぞく）。そのあと山札を切る。', desc: 'イギリスの数学者（1815〜1852年）。チャールズ・バベッジが考えた「解析機関」を紹介する論文を英語に訳し、もとの論文の3倍ほどの長さの注釈（ノート）をつけた。その中で、ベルヌーイ数を計算する手順を書き、機械が数だけでなく音楽のような記号もあつかえるかもしれないと考えた。プログラミング言語「Ada」は、彼女の名前からつけられた。' },
+  { id: 'poetical', set: 'pioneer', name: '詩的科学', en: 'Poetical science', kind: 'item', rar: 2, text: 'この番、自分のワザに必要なエネルギーは、色に関係なく、どのタイプのエネルギーでも使える。', desc: 'エイダは、想像力と数学を組み合わせる自分の考え方を「詩的な科学（poetical science）」と呼んだ。計算の正しさだけでなく、まだない機械の使い道を思いえがく力を大切にした。' },
+  { id: 'lovelace', set: 'pioneer', name: 'ラブレスの反論', en: "Lady Lovelace's objection", kind: 'tool', rar: 2, text: 'これをつけたユニットが、AIタイプのユニットのワザで受けるダメージを-30する。', desc: 'エイダは「解析機関は、自分から何かを生み出すことはない。わたしたちが命令の仕方を知っていることなら何でもできる」と書いた。1950年にチューリングは、機械は考えられるかを論じた論文の中で、この考えを「ラブレス夫人の反論」として取り上げた。' },
+  { id: 'hopper', set: 'pioneer', leg: true, name: 'グレース・ホッパー', en: 'Grace Hopper', kind: 'sup', rar: 4, text: '自分の山札から、進化ユニット（v2・v3）を2枚まで選んで手札に加える。そのあと山札を切る。', desc: 'アメリカの計算機科学者で、海軍の軍人（1906〜1992年）。最初期の計算機「ハーバード・マークI」のプログラマーになり、1952年には、プログラムを自動で機械語に変換する初期のコンパイラ「A-0」をつくった。英語に近い言葉で書けるプログラミング言語を進め、COBOLのもとをつくった。最後は海軍少将になった。' },
+  { id: 'nanosec', set: 'pioneer', name: 'ナノ秒の針金', en: 'Nanosecond wire', kind: 'item', rar: 2, text: '自分のユニットについているエネルギーを1個、別の自分のユニットにつけかえる。', desc: 'ホッパーは講演で、長さ約30cmの針金を配った。光や電気の信号が1ナノ秒（10億分の1秒）に進むのが、ちょうどそのくらいだから。「遠くまでつなぐと、それだけ時間がかかる」ことを、目で見えるようにした。' },
+  { id: 'logbook', set: 'pioneer', name: '作業日誌', en: 'Logbook', kind: 'tool', rar: 2, text: 'これをつけたユニットが特殊状態になるとき、かわりにならない。そのあと、このどうぐをトラッシュする。', desc: 'コンピュータの作業や、起きたトラブルを書きとめておく記録（ログ）。いつ何が起きたかを残しておくと、原因を見つけて直しやすくなる。ハーバード・マークIIの作業日誌には、本物のバグ（蛾）がテープで貼られている。' },
   { id: 'ultimate', set: 'father', name: '究極の機械', en: 'Ultimate machine', kind: 'tool', rar: 3, text: 'これをつけたユニットがバトル場で相手のワザのダメージを受けたとき、ワザを使ったユニットをフリーズにする。そのあと、このどうぐをトラッシュする。', desc: 'スイッチが1つだけついた箱。スイッチを入れると、ふたが開いて中から手が出てきて、スイッチを切ってまたひっこむ。それしかしない機械。人工知能の研究者マービン・ミンスキーのアイデアを、シャノンが1950年代につくった。' },
 ];
 
@@ -1458,8 +1540,8 @@ const PRESETS = [
   },
   {
     id: 'p_base', name: 'プログラミング基礎', energy: ['algo', 'data'], key: ['turing', 'recursion'],
-    blurb: '無色のユニットはどのエネルギーでも動く。チューリングマシンexは相手のワザをコピー。',
-    cards: { variable: 1, loop: 2, func: 2, recursion: 2, lambda: 1, turing: 2, pair: 2, import: 2, grep: 1, hackathon: 1, debug: 1, ram: 1, honeypot: 1, optimize: 1, },
+    blurb: '無色のユニットはどのエネルギーでも動く。ループは二重ループに進化し、チューリングマシンexは相手のワザをコピー。',
+    cards: { nestloop: 1, loop: 2, func: 2, recursion: 2, lambda: 1, turing: 2, pair: 2, import: 2, grep: 1, hackathon: 1, debug: 1, ram: 1, honeypot: 1, optimize: 1, },
   },
   {
     id: 'p_graph', name: 'グラフ探索隊', energy: ['algo'], key: ['astar', 'greedy'],
@@ -1474,7 +1556,7 @@ const PRESETS = [
   {
     id: 'p_quantum', name: '量子とAI', energy: ['hw', 'ai'], key: ['quantum', 'diffusion'],
     blurb: '量子コンピュータexの重ね合わせと、回復する拡散モデルex。進化のいらない速攻デッキ。',
-    cards: { quantum: 2, diffusion: 2, knn: 2, mainmem: 1, cache: 1, vacuum: 2, pair: 2, import: 2, opensource: 1, hackathon: 1, optimize: 1, turtest: 2, search: 1 },
+    cards: { quantum: 2, diffusion: 2, knn: 2, mainmem: 1, cache: 1, vacuum: 2, pair: 2, import: 2, opensource: 1, hackathon: 1, optimize: 1, turtest: 2, nanosec: 1 },
   },
   {
     id: 'p_turing', name: '暗号解読班', energy: ['hw', 'sec'], key: ['ace', 'enigma'],
@@ -1492,6 +1574,16 @@ const PRESETS = [
     cards: { bit: 2, parity: 2, hamming: 2, ldpc: 2, relay: 1, shannon: 1, compress: 2, ultimate: 1, pair: 2, import: 2, grep: 1, update: 1, debug: 1 },
   },
   {
+    id: 'p_ada', name: 'エイダのノート', energy: ['algo', 'ai'], key: ['noteg', 'nestloop'],
+    blurb: 'ノートGの「ベルヌーイ数」は使うたびに強くなる。ループを二重ループに進化させ、自動作曲はタイプをそろえずに場をにぎやかに。詩的科学で、どの色のエネルギーでもワザが使える。',
+    cards: { noteg: 2, loop: 2, nestloop: 2, compose: 2, func: 1, recursion: 1, ada: 1, poetical: 2, lovelace: 1, pair: 2, import: 2, grep: 1, debug: 1 },
+  },
+  {
+    id: 'p_hopper', name: 'COBOL開発チーム', energy: ['data', 'hw'], key: ['cobol', 'mark1'],
+    blurb: '機械語をFLOW-MATIC、COBOLへと進化させる。COBOLは1回だけHP10で持ちこたえる。ハーバード・マークIは大きな一撃のあと1回休み。ホッパーで進化カードを2枚まとめて探す。',
+    cards: { machinecode: 2, flowmatic: 2, cobol: 2, mark1: 1, moth: 1, compiler: 1, hopper: 1, nanosec: 2, logbook: 1, pair: 2, import: 2, grep: 1, update: 1, debug: 1 },
+  },
+  {
     id: 'p_compile', name: 'コンパイラ工房', energy: ['net'], key: ['compiler', 'lambda'],
     blurb: 'コンパイラexのビルドでベンチを育て、低コストのラムダ式で攻める。無色だけのデッキ。',
     cards: { hello: 2, ifstmt: 2, func: 2, lambda: 2, compiler: 2, pair: 2, opensource: 1, import: 2, grep: 1, hackathon: 1, debug: 1, ram: 1, alttab: 1 },
@@ -1502,7 +1594,8 @@ const PRESETS = [
 const RARITY_MARK = { 1: '◆', 2: '◆◆', 3: '◆◆◆', 4: '◆◆◆◆' };
 function rarityOf(d) { return d.kind === 'mon' ? (d.ex ? 4 : d.stage) : (d.rar || 1); }
 const SERIES = [
-  { id: 'father', name: '「コンピュータの父」シリーズ', isNew: true, blurb: 'コンピュータ科学の土台をきずいた3人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
+  { id: 'pioneer', name: '「プログラミングの先駆者」シリーズ', short: 'プログラミングの先駆者', isNew: true, blurb: '「プログラムを書く」ことを切りひらいた人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
+  { id: 'father', name: '「コンピュータの父」シリーズ', short: 'コンピュータの父', blurb: 'コンピュータ科学の土台をきずいた3人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
   { id: 'base', name: 'スタンダード', blurb: 'ふつうのカードとコマンドが入ったパック。' },
 ];
 const PACKS = [
@@ -1517,9 +1610,19 @@ const PACKS = [
     ids: ['neumann', 'punch', 'diffeng', 'analytic', 'stored', 'eniac', 'montecarlo', 'minimax', 'gametheory', 'bubble', 'merge', 'mainmem'],
   },
   {
-    id: 'shannon', series: 'father', name: 'クロード・シャノン', en: 'CLAUDE SHANNON', cover: 'shannon', feature: 'shannon', c1: '#1f7a8c', c2: '#8a2f3c', isNew: true,
+    id: 'shannon', series: 'father', name: 'クロード・シャノン', en: 'CLAUDE SHANNON', cover: 'shannon', feature: 'shannon', c1: '#1f7a8c', c2: '#8a2f3c',
     tagline: '情報理論・デジタル回路・誤り訂正',
     ids: ['shannon', 'bit', 'parity', 'hamming', 'ldpc', 'relay', 'theseus', 'otp', 'compress', 'ultimate', 'transistor', 'gate'],
+  },
+  {
+    id: 'ada', series: 'pioneer', name: 'エイダ・ラブレス', en: 'ADA LOVELACE', cover: 'ada', feature: 'ada', c1: '#6b3fa0', c2: '#b03a5b', isNew: true,
+    tagline: '世界初のプログラム・ループ・詩的科学',
+    ids: ['ada', 'noteg', 'nestloop', 'jacquard', 'compose', 'adalang', 'poetical', 'lovelace', 'loop', 'variable', 'func'],
+  },
+  {
+    id: 'hopper', series: 'pioneer', name: 'グレース・ホッパー', en: 'GRACE HOPPER', cover: 'hopper', feature: 'hopper', c1: '#1f3a68', c2: '#a8742a', isNew: true,
+    tagline: 'コンパイラ・COBOL・バグの語源',
+    ids: ['hopper', 'machinecode', 'flowmatic', 'cobol', 'mark1', 'moth', 'nanosec', 'logbook', 'compiler', 'hello', 'debug'],
   },
   { id: 'logic', series: 'base', name: '論理と構造', en: 'LOGIC & STRUCTURE', types: ['algo', 'data', 'none'], cover: 'astar', c1: '#2f8a4f', c2: '#2c5fae' },
   { id: 'world', series: 'base', name: 'つながる世界', en: 'CONNECTED WORLD', types: ['net', 'sec'], cover: 'ransom', c1: '#b07f06', c2: '#c0392b' },
@@ -1629,7 +1732,7 @@ function makeDeck(cards) {
   return out;
 }
 function freshT() {
-  return { energyDone: false, supporterDone: false, retreatDone: false, retreatDiscount: 0, dmgBonus: 0, aiBonus: 0, costCut: 0, abilityUsed: [] };
+  return { energyDone: false, supporterDone: false, retreatDone: false, retreatDiscount: 0, dmgBonus: 0, aiBonus: 0, costCut: 0, anyColor: 0, abilityUsed: [] };
 }
 function newGame(cfg) {
   const g = { players: [], cur: 0, first: 0, turn: 0, over: false, winner: null, reason: '', io: cfg.io || NOOP_IO, log: [] };
@@ -1692,6 +1795,13 @@ function setStatus(g, m, s) {
   if (!m) return;
   const ab = DEF[m.id].ability;
   if (ab && ab.noStatus) { L(g, `${nm(m)}は特性「${ab.name}」で、${STATUS[s].name}にならない`, 'status'); return; }
+  if (m.tool && m.tool.id === 'logbook') {
+    const owner = ownerOfMon(g, m);
+    if (owner) owner.discard.push(m.tool);
+    m.tool = null;
+    L(g, `作業日誌のおかげで、${nm(m)}は${STATUS[s].name}にならなかった`, 'status');
+    return;
+  }
   if (s === 'sleep' || s === 'freeze' || s === 'garble') {
     m.status.sleep = false; m.status.freeze = false; m.status.garble = false;
   }
@@ -1763,6 +1873,12 @@ function applyAttackDamage(g, target, d) {
     if (owner) owner.discard.push(target.tool);
     target.tool = null;
     L(g, `UPSが作動！ ${nm(target)}はHP10で持ちこたえた`, 'heal');
+  }
+  const ab = DEF[target.id].ability;
+  if (ab && ab.endure && !target.endured && target.dmg + d >= maxHp(target) && hpLeft(target) > 10) {
+    d = hpLeft(target) - 10;
+    target.endured = true;
+    L(g, `${nm(target)}は特性「${ab.name}」で、HP10で持ちこたえた`, 'heal');
   }
   target.dmg += d;
   return d;
@@ -1857,8 +1973,10 @@ function finalDamage(g, p, me, target, base, atk) {
     if (isWeakHit(me, target, atk)) d += 20;
   }
   if (!atk.pierce) d -= reduction(g, target);
+  if (lovelaceHit(me, target)) d -= 30;
   return Math.max(0, d);
 }
+const lovelaceHit = (me, target) => !!(target.tool && target.tool.id === 'lovelace' && DEF[me.id].type === 'ai');
 
 async function dealAttackDamage(g, p, me, target, base, atk) {
   const o = other(g, p);
@@ -1871,6 +1989,7 @@ async function dealAttackDamage(g, p, me, target, base, atk) {
   if (isActive && p.t.aiBonus && DEF[me.id].type === 'ai') notes.push(`チューリングテスト+${p.t.aiBonus}`);
   if (weak) notes.push(atk.alwaysWeak && WEAK[DEF[target.id].type] !== DEF[me.id].type ? '特徴抽出+20' : '弱点+20');
   if (red) notes.push(`軽減-${red}`);
+  if (lovelaceHit(me, target)) notes.push('ラブレスの反論-30');
   L(g, `${nm(target)}に${d}ダメージ${notes.length ? `（${notes.join('・')}）` : ''}`, 'dmg');
   g.io.fx(target.uid, 'hit', d, weak);
   await g.io.pause(380);
@@ -1973,6 +2092,21 @@ async function recallCommands(g, p, n, exclude, label) {
     L(g, `${p.name}は「${DEF[c.id].name}」を手札にもどした`);
   }
   return got;
+}
+async function tutorFromDeck(g, p, n, filter, title) {
+  for (let k = 0; k < n && !g.over; k++) {
+    const seen = new Set(), uniq = [];
+    for (const x of p.deck) if (filter(x) && !seen.has(x.id)) { seen.add(x.id); uniq.push(x); }
+    if (!uniq.length) break;
+    uniq.sort((a, b) => PICK_ORDER(a) - PICK_ORDER(b) || ALL_IDS.indexOf(a.id) - ALL_IDS.indexOf(b.id));
+    const c = await pick(g, p, `${title}（${k + 1}枚目）`, uniq.map(x => ({ label: DEF[x.id].name, value: x, cardId: x.id })),
+      () => aiTutorPick(g, p, uniq), { cancel: k > 0 });
+    if (!c || !p.deck.includes(c)) break;
+    p.deck.splice(p.deck.indexOf(c), 1);
+    p.hand.push(c);
+    L(g, `${DEF[c.id].name}を手札に加えた`);
+  }
+  shuffle(p.deck);
 }
 const PICK_ORDER = c => { const d = DEF[c.id]; return (d.kind === 'mon' ? 0 : d.kind === 'sup' ? 20 : d.kind === 'item' ? 30 : 40) + (d.stage || 0); };
 
@@ -2144,7 +2278,7 @@ function handInfo(g, p, card) {
       if (!t.length) res.reason = '手札のv3ユニットに進化できるv1ユニットがいない'; else { res.ok = true; res.targets = t; }
       break;
     }
-    case 'ram': case 'honeypot': case 'ups': case 'ultimate': {
+    case 'ram': case 'honeypot': case 'ups': case 'ultimate': case 'lovelace': case 'logbook': {
       const t = inPlay(p).filter(m => !m.tool);
       if (!t.length) res.reason = 'どうぐをつけられるユニットがいない'; else { res.ok = true; res.targets = t; res.label = 'つける'; }
       break;
@@ -2175,15 +2309,29 @@ function handInfo(g, p, card) {
       if (!p.deck.length) res.reason = '山札がない'; else res.ok = true; break;
     case 'compress':
       if (p.t.costCut) res.reason = 'この番はもう使った'; else if (!p.active) res.reason = 'バトル場にユニットがいない'; else res.ok = true; break;
+    case 'ada':
+      if (!p.deck.some(c => DEF[c.id].kind !== 'mon' && c.id !== 'ada')) res.reason = '山札にコマンドがない'; else res.ok = true; break;
+    case 'hopper':
+      if (!p.deck.some(c => DEF[c.id].kind === 'mon' && DEF[c.id].stage >= 2)) res.reason = '山札に進化ユニットがない'; else res.ok = true; break;
+    case 'poetical':
+      if (p.t.anyColor) res.reason = 'この番はもう使った'; else if (!p.active) res.reason = 'バトル場にユニットがいない'; else res.ok = true; break;
+    case 'nanosec': {
+      const units = inPlay(p);
+      if (units.length < 2) res.reason = 'つけかえる先のユニットがいない';
+      else if (!units.some(m => m.energy.length)) res.reason = 'エネルギーがついているユニットがいない';
+      else res.ok = true;
+      break;
+    }
     default:
       res.ok = true;
   }
   return res;
 }
 
-/* この番にワザを使うのに必要なエネルギー（データ圧縮を使っていれば、無色を1個へらす） */
+/* この番にワザを使うのに必要なエネルギー（詩的科学を使っていれば色を問わない。データ圧縮を使っていれば、無色を1個へらす） */
 function atkCost(p, a) {
-  const cost = a.costArr.slice();
+  let cost = a.costArr.slice();
+  if (p.t.anyColor) cost = cost.map(() => 'none');
   if (p.t.costCut && cost.includes('none')) cost.splice(cost.lastIndexOf('none'), 1);
   return cost;
 }
@@ -2194,6 +2342,7 @@ function attackInfo(g, p, idx) {
   if (m.status.sleep) return { ok: false, reason: 'スリープ中はワザを使えない' };
   if (m.status.freeze) return { ok: false, reason: 'フリーズ中はワザを使えない' };
   if (a.once && m.onceUsed && m.onceUsed.includes(a.name)) return { ok: false, reason: 'このワザはもう使った（1回だけ）' };
+  if (m.restTurn === g.turn) return { ok: false, reason: '前の計算に時間がかかっていて、この番はワザを使えない' };
   if (!canPay(m.energy, atkCost(p, a))) return { ok: false, reason: 'エネルギーが足りない' };
   if (a.copy) {
     const foe = other(g, p).active;
@@ -2445,6 +2594,34 @@ async function actTrainer(g, p, card, target) {
       p.t.costCut = 1;
       L(g, 'この番、ワザに必要な無色エネルギーが1個少なくなった');
       break;
+    case 'ada':
+      await tutorFromDeck(g, p, 2, c => DEF[c.id].kind !== 'mon' && c.id !== 'ada', 'エイダ・ラブレス：手札に加えるコマンドを選んでください');
+      break;
+    case 'hopper':
+      await tutorFromDeck(g, p, 2, c => DEF[c.id].kind === 'mon' && DEF[c.id].stage >= 2, 'グレース・ホッパー：手札に加える進化ユニットを選んでください');
+      break;
+    case 'poetical':
+      p.t.anyColor = 1;
+      L(g, 'この番、ワザにはどの色のエネルギーでも使える');
+      break;
+    case 'nanosec': {
+      const units = inPlay(p);
+      const plan = () => aiNanoPlan(g, p) || {};
+      const from = await pick(g, p, 'ナノ秒の針金：エネルギーを外すユニットを選んでください',
+        units.filter(m => m.energy.length).map(m => ({ label: nm(m), value: m, mon: m })), () => plan().from || units.find(m => m.energy.length));
+      if (!from) break;
+      const types = TYPE_ORDER.filter(t => from.energy.includes(t));
+      const ty = types.length === 1 ? types[0] : await pick(g, p, 'ナノ秒の針金：つけかえるエネルギーを選んでください',
+        types.map(t => ({ label: TYPES[t].name + 'エネルギー', value: t, energy: t })), () => (types.includes(plan().ty) ? plan().ty : types[0]));
+      const to = await pick(g, p, 'ナノ秒の針金：エネルギーをつけるユニットを選んでください',
+        units.filter(m => m !== from).map(m => ({ label: nm(m), value: m, mon: m })), () => (plan().to && plan().to !== from ? plan().to : units.find(m => m !== from)));
+      if (!to || !ty || !from.energy.includes(ty)) break;
+      from.energy.splice(from.energy.lastIndexOf(ty), 1);
+      to.energy.push(ty);
+      L(g, `${nm(from)}の${TYPES[ty].name}エネルギーを、${nm(to)}につけかえた`, 'energy');
+      g.io.fx(to.uid, 'energy');
+      break;
+    }
     case 'codebreak': {
       const c = await pick(g, p, '暗号解読：相手の手札から、山札にもどすカードを選んでください',
         o.hand.map(x => ({ label: DEF[x.id].name, value: x, cardId: x.id })), () => aiCodebreakPick(g, p));
@@ -2585,6 +2762,7 @@ async function scoreAttack(g, p, m, a) {
 /* そのユニットがバトル場にいたら、今ある エネルギーで出せる最善のワザの点数 */
 async function readiness(g, p, m) {
   let best = 0;
+  if (m.restTurn && m.restTurn >= g.turn) return 0; // 次の自分の番はワザを使えない
   for (const a of DEF[m.id].atk) {
     if (!canPay(m.energy, a.costArr)) continue;
     if (a.once && m.onceUsed && m.onceUsed.includes(a.name)) continue; // 1回だけのワザを使ったあと
@@ -2650,9 +2828,9 @@ function cmdValue(g, p, c) {
   const d = DEF[c.id];
   const o = other(g, p);
   const table = {
-    alan: 24, hackathon: 22, shannon: 20, pentest: 16, opensource: 16, codebreak: 14, gametheory: 13, pair: 13, debug: 12, optimize: 9, lb: 9, neumann: 10,
-    update: 12, import: 11, grep: 11, ctrlz: 8, search: 8, patch: 7, turtest: 7, compress: 6, alttab: 4, reboot: o.hand.length >= 5 ? 9 : 3,
-    ram: 9, honeypot: 8, ups: 10, ultimate: 10,
+    alan: 24, ada: 22, hackathon: 22, shannon: 20, hopper: 20, pentest: 16, opensource: 16, codebreak: 14, gametheory: 13, pair: 13, debug: 12, optimize: 9, lb: 9, neumann: 10,
+    update: 12, import: 11, grep: 11, ctrlz: 8, search: 8, patch: 7, turtest: 7, compress: 6, poetical: 6, nanosec: 5, alttab: 4, reboot: o.hand.length >= 5 ? 9 : 3,
+    ram: 9, honeypot: 8, ups: 10, ultimate: 10, logbook: 6, lovelace: inPlay(o).some(m => DEF[m.id].type === 'ai') ? 10 : 2,
   };
   let v = table[d.id] === undefined ? 6 : table[d.id];
   if (d.id === 'turtest' && !inPlay(p).some(m => DEF[m.id].type === 'ai')) v = 1;
@@ -2835,6 +3013,8 @@ async function aiSupporter(g, p, phase) {
     if (best >= 30 || (phase === 'late' && p.hand.length <= 3)) return actTrainer(g, p, has('alan'));
   }
   if (has('shannon') && p.deck.length >= 2 && (phase === 'early' || p.hand.length <= 5)) return actTrainer(g, p, has('shannon'));
+  if (has('ada') && handInfo(g, p, has('ada')).ok && (phase === 'early' || p.hand.length <= 4)) return actTrainer(g, p, has('ada'));
+  if (has('hopper') && handInfo(g, p, has('hopper')).ok && (phase === 'early' || p.hand.length <= 5)) return actTrainer(g, p, has('hopper'));
   if (has('hackathon') && m) {
     const strongest = DEF[m.id].atk.reduce((a, b) => (b.costArr.length >= a.costArr.length ? b : a));
     if (deficit(m.energy, strongest.costArr) >= 1) return actTrainer(g, p, has('hackathon'));
@@ -2860,18 +3040,39 @@ async function aiSupporter(g, p, phase) {
 async function aiLateItems(g, p) {
   const tt = p.hand.find(c => c.id === 'turtest');
   if (tt && !p.t.aiBonus && handInfo(g, p, tt).ok && DEF[p.active.id].atk.some((a, i) => attackInfo(g, p, i).ok)) return actTrainer(g, p, tt);
-  // データ圧縮：使えば、今より強いワザが使えるようになるときだけ
-  const cz = p.hand.find(c => c.id === 'compress');
-  if (cz && handInfo(g, p, cz).ok) {
-    const atks = DEF[p.active.id].atk;
-    const best = () => Math.max(-1, ...atks.map((a, i) => (attackInfo(g, p, i).ok ? a.costArr.length * 100 + a.dmg : -1)));
-    const now = best();
-    p.t.costCut = 1;
-    const then = best();
-    p.t.costCut = 0;
+  // データ圧縮・詩的科学：使えば、今より強いワザが使えるようになるときだけ
+  for (const [id, flag] of [['poetical', 'anyColor'], ['compress', 'costCut']]) {
+    const cz = p.hand.find(c => c.id === id);
+    if (!cz || !handInfo(g, p, cz).ok) continue;
+    const now = aiBestAtkNow(g, p);
+    p.t[flag] = 1;
+    const then = aiBestAtkNow(g, p);
+    p.t[flag] = 0;
     if (then > now) return actTrainer(g, p, cz);
   }
+  // ナノ秒の針金：ベンチのエネルギーをバトル場に移すと、強いワザが使えるとき
+  const ns = p.hand.find(c => c.id === 'nanosec');
+  if (ns && handInfo(g, p, ns).ok && aiNanoPlan(g, p)) return actTrainer(g, p, ns);
   return false;
+}
+/* バトル場のユニットが今使えるワザの強さ（コストの数とダメージでくらべる。使えなければ -1） */
+function aiBestAtkNow(g, p) {
+  if (!p.active) return -1;
+  return Math.max(-1, ...DEF[p.active.id].atk.map((a, i) => (attackInfo(g, p, i).ok ? a.costArr.length * 100 + a.dmg : -1)));
+}
+/* ナノ秒の針金で、どのユニットのどのエネルギーを、バトル場につけかえるか（よくならなければ null） */
+function aiNanoPlan(g, p) {
+  const to = p.active;
+  if (!to) return null;
+  const now = aiBestAtkNow(g, p);
+  let best = null;
+  for (const from of p.bench) for (const ty of TYPE_ORDER.filter(t => from.energy.includes(t))) {
+    to.energy.push(ty);
+    const then = aiBestAtkNow(g, p);
+    to.energy.pop();
+    if (then > now && (!best || then > best.score)) best = { from, ty, to, score: then };
+  }
+  return best;
 }
 
 async function aiMaybeRetreat(g, p) {
@@ -4239,6 +4440,133 @@ ART.ultimate = g => {
   g.rect(7, 5, 4, 3, 'w'); g.hl(5, 6, 2, 'w'); g.set(10, 7, 'l'); g.set(8, 7, 'l');
 };
 
+/* ===== 「プログラミングの先駆者」シリーズ ===== */
+// まるい矢印（ループ）：中心 (cx, cy)・半径 r。右上にすきまと矢じり
+const loopArrow = (g, cx, cy, r, w, c) => {
+  g.ring(cx, cy, r, w, c);
+  const gx = Math.round(cx + r * 0.55), gy = Math.round(cy - r * 0.85);
+  g.rect(gx - 1, gy - 1, 3, w + 2, null);
+  g.set(gx - 2, gy - 2, c); g.set(gx - 2, gy + w + 1, c); g.set(gx - 3, gy, c); g.set(gx - 3, gy + w - 1, c);
+};
+// エイダ・ラブレス：ノートGの表を書いた、開いたノートと羽根ペン
+ART.ada = g => {
+  g.rect(1, 6, 11, 15, 'w'); g.rect(12, 6, 11, 15, 'w'); g.vl(11, 6, 15, 'l'); g.vl(12, 6, 15, 'l'); g.hl(1, 20, 22, 'l');
+  for (let y = 9; y <= 17; y += 2) g.hl(2, y, 9, 'l');
+  g.vl(5, 8, 10, 'l'); g.vl(8, 8, 10, 'l');
+  [[3, 10], [6, 10], [9, 12], [3, 14], [6, 16], [9, 16], [3, 18]].forEach(([x, y]) => g.set(x, y, 'K'));
+  g.text(13, 8, 'G', 'p'); g.hl(13, 15, 6, 'l'); g.hl(13, 17, 7, 'l');
+  g.thick(22, 1, 17, 11, 'v', 2); g.line(23, 1, 18, 11, 'p'); g.set(16, 13, 'K'); g.set(17, 12, 'K');
+};
+// ノートG：ベルヌーイ数を計算する手順の表と、くり返しの矢印
+ART.noteg = g => {
+  g.rect(2, 2, 19, 20, 'w'); g.hl(2, 21, 19, 'l'); g.vl(20, 2, 20, 'l');
+  g.rect(3, 3, 17, 2, 'v');
+  for (let y = 7; y <= 19; y += 3) g.hl(3, y, 17, 'l');
+  for (let x = 7; x <= 15; x += 4) g.vl(x, 5, 16, 'l');
+  [[4, 6], [9, 6], [13, 9], [4, 9], [9, 12], [4, 15], [13, 15]].forEach(([x, y]) => g.hl(x, y, 2, 'K'));
+  loopArrow(g, 16, 16, 5, 2, 'r');
+};
+// 二重ループ：外のループ（青）の中に、内のループ（緑）
+ART.nestloop = g => {
+  loopArrow(g, 12, 12, 10, 2, 'b');
+  loopArrow(g, 12, 12, 5.5, 2, 'E');
+  g.rect(11, 11, 2, 2, 'y');
+};
+// ジャカード織機：上のパンチカードの列と、交互に織った市松模様
+ART.jacquard = g => {
+  g.rect(2, 3, 20, 3, 'w'); for (let x = 3; x <= 20; x += 2) g.set(x, 4, x % 4 === 1 ? 'K' : 'l');
+  g.vl(1, 2, 20, 't'); g.vl(22, 2, 20, 't'); g.hl(1, 2, 22, 'T');
+  for (let x = 4; x <= 19; x += 3) g.vl(x, 6, 4, 'm');
+  for (let y = 10; y <= 19; y++) for (let x = 3; x <= 20; x++) g.set(x, y, ((x >> 1) + (y >> 1)) % 2 ? 'r' : 'w');
+  g.hl(2, 20, 20, 'T'); g.hl(2, 21, 20, 't');
+};
+// 自動作曲：五線譜の音符と、きらきら
+ART.compose = g => {
+  g.rect(1, 4, 22, 15, 'w');
+  for (let y = 7; y <= 15; y += 2) g.hl(2, y, 20, 'l');
+  g.disc(6, 14, 1.8, 'K'); g.vl(7, 7, 7, 'K');
+  g.disc(12, 12, 1.8, 'K'); g.vl(13, 5, 7, 'K');
+  g.thick(7, 7, 13, 5, 'K', 2);
+  g.disc(18, 10, 1.8, 'p'); g.vl(19, 4, 6, 'p'); g.set(20, 5, 'p'); g.set(21, 6, 'p');
+  g.set(3, 3, 'y'); g.set(21, 17, 'y'); g.set(16, 17, 'y');
+};
+// Ada言語：まちがいを動かす前に止める、たて（型チェック）
+ART.adalang = g => {
+  g.rect(4, 3, 16, 10, 'b'); for (let y = 13; y <= 20; y++) { const w = Math.round(8 - (y - 13) * 1.05); g.hl(12 - w, y, w * 2, 'b'); }
+  g.hl(4, 3, 16, 'u'); g.vl(4, 3, 10, 'u');
+  g.thick(8, 11, 11, 14, 'w', 2); g.thick(11, 14, 17, 7, 'w', 2);
+  g.set(19, 1, 'y'); g.set(2, 6, 'y');
+};
+// ラブレスの反論：アイデア（電球）に、ななめの線（機械は自分からは生み出さない）
+ART.lovelace = g => {
+  g.disc(12, 9, 6.5, 'y'); g.disc(10.5, 7.5, 2, 'w');
+  g.rect(9, 15, 6, 2, 'm'); g.rect(9, 17, 6, 2, 'M'); g.rect(10, 19, 4, 2, 'K');
+  g.thick(4, 20, 20, 3, 'r', 3);
+};
+// 詩的科学：羽根ペンと、波の線（数式のグラフ）と星
+ART.poetical = g => {
+  for (let x = 2; x <= 15; x++) g.set(x, Math.round(16 + 3 * Math.sin((x - 2) / 2.2)), 'u');
+  g.thick(21, 2, 14, 15, 'v', 3); g.line(22, 2, 15, 15, 'p'); g.set(13, 17, 'K'); g.set(14, 16, 'K');
+  g.set(4, 5, 'y'); g.set(3, 4, 'y'); g.set(5, 4, 'y'); g.set(4, 3, 'y'); g.set(4, 4, 'Y');
+  g.set(10, 8, 'y'); g.set(16, 20, 'y');
+};
+// グレース・ホッパー：1947年の作業日誌。テープで貼られた本物のバグ（蛾）
+ART.hopper = g => {
+  g.rect(2, 2, 20, 20, 'w'); g.hl(2, 21, 20, 'l'); g.vl(21, 2, 20, 'l');
+  for (let y = 4; y <= 8; y += 2) g.hl(4, y, 15, 'l');
+  g.rect(5, 10, 14, 5, 'm'); g.rect(6, 10, 12, 5, 'l');
+  g.ell(9, 12.5, 3, 2, 't'); g.ell(15, 12.5, 3, 2, 't'); g.vl(12, 10, 5, 'K'); g.set(11, 9, 'K'); g.set(13, 9, 'K');
+  g.text(4, 16, '9/9', 'K'); g.hl(16, 18, 4, 'l');
+};
+// 機械語：黒い画面に 0 と 1 の命令
+ART.machinecode = g => {
+  g.rect(1, 2, 22, 20, 'K'); g.rect(2, 3, 20, 18, 'k');
+  ['1011', '0110', '1101'].forEach((r, j) => g.text(4, 4 + j * 6, r, 'e'));
+  g.rect(20, 16, 1, 3, 'E');
+};
+// FLOW-MATIC：英語に近い言葉で書いたプログラム（ADD・MOVE）
+ART.flowmatic = g => {
+  g.rect(2, 2, 20, 20, 'w'); g.hl(2, 21, 20, 'l'); g.vl(21, 2, 20, 'l');
+  g.text(4, 4, 'ADD', 'b'); g.text(4, 11, 'MOVE', 'b');
+  g.hl(4, 18, 8, 'l'); g.hl(14, 18, 5, 'l');
+  arrowR(g, 15, 6, 5, 'E');
+};
+// COBOL：銀行の大きなシステムで今も動く、緑の画面
+ART.cobol = g => {
+  g.rect(1, 2, 22, 16, 'M'); g.rect(2, 3, 20, 14, 'K');
+  g.text(3, 5, 'COBOL', 'e');
+  g.hl(4, 12, 9, 'E'); g.hl(4, 14, 6, 'E'); g.rect(11, 14, 2, 1, 'e');
+  g.rect(9, 18, 6, 2, 'M'); g.rect(5, 20, 14, 2, 'm');
+};
+// ハーバード・マークI：長い計算機。ならんだ歯車のダイヤルと、紙テープ
+ART.mark1 = g => {
+  g.rect(1, 4, 22, 14, 'm'); g.hl(1, 4, 22, 'w'); g.rect(1, 17, 22, 2, 'M');
+  for (let x = 2; x <= 20; x += 6) g.rect(x, 6, 5, 9, 'u');
+  for (let x = 3; x <= 21; x += 2) for (let y = 7; y <= 13; y += 3) g.set(x, y, 'K');
+  g.rect(16, 19, 4, 4, 'w'); g.set(17, 20, 'K'); g.set(18, 22, 'K');
+};
+// 本物のバグ：はねを広げた蛾
+ART.moth = g => {
+  g.ell(7, 10, 5.5, 4.5, 't'); g.ell(17, 10, 5.5, 4.5, 't');
+  g.ell(8, 17, 4, 3, 'T'); g.ell(16, 17, 4, 3, 'T');
+  g.disc(6, 10, 1.6, 'S'); g.disc(18, 10, 1.6, 'S');
+  g.rect(11, 7, 2, 13, 'K');
+  g.line(11, 6, 8, 2, 'K'); g.line(12, 6, 15, 2, 'K');
+};
+// ナノ秒の針金：約30cmの銅線と、その上を走る信号
+ART.nanosec = g => {
+  g.text(3, 2, '30', 'K'); g.text(13, 2, 'CM', 'K');
+  g.rect(1, 9, 22, 3, 'O'); g.hl(1, 9, 22, 'o');
+  g.disc(14, 10, 2.6, 'y'); g.set(14, 10, 'w');
+  g.rect(1, 15, 22, 4, 'y'); for (let x = 1; x <= 22; x += 3) g.vl(x, 15, x % 6 === 1 ? 3 : 2, 'K');
+};
+// 作業日誌：とじたノート（緑の表紙）とえんぴつ
+ART.logbook = g => {
+  g.rect(3, 2, 15, 20, 'E'); g.rect(4, 3, 13, 18, 'e'); g.vl(3, 2, 20, 'K');
+  g.rect(6, 6, 9, 4, 'w'); g.hl(7, 7, 7, 'l'); g.hl(7, 8, 5, 'l');
+  g.thick(21, 4, 15, 19, 'y', 2); g.set(14, 20, 'K'); g.set(21, 3, 'n'); g.set(22, 3, 'n');
+};
+
 ART._missing = g => { g.rect(6, 6, 12, 12, 'g'); g.text(10, 10, '?', 'w'); };
 
 /* ---------- 画像に変換 ---------- */
@@ -4777,7 +5105,8 @@ function atkLineHTML(a) {
 
 // 「・」のある名前（人物カード）は「・」のところで改行する
 const nameHTML = d => (d.name.includes('・') ? `<span class="kw">${esc(d.name).replace(/・/g, '・<wbr>')}</span>` : esc(d.name));
-const setTag = d => (d.set === 'father' ? '<span class="c-set">「コンピュータの父」シリーズ</span>' : '');
+const seriesOf = id => SERIES.find(se => se.id === id && se.id !== 'base');
+const setTag = d => { const se = d.set && seriesOf(d.set); return se ? `<span class="c-set">${esc(se.name)}</span>` : ''; };
 function cardHTML(id, opts) {
   opts = opts || {};
   const d = DEF[id];
@@ -4887,7 +5216,7 @@ function renderTitle() {
     <nav class="menu" aria-label="メニュー">
       <button type="button" class="btn gold big" data-nav="select" data-vs="cpu">対戦する<small>CPUと対戦</small></button>
       <button type="button" class="btn gold big" data-nav="select" data-vs="online">対人戦<small>オンライン ・ この端末で2人</small></button>
-      <button type="button" class="btn gold big" data-nav="packs">パックをひらく<small>新パック「クロード・シャノン」登場！ ・ チケット ${STORE.tickets}枚</small></button>
+      <button type="button" class="btn gold big" data-nav="packs">パックをひらく<small>新シリーズ「プログラミングの先駆者」登場！ ・ チケット ${STORE.tickets}枚</small></button>
       <button type="button" class="btn" data-nav="dex">カード図鑑<small>${ownedKinds()} / ${ALL_IDS.length}種</small></button>
       <button type="button" class="btn" data-nav="decks">デッキをつくる</button>
       <button type="button" class="btn wide" data-nav="rules">あそびかた</button>
@@ -5088,12 +5417,12 @@ function poolIds() {
     if (UI.poolOwned !== false && !owned(id)) return false;
     if (f === 'all') return true;
     if (f === 'tr') return d.kind !== 'mon';
-    if (f === 'father') return d.set === 'father';
+    if (seriesOf(f)) return d.set === f;
     return d.kind === 'mon' && d.type === f;
   });
 }
 function chipsHTML(cur, attr) {
-  const list = [['all', 'すべて']].concat(TYPE_ORDER.map(t => [t, TYPES[t].name])).concat([['tr', 'コマンド'], ['father', 'コンピュータの父']]);
+  const list = [['all', 'すべて']].concat(TYPE_ORDER.map(t => [t, TYPES[t].name])).concat([['tr', 'コマンド']], SERIES.filter(se => se.short).map(se => [se.id, se.short]));
   return `<div class="chips" role="group" aria-label="絞り込み">${list.map(([k, label]) => `<button type="button" class="chip" ${attr}="${k}" aria-pressed="${cur === k}">${TYPES[k] ? eI(k, 'xs') : ''}${label}</button>`).join('')}</div>`;
 }
 function renderEditor() {
@@ -5163,7 +5492,7 @@ function renderEditor() {
 /* ---------- 図鑑 ---------- */
 function renderDex() {
   const f = UI.dexFilter;
-  const ids = ALL_IDS.filter(id => { const d = DEF[id]; if (f === 'all') return true; if (f === 'tr') return d.kind !== 'mon'; if (f === 'father') return d.set === 'father'; return d.kind === 'mon' && d.type === f; });
+  const ids = ALL_IDS.filter(id => { const d = DEF[id]; if (f === 'all') return true; if (f === 'tr') return d.kind !== 'mon'; if (seriesOf(f)) return d.set === f; return d.kind === 'mon' && d.type === f; });
   const holoKinds = ALL_IDS.filter(id => STORE.holo[id]).length;
   $('#scr-dex').innerHTML = `<div class="page">
     <header class="top"><button type="button" class="back" data-nav="title">← タイトル</button><h2>カード図鑑</h2></header>
@@ -5293,7 +5622,7 @@ function renderRules() {
       <li>レア度は ◆（v1など）・◆◆（v2など）・◆◆◆（v3など）・◆◆◆◆（ex）。ごくまれに、キラキラの<b>☆ホロ</b>カードや、全部レアの<b>ゴッドパック</b>が出る。</li>
       <li>パックを1つひらくたびにパックポイント+${PACK_POINT}。図鑑で、ほしいカードと交換できる（◆${EXCHANGE_COST[1]}pt〜◆◆◆◆${EXCHANGE_COST[4]}pt）。</li>
       <li>自分で作るデッキには、持っているカードしか入れられない。プリセットデッキはいつでも使える。</li>
-      <li>「コンピュータの父」シリーズ（「アラン・チューリング」パック・「ジョン・フォン・ノイマン」パック・「クロード・シャノン」パック）のカードは、そのパックからしか出ない。</li>
+      <li>「コンピュータの父」シリーズ（「アラン・チューリング」パック・「ジョン・フォン・ノイマン」パック・「クロード・シャノン」パック）と、「プログラミングの先駆者」シリーズ（「エイダ・ラブレス」パック・「グレース・ホッパー」パック）のカードは、そのシリーズのパックからしか出ない。</li>
     </ul></section>
     <div class="cta"><button type="button" class="btn gold big" data-nav="select">対戦する</button></div>
   </div>`;
@@ -5405,11 +5734,11 @@ function rollPack(pack) {
   return out;
 }
 function packHTML(pack, big) {
-  const series = pack.series === 'father';
+  const se = seriesOf(pack.series), series = !!se;
   return `<span class="pack ${big ? 'big' : ''} ${series ? 'series' : ''}" style="--c1:${pack.c1};--c2:${pack.c2}">
     <span class="pk-crimp pk-t"></span>
     <span class="pk-body">
-      ${series ? '<span class="pk-ser">コンピュータの父</span>' : ''}
+      ${series ? `<span class="pk-ser">${esc(se.short)}</span>` : ''}
       <span class="pk-en">${esc(pack.en)}</span>
       <span class="pk-art">${artImg(pack.cover)}</span>
       <span class="pk-name kw">${esc(pack.name).replace(/・/g, '・<wbr>')}</span>
@@ -5901,7 +6230,8 @@ function onMon(uid) {
     if (m === me.active) {
       DEF[m.id].atk.forEach((a, i) => {
         const info = attackInfo(g, me, i);
-        const cut = info.ok && me.t.costCut && a.costArr.includes('none') ? 'データ圧縮で、無色エネルギーが1個少なくてよい' : '';
+        const cut = !info.ok ? '' : [me.t.anyColor && a.costArr.some(t => t !== 'none') ? '詩的科学で、どの色のエネルギーでも使える' : '',
+          me.t.costCut && (me.t.anyColor ? a.costArr.length : a.costArr.includes('none')) ? 'データ圧縮で、無色エネルギーが1個少なくてよい' : ''].filter(Boolean).join('・');
         buttons.push({ html: `<span class="ab">${atkLineHTML(a)}</span>`, cls: 'atk', disabled: !info.ok, note: info.reason || cut, fn: () => doMove({ t: 'attack', i }, true) });
       });
       const r = retreatInfo(g, me);

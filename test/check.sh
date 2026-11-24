@@ -11,6 +11,8 @@ echo '== determinism.js（同じ種なら同じ対戦になるか）'
 node test/determinism.js
 echo '== shannon.js（シャノンのパックのカードの効果）'
 node test/shannon.js
+echo '== pioneer.js（プログラミングの先駆者シリーズのカードの効果）'
+node test/pioneer.js
 echo '== odds.js（パックから全カードが出るか）'
 node test/odds.js | grep -E 'never pulled|no pack|god'
 echo 'OK'

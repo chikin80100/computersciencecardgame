@@ -96,7 +96,7 @@ function makeDeck(cards) {
   return out;
 }
 function freshT() {
-  return { energyDone: false, supporterDone: false, retreatDone: false, retreatDiscount: 0, dmgBonus: 0, aiBonus: 0, costCut: 0, abilityUsed: [] };
+  return { energyDone: false, supporterDone: false, retreatDone: false, retreatDiscount: 0, dmgBonus: 0, aiBonus: 0, costCut: 0, anyColor: 0, abilityUsed: [] };
 }
 function newGame(cfg) {
   const g = { players: [], cur: 0, first: 0, turn: 0, over: false, winner: null, reason: '', io: cfg.io || NOOP_IO, log: [] };
@@ -159,6 +159,13 @@ function setStatus(g, m, s) {
   if (!m) return;
   const ab = DEF[m.id].ability;
   if (ab && ab.noStatus) { L(g, `${nm(m)}は特性「${ab.name}」で、${STATUS[s].name}にならない`, 'status'); return; }
+  if (m.tool && m.tool.id === 'logbook') {
+    const owner = ownerOfMon(g, m);
+    if (owner) owner.discard.push(m.tool);
+    m.tool = null;
+    L(g, `作業日誌のおかげで、${nm(m)}は${STATUS[s].name}にならなかった`, 'status');
+    return;
+  }
   if (s === 'sleep' || s === 'freeze' || s === 'garble') {
     m.status.sleep = false; m.status.freeze = false; m.status.garble = false;
   }
@@ -230,6 +237,12 @@ function applyAttackDamage(g, target, d) {
     if (owner) owner.discard.push(target.tool);
     target.tool = null;
     L(g, `UPSが作動！ ${nm(target)}はHP10で持ちこたえた`, 'heal');
+  }
+  const ab = DEF[target.id].ability;
+  if (ab && ab.endure && !target.endured && target.dmg + d >= maxHp(target) && hpLeft(target) > 10) {
+    d = hpLeft(target) - 10;
+    target.endured = true;
+    L(g, `${nm(target)}は特性「${ab.name}」で、HP10で持ちこたえた`, 'heal');
   }
   target.dmg += d;
   return d;
@@ -324,8 +337,10 @@ function finalDamage(g, p, me, target, base, atk) {
     if (isWeakHit(me, target, atk)) d += 20;
   }
   if (!atk.pierce) d -= reduction(g, target);
+  if (lovelaceHit(me, target)) d -= 30;
   return Math.max(0, d);
 }
+const lovelaceHit = (me, target) => !!(target.tool && target.tool.id === 'lovelace' && DEF[me.id].type === 'ai');
 
 async function dealAttackDamage(g, p, me, target, base, atk) {
   const o = other(g, p);
@@ -338,6 +353,7 @@ async function dealAttackDamage(g, p, me, target, base, atk) {
   if (isActive && p.t.aiBonus && DEF[me.id].type === 'ai') notes.push(`チューリングテスト+${p.t.aiBonus}`);
   if (weak) notes.push(atk.alwaysWeak && WEAK[DEF[target.id].type] !== DEF[me.id].type ? '特徴抽出+20' : '弱点+20');
   if (red) notes.push(`軽減-${red}`);
+  if (lovelaceHit(me, target)) notes.push('ラブレスの反論-30');
   L(g, `${nm(target)}に${d}ダメージ${notes.length ? `（${notes.join('・')}）` : ''}`, 'dmg');
   g.io.fx(target.uid, 'hit', d, weak);
   await g.io.pause(380);
@@ -440,6 +456,21 @@ async function recallCommands(g, p, n, exclude, label) {
     L(g, `${p.name}は「${DEF[c.id].name}」を手札にもどした`);
   }
   return got;
+}
+async function tutorFromDeck(g, p, n, filter, title) {
+  for (let k = 0; k < n && !g.over; k++) {
+    const seen = new Set(), uniq = [];
+    for (const x of p.deck) if (filter(x) && !seen.has(x.id)) { seen.add(x.id); uniq.push(x); }
+    if (!uniq.length) break;
+    uniq.sort((a, b) => PICK_ORDER(a) - PICK_ORDER(b) || ALL_IDS.indexOf(a.id) - ALL_IDS.indexOf(b.id));
+    const c = await pick(g, p, `${title}（${k + 1}枚目）`, uniq.map(x => ({ label: DEF[x.id].name, value: x, cardId: x.id })),
+      () => aiTutorPick(g, p, uniq), { cancel: k > 0 });
+    if (!c || !p.deck.includes(c)) break;
+    p.deck.splice(p.deck.indexOf(c), 1);
+    p.hand.push(c);
+    L(g, `${DEF[c.id].name}を手札に加えた`);
+  }
+  shuffle(p.deck);
 }
 const PICK_ORDER = c => { const d = DEF[c.id]; return (d.kind === 'mon' ? 0 : d.kind === 'sup' ? 20 : d.kind === 'item' ? 30 : 40) + (d.stage || 0); };
 
@@ -611,7 +642,7 @@ function handInfo(g, p, card) {
       if (!t.length) res.reason = '手札のv3ユニットに進化できるv1ユニットがいない'; else { res.ok = true; res.targets = t; }
       break;
     }
-    case 'ram': case 'honeypot': case 'ups': case 'ultimate': {
+    case 'ram': case 'honeypot': case 'ups': case 'ultimate': case 'lovelace': case 'logbook': {
       const t = inPlay(p).filter(m => !m.tool);
       if (!t.length) res.reason = 'どうぐをつけられるユニットがいない'; else { res.ok = true; res.targets = t; res.label = 'つける'; }
       break;
@@ -642,15 +673,29 @@ function handInfo(g, p, card) {
       if (!p.deck.length) res.reason = '山札がない'; else res.ok = true; break;
     case 'compress':
       if (p.t.costCut) res.reason = 'この番はもう使った'; else if (!p.active) res.reason = 'バトル場にユニットがいない'; else res.ok = true; break;
+    case 'ada':
+      if (!p.deck.some(c => DEF[c.id].kind !== 'mon' && c.id !== 'ada')) res.reason = '山札にコマンドがない'; else res.ok = true; break;
+    case 'hopper':
+      if (!p.deck.some(c => DEF[c.id].kind === 'mon' && DEF[c.id].stage >= 2)) res.reason = '山札に進化ユニットがない'; else res.ok = true; break;
+    case 'poetical':
+      if (p.t.anyColor) res.reason = 'この番はもう使った'; else if (!p.active) res.reason = 'バトル場にユニットがいない'; else res.ok = true; break;
+    case 'nanosec': {
+      const units = inPlay(p);
+      if (units.length < 2) res.reason = 'つけかえる先のユニットがいない';
+      else if (!units.some(m => m.energy.length)) res.reason = 'エネルギーがついているユニットがいない';
+      else res.ok = true;
+      break;
+    }
     default:
       res.ok = true;
   }
   return res;
 }
 
-/* この番にワザを使うのに必要なエネルギー（データ圧縮を使っていれば、無色を1個へらす） */
+/* この番にワザを使うのに必要なエネルギー（詩的科学を使っていれば色を問わない。データ圧縮を使っていれば、無色を1個へらす） */
 function atkCost(p, a) {
-  const cost = a.costArr.slice();
+  let cost = a.costArr.slice();
+  if (p.t.anyColor) cost = cost.map(() => 'none');
   if (p.t.costCut && cost.includes('none')) cost.splice(cost.lastIndexOf('none'), 1);
   return cost;
 }
@@ -661,6 +706,7 @@ function attackInfo(g, p, idx) {
   if (m.status.sleep) return { ok: false, reason: 'スリープ中はワザを使えない' };
   if (m.status.freeze) return { ok: false, reason: 'フリーズ中はワザを使えない' };
   if (a.once && m.onceUsed && m.onceUsed.includes(a.name)) return { ok: false, reason: 'このワザはもう使った（1回だけ）' };
+  if (m.restTurn === g.turn) return { ok: false, reason: '前の計算に時間がかかっていて、この番はワザを使えない' };
   if (!canPay(m.energy, atkCost(p, a))) return { ok: false, reason: 'エネルギーが足りない' };
   if (a.copy) {
     const foe = other(g, p).active;
@@ -912,6 +958,34 @@ async function actTrainer(g, p, card, target) {
       p.t.costCut = 1;
       L(g, 'この番、ワザに必要な無色エネルギーが1個少なくなった');
       break;
+    case 'ada':
+      await tutorFromDeck(g, p, 2, c => DEF[c.id].kind !== 'mon' && c.id !== 'ada', 'エイダ・ラブレス：手札に加えるコマンドを選んでください');
+      break;
+    case 'hopper':
+      await tutorFromDeck(g, p, 2, c => DEF[c.id].kind === 'mon' && DEF[c.id].stage >= 2, 'グレース・ホッパー：手札に加える進化ユニットを選んでください');
+      break;
+    case 'poetical':
+      p.t.anyColor = 1;
+      L(g, 'この番、ワザにはどの色のエネルギーでも使える');
+      break;
+    case 'nanosec': {
+      const units = inPlay(p);
+      const plan = () => aiNanoPlan(g, p) || {};
+      const from = await pick(g, p, 'ナノ秒の針金：エネルギーを外すユニットを選んでください',
+        units.filter(m => m.energy.length).map(m => ({ label: nm(m), value: m, mon: m })), () => plan().from || units.find(m => m.energy.length));
+      if (!from) break;
+      const types = TYPE_ORDER.filter(t => from.energy.includes(t));
+      const ty = types.length === 1 ? types[0] : await pick(g, p, 'ナノ秒の針金：つけかえるエネルギーを選んでください',
+        types.map(t => ({ label: TYPES[t].name + 'エネルギー', value: t, energy: t })), () => (types.includes(plan().ty) ? plan().ty : types[0]));
+      const to = await pick(g, p, 'ナノ秒の針金：エネルギーをつけるユニットを選んでください',
+        units.filter(m => m !== from).map(m => ({ label: nm(m), value: m, mon: m })), () => (plan().to && plan().to !== from ? plan().to : units.find(m => m !== from)));
+      if (!to || !ty || !from.energy.includes(ty)) break;
+      from.energy.splice(from.energy.lastIndexOf(ty), 1);
+      to.energy.push(ty);
+      L(g, `${nm(from)}の${TYPES[ty].name}エネルギーを、${nm(to)}につけかえた`, 'energy');
+      g.io.fx(to.uid, 'energy');
+      break;
+    }
     case 'codebreak': {
       const c = await pick(g, p, '暗号解読：相手の手札から、山札にもどすカードを選んでください',
         o.hand.map(x => ({ label: DEF[x.id].name, value: x, cardId: x.id })), () => aiCodebreakPick(g, p));
@@ -1052,6 +1126,7 @@ async function scoreAttack(g, p, m, a) {
 /* そのユニットがバトル場にいたら、今ある エネルギーで出せる最善のワザの点数 */
 async function readiness(g, p, m) {
   let best = 0;
+  if (m.restTurn && m.restTurn >= g.turn) return 0; // 次の自分の番はワザを使えない
   for (const a of DEF[m.id].atk) {
     if (!canPay(m.energy, a.costArr)) continue;
     if (a.once && m.onceUsed && m.onceUsed.includes(a.name)) continue; // 1回だけのワザを使ったあと
@@ -1117,9 +1192,9 @@ function cmdValue(g, p, c) {
   const d = DEF[c.id];
   const o = other(g, p);
   const table = {
-    alan: 24, hackathon: 22, shannon: 20, pentest: 16, opensource: 16, codebreak: 14, gametheory: 13, pair: 13, debug: 12, optimize: 9, lb: 9, neumann: 10,
-    update: 12, import: 11, grep: 11, ctrlz: 8, search: 8, patch: 7, turtest: 7, compress: 6, alttab: 4, reboot: o.hand.length >= 5 ? 9 : 3,
-    ram: 9, honeypot: 8, ups: 10, ultimate: 10,
+    alan: 24, ada: 22, hackathon: 22, shannon: 20, hopper: 20, pentest: 16, opensource: 16, codebreak: 14, gametheory: 13, pair: 13, debug: 12, optimize: 9, lb: 9, neumann: 10,
+    update: 12, import: 11, grep: 11, ctrlz: 8, search: 8, patch: 7, turtest: 7, compress: 6, poetical: 6, nanosec: 5, alttab: 4, reboot: o.hand.length >= 5 ? 9 : 3,
+    ram: 9, honeypot: 8, ups: 10, ultimate: 10, logbook: 6, lovelace: inPlay(o).some(m => DEF[m.id].type === 'ai') ? 10 : 2,
   };
   let v = table[d.id] === undefined ? 6 : table[d.id];
   if (d.id === 'turtest' && !inPlay(p).some(m => DEF[m.id].type === 'ai')) v = 1;
@@ -1302,6 +1377,8 @@ async function aiSupporter(g, p, phase) {
     if (best >= 30 || (phase === 'late' && p.hand.length <= 3)) return actTrainer(g, p, has('alan'));
   }
   if (has('shannon') && p.deck.length >= 2 && (phase === 'early' || p.hand.length <= 5)) return actTrainer(g, p, has('shannon'));
+  if (has('ada') && handInfo(g, p, has('ada')).ok && (phase === 'early' || p.hand.length <= 4)) return actTrainer(g, p, has('ada'));
+  if (has('hopper') && handInfo(g, p, has('hopper')).ok && (phase === 'early' || p.hand.length <= 5)) return actTrainer(g, p, has('hopper'));
   if (has('hackathon') && m) {
     const strongest = DEF[m.id].atk.reduce((a, b) => (b.costArr.length >= a.costArr.length ? b : a));
     if (deficit(m.energy, strongest.costArr) >= 1) return actTrainer(g, p, has('hackathon'));
@@ -1327,18 +1404,39 @@ async function aiSupporter(g, p, phase) {
 async function aiLateItems(g, p) {
   const tt = p.hand.find(c => c.id === 'turtest');
   if (tt && !p.t.aiBonus && handInfo(g, p, tt).ok && DEF[p.active.id].atk.some((a, i) => attackInfo(g, p, i).ok)) return actTrainer(g, p, tt);
-  // データ圧縮：使えば、今より強いワザが使えるようになるときだけ
-  const cz = p.hand.find(c => c.id === 'compress');
-  if (cz && handInfo(g, p, cz).ok) {
-    const atks = DEF[p.active.id].atk;
-    const best = () => Math.max(-1, ...atks.map((a, i) => (attackInfo(g, p, i).ok ? a.costArr.length * 100 + a.dmg : -1)));
-    const now = best();
-    p.t.costCut = 1;
-    const then = best();
-    p.t.costCut = 0;
+  // データ圧縮・詩的科学：使えば、今より強いワザが使えるようになるときだけ
+  for (const [id, flag] of [['poetical', 'anyColor'], ['compress', 'costCut']]) {
+    const cz = p.hand.find(c => c.id === id);
+    if (!cz || !handInfo(g, p, cz).ok) continue;
+    const now = aiBestAtkNow(g, p);
+    p.t[flag] = 1;
+    const then = aiBestAtkNow(g, p);
+    p.t[flag] = 0;
     if (then > now) return actTrainer(g, p, cz);
   }
+  // ナノ秒の針金：ベンチのエネルギーをバトル場に移すと、強いワザが使えるとき
+  const ns = p.hand.find(c => c.id === 'nanosec');
+  if (ns && handInfo(g, p, ns).ok && aiNanoPlan(g, p)) return actTrainer(g, p, ns);
   return false;
+}
+/* バトル場のユニットが今使えるワザの強さ（コストの数とダメージでくらべる。使えなければ -1） */
+function aiBestAtkNow(g, p) {
+  if (!p.active) return -1;
+  return Math.max(-1, ...DEF[p.active.id].atk.map((a, i) => (attackInfo(g, p, i).ok ? a.costArr.length * 100 + a.dmg : -1)));
+}
+/* ナノ秒の針金で、どのユニットのどのエネルギーを、バトル場につけかえるか（よくならなければ null） */
+function aiNanoPlan(g, p) {
+  const to = p.active;
+  if (!to) return null;
+  const now = aiBestAtkNow(g, p);
+  let best = null;
+  for (const from of p.bench) for (const ty of TYPE_ORDER.filter(t => from.energy.includes(t))) {
+    to.energy.push(ty);
+    const then = aiBestAtkNow(g, p);
+    to.energy.pop();
+    if (then > now && (!best || then > best.score)) best = { from, ty, to, score: then };
+  }
+  return best;
 }
 
 async function aiMaybeRetreat(g, p) {

@@ -54,12 +54,10 @@ with sync_playwright() as p:
     page.on('console', lambda m: errors.append(f'console.{m.type}: {m.text}') if m.type == 'error' and 'ERR_' not in m.text else None)
     route_fonts(page)
     page.goto(URL); page.wait_for_timeout(1000)
-    check('クロード・シャノン' in page.inner_text('.screen:not([hidden])'), 'タイトルに新パックの知らせ')
     page.screenshot(path=str(OUT / 's_title.png'))
     # パックの画面
     click(page, '.screen:not([hidden]) [data-nav="packs"]'); page.wait_for_timeout(300)
-    check(page.query_selector('.pack-btn[data-open="shannon"] .pk-new') is not None, 'シャノンのパックに NEW')
-    check(page.query_selector('.pack-btn[data-open="turing"] .pk-new') is None, 'ほかのパックには NEW がない')
+    check(page.query_selector('.pack-btn[data-open="shannon"]') is not None, 'シャノンのパックがある')
     page.locator('.pack-btn[data-open="shannon"]').scroll_into_view_if_needed()
     page.screenshot(path=str(OUT / 's_packs.png'))
     page.screenshot(path=str(OUT / 's_packs_full.png'), full_page=True)

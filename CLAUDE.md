@@ -38,6 +38,7 @@ node test/sim.js                          # CPU同士で全デッキを対戦さ
 node test/determinism.js                  # 同じ種なら同じ対戦になるか（same 12/12 ならOK）
 node test/odds.js                         # パックの確率。全カードがどこかのパックから出るか
 node test/shannon.js                      # 「クロード・シャノン」パックのカードの効果を、場面を作って1枚ずつ確かめる
+node test/pioneer.js                      # 「プログラミングの先駆者」シリーズのカードの効果（場面づくりの道具は test/_scene.js）
 node test/rates.js 200                    # 全デッキ総当たりの勝率（先攻・後攻を入れ替えて。10秒ほど。少ない回数だと数%ぶれる）
 node test/focus.js 100 p_turing,p_neumann # 指定したデッキだけの勝率
 node test/matrix.js 80                    # 組み合わせごとの勝率と、ワザの使われ方
@@ -51,7 +52,8 @@ pip install playwright && python3 -m playwright install chromium   # はじめ�
 python3 test/ui_test.py 2       # CPU戦を画面の操作で2回、最後まで
 python3 test/ui2.py             # パック開封・図鑑・デッキ編集・対戦をひととおり
 python3 test/father.py          # 「コンピュータの父」パックと、人物カード・新しいコマンドの操作
-python3 test/shannon_ui.py      # 「クロード・シャノン」パック：NEWのしるし・開封・図鑑・1回だけのワザ・データ圧縮・究極の機械
+python3 test/shannon_ui.py      # 「クロード・シャノン」パック：開封・図鑑・1回だけのワザ・データ圧縮・究極の機械
+python3 test/pioneer_ui.py      # 「プログラミングの先駆者」：NEWのしるし・開封・図鑑・詩的科学・ナノ秒の針金・ノートG・マークI・COBOL
 python3 test/rare.py            # ゴッドパックとホロの見た目
 python3 test/local2p.py         # この端末で2人対戦（端末を渡す画面）
 python3 test/online.py 0.3      # Claude内のオンライン対戦。偽の window.claude で2ページをつなぎ、手を30%落としても最後の盤面が一致するか
@@ -74,7 +76,7 @@ python3 test/sheet.py set=father big=1   # 絵柄の一覧（ids=enigma,alan で
 
 | ファイル | 中身 |
 |---|---|
-| src/data.js | カードの定義：`TYPES` `WEAK`（弱点）`STATUS`（状態異常）`MONSTERS`（ユニット）`TRAINERS`（コマンド）`KIND` `PRESETS`（14個のデッキ）`SERIES` `PACKS` `REWARD` `EXCHANGE_COST` |
+| src/data.js | カードの定義：`TYPES` `WEAK`（弱点）`STATUS`（状態異常）`MONSTERS`（ユニット）`TRAINERS`（コマンド）`KIND` `PRESETS`（16個のデッキ）`SERIES` `PACKS` `REWARD` `EXCHANGE_COST` |
 | src/engine.js | ルールエンジン（DOMなし・async）とCPUのAI。Node 用に `module.exports` もある |
 | src/art.js | ドット絵。24×24 のマスに `PAL` の色の記号で描く。`ART[カードid] = g => {...}`、`spriteURL(id)` で画像に |
 | src/p2p.js | サイト版の WebRTC 対戦（つなぐ・コード・再戦・切断） |
@@ -97,10 +99,13 @@ python3 test/sheet.py set=father big=1   # 絵柄の一覧（ids=enigma,alan で
 | `stage: 1 / 2 / 3` | v1 / v2 / v3（たね・1進化・2進化）。進化元は `from: '名前'` |
 | `ex: true` | ex ユニット（たおすと2ポイント） |
 | `leg: true` | 人物カード（アラン・チューリングなど。金のふち） |
-| `set: 'father'` | 「コンピュータの父」シリーズ。このシリーズのパックからしか出ない |
+| `set: 'father'` / `set: 'pioneer'` | 「コンピュータの父」／「プログラミングの先駆者」シリーズ。そのシリーズのパックからしか出ない。シリーズは `SERIES`（`short` は図鑑の絞り込みとパックの帯に出る短い名前）、画面では `seriesOf(id)` |
 | ワザの `once: true` | 1回だけのワザ（ワンタイムパッド）。使ったワザの名前を、場のユニットの `onceUsed` に覚える |
 | 特性の `noStatus: true` | 特殊状態にならない（LDPC符号）。`setStatus()` の中で止める |
 | `p.t.costCut` | この番、ワザの無色エネルギーを1個へらす（データ圧縮）。コストは `atkCost(p, ワザ)` で求める |
+| `p.t.anyColor` | この番、ワザのエネルギーの色を問わない（詩的科学）。`atkCost` でぜんぶ無色にしてから、データ圧縮をかける |
+| 場のユニットの `loops` / `restTurn` / `endured` | ノートGが「ベルヌーイ数」を使った回数／ハーバード・マークIが休む番（`attackInfo` で止める）／COBOLの特性「レガシー」（`endure: true`）を使ったか |
+| どうぐ `lovelace` / `logbook` | AIタイプのワザのダメージ-30（`lovelaceHit`）／特殊状態を1回ふせぐ（`setStatus` の中） |
 | コストの文字 | A=アルゴリズム D=データ N=ネットワーク S=セキュリティ H=ハードウェア I=AI C=無色 |
 
 コインは画面では 1＝オモテ・0＝ウラ（ビットの「3ビット」は、これを2進数として読む）。ワザの中でコインの順番が要るときは `c.coins(n)`（[オモテか, ...] を返す）。
@@ -134,7 +139,7 @@ python3 test/sheet.py set=father big=1   # 絵柄の一覧（ids=enigma,alan で
 
 - `UI.me`：どちらの席の目線で盤面を見るか（CPU戦は0、オンラインは自分の席、この端末での2人対戦は操作している人）。`UI.vs`：`'cpu' | 'local' | 'online'`。
 - 画面は `show(名前)` で切り替え（`ROUTES`）。対戦画面は `renderBattle()`、人の操作は `doMove()` → `applyMove()`、番の終わりは `finishHumanTurn()`。
-- パック：`rollPack(pack)`。5枚目と4枚目にレアが出やすい。シリーズのパックは目玉の人物カード（`feature`）が ◆◆◆◆ の半分をしめる（だいたい18%のパックに入る）。`isNew: true` のパックには NEW のしるしがつき、シリーズの中で先頭に出る（いまはクロード・シャノン）。ふつうのパックには `set` つきのカードは入らない。ゴッドパックは0.5%ほど。
+- パック：`rollPack(pack)`。5枚目と4枚目にレアが出やすい。シリーズのパックは目玉の人物カード（`feature`）が ◆◆◆◆ の半分をしめる（だいたい18%のパックに入る）。`isNew: true` のシリーズとパックには NEW のしるしがつく。シリーズは `SERIES` の順に、パックはシリーズの中で NEW が先頭に出る（いまは「プログラミングの先駆者」のエイダ・ラブレスとグレース・ホッパー）。ふつうのパックには `set` つきのカードは入らない。ゴッドパックは0.5%ほど。
 - チケット：`REWARD = {start:20, win:5, lose:3, draw:3, daily:10}`（`grantReward()`）。降参した人・この端末での2人対戦・ずれて終わった対戦はもらえない。
 
 ### セーブ
@@ -144,7 +149,7 @@ python3 test/sheet.py set=father big=1   # 絵柄の一覧（ids=enigma,alan で
 
 ## カードを1枚足す手順
 
-1. **src/data.js**：`MONSTERS`（ユニット）か `TRAINERS`（コマンド）に足す。id は英小文字で、ほかと重ならないもの。`desc` には、その用語のやさしい説明を書く（このゲームは用語を学ぶためのもの）。シリーズのカードなら `set: 'father'` をつけて、`PACKS` のそのパックの `ids` に入れる。
+1. **src/data.js**：`MONSTERS`（ユニット）か `TRAINERS`（コマンド）に足す。id は英小文字で、ほかと重ならないもの。`desc` には、その用語のやさしい説明を書く（このゲームは用語を学ぶためのもの）。シリーズのカードなら `set: 'father'` などをつけて、`PACKS` のそのパックの `ids` に入れる。山札から選ぶ効果は `tutorFromDeck()`、効果のテストは test/_scene.js で場面を作る。
 2. **src/art.js**：`ART.<id> = g => { ... }` で絵を描く（絵がないと `ART._missing` の「？」になる）。`python3 test/sheet.py ids=<id> big=1` で目で確かめる。
 3. **src/engine.js**：新しい効果なら、ワザは `dmgFn` / `after`（必要なら `mkCtx` に道具を足す）、コマンドは `handInfo` と `actTrainer`、CPUが使うための判断（`aiSupporter` など）も足す。選ばせるときは必ず `pick()`。
 4. CPUのデッキで使わせたいなら `PRESETS` のどれかに入れる（1デッキ20枚・同じカードは2枚まで）。
@@ -162,12 +167,12 @@ python3 test/sheet.py set=father big=1   # 絵柄の一覧（ids=enigma,alan で
 - Claude の中のオンライン対戦は、偽の `window.claude` でしか試していない（本当の2つのアカウントでは未確認）。
 - サイト版の WebRTC 対戦は、同じパソコンの2つのページでしか試していない。TURN サーバーがないので、学校や会社のネットワーク・携帯回線の組み合わせによってはつながらないことがある（そのときは25秒ほどで「つながりませんでした」と出る）。
 - 画面は主にスマホの縦長（390×844）とパソコン（1280×860）で確かめている。
-- バランス（`node test/rates.js 200`、2026年11月）：ネットワーク網・データ構造ラボ・暗号解読班 57%、情報理論研究室 56% が強いほう、量子とAI 40%・プログラミング基礎 41% がいちばん弱い。どれも目安の 40〜60% には入っている。
+- バランス（`node test/rates.js 300`、2026年11月24日）：ネットワーク網 59%・COBOL開発チーム 57% が強いほう、量子とAI 41% がいちばん弱い。16デッキすべて 41〜59%。新しいシリーズを入れたとき、プログラミング基礎に二重ループを1枚、量子とAIにナノ秒の針金を1枚入れて、40%を下回らないようにした。
 - CPU同士の勝率は「CPUがそのデッキをどれだけうまく使えるか」も表す。たとえばリレー回路やワンタイムパッドを今のCPUデッキに入れると、CPUがそれを使いすぎて勝率が下がった（だから入れていない）。人が組んだ、1つの進化ラインに集中したデッキは、プリセットより強くなりやすい（ビット2枚＋パリティビットの系統2組＋データ圧縮で、プリセット相手に7〜8割勝つ）。
 
 ## 次にやれそうなこと
 
-- 「コンピュータの父」シリーズの次のパック（候補：「Webの父」ティム・バーナーズ＝リー、「AI」の名付け親ジョン・マッカーシー、世界初のプログラマー エイダ・ラブレス）。前のパックの `isNew` を消して、新しいパックにつける。
+- 「プログラミングの先駆者」シリーズの3つめ（候補：ジョン・バッカス（FORTRAN）、デニス・リッチー（C言語・UNIX）、エドガー・ダイクストラ（構造化プログラミング））や、「コンピュータの父」シリーズの4つめ（ティム・バーナーズ＝リー、ジョン・マッカーシーなど）。前の `isNew` を消して、新しいものにつける。
 - デッキをコードにして友だちと共有する。
 - 効果音・BGM（Web Audio でその場で作る。音のファイルは使わない）。
 - TURN サーバーを使えるようにして、サイト版の対戦をつながりやすくする（使う場合はサーバーの用意が必要）。

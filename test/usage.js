@@ -9,16 +9,20 @@ const words = ['「アラン・チューリング」を使った', '「ジョン
   'を手札にもどした', 'チューリングテスト+', 'のエネルギーを2個トラッシュ', 'パンチカード', '「読み取り」', '「総当たり解読」', '「並列テープ読み取り」', '「自動計算」', '「止まるか？」', '「オウム返し」',
   '「プログラム内蔵」', '「全力演算」', '「ランダムサンプリング」', '「最悪を最小に」', '「カード制御」', '「ローター暗号」',
   '「クロード・シャノン」を使った', '「データ圧縮」を使った', '「究極の機械」をつけた', '究極の機械が作動', '「3ビット」', '「パリティチェック」', '「1ビット訂正」', '「反復復号」', '「シャノン限界」',
-  '「AND回路」', '「OR回路」', '「迷路学習」', '「一度きりの鍵」', '特性「誤り訂正」'];
+  '「AND回路」', '「OR回路」', '「迷路学習」', '「一度きりの鍵」', '特性「誤り訂正」',
+  '「エイダ・ラブレス」を使った', '「グレース・ホッパー」を使った', '「詩的科学」を使った', '「ナノ秒の針金」を使った', '「作業日誌」をつけた', '作業日誌のおかげで', '「ラブレスの反論」をつけた', 'ラブレスの反論-30',
+  '「ベルヌーイ数」', '「n²回のくり返し」', '「模様を織る」', '「ハーモニー」', '「安全な実行」', '「0と1の命令」', '「英語で書く」', '「事務処理」', '「大量のデータ処理」', '特性「レガシー」', '「紙テープの命令」', '「リレーにはさまる」'];
 (async () => {
   const cnt = {}; words.forEach(w => { cnt[w] = 0; });
-  const pairs = [['p_turing', 'p_neumann'], ['p_turing', 'p_ai'], ['p_neumann', 'p_sec'], ['p_ai', 'p_quantum'], ['p_shannon', 'p_turing'], ['p_shannon', 'p_neumann'], ['p_ai', 'p_sec']];
+  const pairs = [['p_turing', 'p_neumann'], ['p_turing', 'p_ai'], ['p_neumann', 'p_sec'], ['p_ai', 'p_quantum'], ['p_shannon', 'p_turing'], ['p_shannon', 'p_neumann'], ['p_ai', 'p_sec'], ['p_ada', 'p_hopper'], ['p_ada', 'p_ai'], ['p_hopper', 'p_sec']];
   for (const [a, b] of pairs) for (let k = 0; k < 30; k++) {
     // チューリングテストを試すため、AIデッキに1枚入れる
     const da = Object.assign({}, P(a).cards), db = Object.assign({}, P(b).cards);
     if (a === 'p_ai') { da.turtest = 2; da.alttab = 0; da.patch = 0; }
     // シャノンのパックの、プリセットに入っていないカードも試す
     if (a === 'p_ai' && b === 'p_sec') { da.theseus = 2; da.turtest = 0; db.otp = 2; }
+    // エイダのパックの、プリセットに入っていないカードも試す
+    if (a === 'p_hopper' && b === 'p_sec') { da.jacquard = 2; da.update = 0; da.grep = 0; db.adalang = 2; db.caesar = 1; db.pubkey = 1; }
     const g = E.newGame({ io: E.NOOP_IO, players: [{ name: 'A', isCPU: true, deck: da, energy: P(a).energy }, { name: 'B', isCPU: true, deck: db, energy: P(b).energy }] });
     await E.runGame(g);
     for (const l of g.log) for (const w of words) if (String(l.msg || l).includes(w)) cnt[w]++;

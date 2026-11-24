@@ -820,6 +820,82 @@ const MONSTERS = [
     ],
     desc: '送りたい文と同じ長さの、まったくでたらめな鍵を使い、その鍵を一度しか使わない暗号。1949年にシャノンは、この方法なら、どれだけ計算しても元の文の手がかりが何も得られない（完全秘匿）ことを証明した。鍵を安全にわたすのが大変なので、ふだんの通信ではあまり使われない。',
   },
+  /* ===== 「プログラミングの先駆者」シリーズ：エイダ・ラブレス ===== */
+  {
+    id: 'noteg', set: 'pioneer', name: 'ノートG', en: 'Note G', type: 'algo', stage: 1, ex: true, hp: 150, retreat: 2,
+    atk: [
+      { name: '変数の表', cost: 'A', dmg: 20 },
+      {
+        name: 'ベルヌーイ数', cost: 'AC', dmg: 40, label: '40×', text: 'このユニットがこのワザを使うのが何回目かを数え、その回数×40ダメージ（1回目40、2回目80、3回目120…）。',
+        dmgFn: async c => { c.dmg = 40 * ((c.me.loops || 0) + 1); },
+        after: async c => { c.me.loops = (c.me.loops || 0) + 1; c.say(`ループ ${c.me.loops}回目`); },
+      },
+    ],
+    desc: 'エイダの注釈のうち、最後の「ノートG」に書かれた、解析機関でベルヌーイ数という数を計算する手順（1843年）。同じ計算をくり返す「ループ」を使っていて、コンピュータのために書かれた世界で最初のプログラムといわれる。解析機関は完成しなかったので、当時は動かせなかった。',
+  },
+  {
+    id: 'nestloop', set: 'pioneer', name: '二重ループ', en: 'Nested loop', type: 'none', stage: 2, from: 'ループ', hp: 90, retreat: 1,
+    atk: [{
+      name: 'n²回のくり返し', cost: 'CCC', dmg: 0, label: '20×', text: 'コインを3回投げる。オモテの数を2乗した数×20ダメージ（オモテ2回なら 2×2=4 → 80ダメージ）。',
+      dmgFn: async c => { const h = (await c.coins(3)).filter(Boolean).length; c.dmg = 20 * h * h; c.say(`${h}×${h}＝${h * h}回`); },
+    }],
+    desc: 'ループの中にループを入れたもの。外側が n 回、内側が n 回まわると、中の命令は n×n 回くり返される。表のすべてのマスを順に調べるときなどに使う。エイダのノートにも、くり返しの中のくり返し（cycle of cycles）が出てくる。',
+  },
+  {
+    id: 'jacquard', set: 'pioneer', name: 'ジャカード織機', en: 'Jacquard loom', type: 'hw', stage: 1, hp: 80, retreat: 2,
+    atk: [{
+      name: '模様を織る', cost: 'HC', dmg: 30, label: '30+', text: 'コインを4回投げる。オモテとウラが交互に出たら（オウオウ・ウオウオ）、70ダメージ追加。',
+      dmgFn: async c => { const r = await c.coins(4); if (r.every((h, i) => i === 0 || h !== r[i - 1])) { c.dmg += 70; c.say('市松模様！'); } },
+    }],
+    desc: '1804年ごろ、フランスのジョゼフ・マリー・ジャカールが発明した織機。穴をあけたカード（パンチカード）を順に読みこんで糸の上げ下げを決め、複雑な模様を自動で織る。カードを取りかえれば、ちがう模様が織れる。エイダは「解析機関は、ジャカード織機が花や葉を織るように、代数の模様を織る」と書いた。',
+  },
+  {
+    id: 'compose', set: 'pioneer', name: '自動作曲', en: 'Algorithmic composition', type: 'ai', stage: 1, hp: 60, retreat: 1,
+    atk: [{
+      name: 'ハーモニー', cost: 'IC', dmg: 0, label: '20×', text: '自分の場にいるユニットのタイプの数×20ダメージ（同じタイプは1つと数える）。',
+      dmgFn: async c => { c.dmg = 20 * new Set([c.p.active, ...c.p.bench].filter(Boolean).map(m => DEF[m.id].type)).size; },
+    }],
+    desc: 'コンピュータが曲をつくること。エイダは1843年に、音の高さや和音の関係を記号であらわせれば、解析機関は複雑な曲をつくれるかもしれないと書いた。今はAIがメロディや伴奏をつくるようになっている。',
+  },
+  {
+    id: 'adalang', set: 'pioneer', name: 'Ada言語', en: 'Ada (programming language)', type: 'sec', stage: 1, hp: 60, retreat: 1,
+    ability: { name: '型チェック', kind: 'passive', reduce: 20, text: 'このユニットが受けるワザのダメージを-20する。' },
+    atk: [{ name: '安全な実行', cost: 'SC', dmg: 30 }],
+    desc: 'アメリカ国防総省のために作られ、エイダの名前がつけられたプログラミング言語（1980年に規格になった。規格の番号「1815」は、エイダが生まれた年）。まちがいをプログラムを動かす前に見つけるしくみが強く、飛行機や鉄道など、止まってはこまるシステムで使われてきた。',
+  },
+  /* ===== 「プログラミングの先駆者」シリーズ：グレース・ホッパー ===== */
+  {
+    id: 'machinecode', set: 'pioneer', name: '機械語', en: 'Machine code', type: 'data', stage: 1, hp: 60, retreat: 1,
+    atk: [{ name: '0と1の命令', cost: 'D', dmg: 20 }],
+    desc: 'CPUが直接読める、0と1の並びでできた命令。人には読みにくいので、最初のころのプログラマーは、命令を数字の表とくらべながら1つずつ書いていた。',
+  },
+  {
+    id: 'flowmatic', set: 'pioneer', name: 'FLOW-MATIC', en: 'FLOW-MATIC', type: 'data', stage: 2, from: '機械語', hp: 80, retreat: 1,
+    atk: [{ name: '英語で書く', cost: 'DC', dmg: 40, text: '自分の山札を1枚引く。', after: async c => { c.draw(1); } }],
+    desc: '1955年ごろからホッパーのチームがつくった、英語に近い言葉で事務の計算が書ける、最初のプログラミング言語。「数式が苦手な人にも使えるように」という考えから生まれ、COBOLのもとになった。',
+  },
+  {
+    id: 'cobol', set: 'pioneer', name: 'COBOL', en: 'COBOL', type: 'data', stage: 3, from: 'FLOW-MATIC', hp: 120, retreat: 2,
+    ability: { name: 'レガシー', kind: 'passive', endure: true, text: 'このユニットがワザのダメージでダウンするとき、1回だけ、かわりにHPが10残る（残りHPが10以下のときははたらかない）。' },
+    atk: [
+      { name: '事務処理', cost: 'CC', dmg: 40 },
+      { name: '大量のデータ処理', cost: 'DDC', dmg: 80 },
+    ],
+    desc: '1959年に生まれた、事務の仕事のためのプログラミング言語（COmmon Business-Oriented Language の略）。英語の文のように書ける。60年以上たった今も、銀行や役所の大きなシステムで動きつづけている。',
+  },
+  {
+    id: 'mark1', set: 'pioneer', name: 'ハーバード・マークI', en: 'Harvard Mark I', type: 'hw', stage: 1, ex: true, hp: 160, retreat: 3,
+    atk: [
+      { name: '歯車の計算', cost: 'HC', dmg: 30 },
+      { name: '紙テープの命令', cost: 'HHC', dmg: 120, text: '次の自分の番、このユニットはワザを使えない。', after: async c => { c.me.restTurn = c.g.turn + 2; } },
+    ],
+    desc: '1944年に動きはじめた、リレーと歯車で動く大きな計算機（長さ約15m、重さ約5トン）。紙テープの命令を読んで計算した。足し算に約0.3秒、かけ算に約6秒かかった。ホッパーは、この機械の最初のプログラマーの1人だった。',
+  },
+  {
+    id: 'moth', set: 'pioneer', name: '本物のバグ', en: 'The first actual bug', type: 'none', stage: 1, hp: 40, retreat: 1,
+    atk: [{ name: 'リレーにはさまる', cost: 'C', dmg: 10, text: '相手のバトル場のユニットをバグにする。', after: async c => { if (c.foeAlive()) c.status(c.foe, 'bug'); } }],
+    desc: '1947年、計算機ハーバード・マークIIのリレーに蛾がはさまって、正しく動かなくなった。ホッパーのチームは蛾を作業日誌にテープで貼り「バグ（虫）が見つかった最初の本物の例」と書いた。「バグ」という言葉はそれより前からあったが、この話で有名になった。',
+  },
 ];
 
 /* ---------- コマンド ---------- */
@@ -850,6 +926,12 @@ const TRAINERS = [
   { id: 'gametheory', set: 'father', name: 'ゲーム理論', en: 'Game theory', kind: 'sup', rar: 3, text: '相手は自分の手札を1枚選んでトラッシュする。そのあと、自分の山札を1枚引く。', desc: 'たがいの行動を読み合いながら決める状況を、数学で分析する学問。1944年のフォン・ノイマンとモルゲンシュテルンの本から本格的に始まった。一方の得が、そのままもう一方の損になる状況を「ゼロサムゲーム」という。' },
   { id: 'shannon', set: 'father', leg: true, name: 'クロード・シャノン', en: 'Claude Shannon', kind: 'sup', rar: 4, text: '自分の山札の上から5枚を見て、その中から2枚まで選んで手札に加える。残りは山札にもどして切る。', desc: 'アメリカの数学者・技術者（1916〜2001年）。1948年の論文「通信の数学的理論」で、情報の量を「ビット」ではかる方法と、雑音（ノイズ）のある通信路でどこまで正確に速く送れるかの限界を示し、「情報理論の父」と呼ばれる。21歳のときの修士論文では、デジタル回路の設計のもとをつくった。ジャグリングや一輪車が好きで、おもしろい機械をたくさんつくった。' },
   { id: 'compress', set: 'father', name: 'データ圧縮', en: 'Data compression', kind: 'item', rar: 2, text: 'この番、自分のワザに必要な無色エネルギーを1個少なくする（この番に何枚使っても1個まで）。', desc: '情報を、中身を変えずに、より少ないビットで表すこと。よく出る記号に短い符号を、まれな記号に長い符号をわりあてると短くできる（ハフマン符号など）。シャノンは、どこまで短くできるかの限界が「エントロピー（情報量）」で決まることを示した。ZIPやPNGなどで使われている。' },
+  { id: 'ada', set: 'pioneer', leg: true, name: 'エイダ・ラブレス', en: 'Ada Lovelace', kind: 'sup', rar: 4, text: '自分の山札から、コマンドを2枚まで選んで手札に加える（「エイダ・ラブレス」はのぞく）。そのあと山札を切る。', desc: 'イギリスの数学者（1815〜1852年）。チャールズ・バベッジが考えた「解析機関」を紹介する論文を英語に訳し、もとの論文の3倍ほどの長さの注釈（ノート）をつけた。その中で、ベルヌーイ数を計算する手順を書き、機械が数だけでなく音楽のような記号もあつかえるかもしれないと考えた。プログラミング言語「Ada」は、彼女の名前からつけられた。' },
+  { id: 'poetical', set: 'pioneer', name: '詩的科学', en: 'Poetical science', kind: 'item', rar: 2, text: 'この番、自分のワザに必要なエネルギーは、色に関係なく、どのタイプのエネルギーでも使える。', desc: 'エイダは、想像力と数学を組み合わせる自分の考え方を「詩的な科学（poetical science）」と呼んだ。計算の正しさだけでなく、まだない機械の使い道を思いえがく力を大切にした。' },
+  { id: 'lovelace', set: 'pioneer', name: 'ラブレスの反論', en: "Lady Lovelace's objection", kind: 'tool', rar: 2, text: 'これをつけたユニットが、AIタイプのユニットのワザで受けるダメージを-30する。', desc: 'エイダは「解析機関は、自分から何かを生み出すことはない。わたしたちが命令の仕方を知っていることなら何でもできる」と書いた。1950年にチューリングは、機械は考えられるかを論じた論文の中で、この考えを「ラブレス夫人の反論」として取り上げた。' },
+  { id: 'hopper', set: 'pioneer', leg: true, name: 'グレース・ホッパー', en: 'Grace Hopper', kind: 'sup', rar: 4, text: '自分の山札から、進化ユニット（v2・v3）を2枚まで選んで手札に加える。そのあと山札を切る。', desc: 'アメリカの計算機科学者で、海軍の軍人（1906〜1992年）。最初期の計算機「ハーバード・マークI」のプログラマーになり、1952年には、プログラムを自動で機械語に変換する初期のコンパイラ「A-0」をつくった。英語に近い言葉で書けるプログラミング言語を進め、COBOLのもとをつくった。最後は海軍少将になった。' },
+  { id: 'nanosec', set: 'pioneer', name: 'ナノ秒の針金', en: 'Nanosecond wire', kind: 'item', rar: 2, text: '自分のユニットについているエネルギーを1個、別の自分のユニットにつけかえる。', desc: 'ホッパーは講演で、長さ約30cmの針金を配った。光や電気の信号が1ナノ秒（10億分の1秒）に進むのが、ちょうどそのくらいだから。「遠くまでつなぐと、それだけ時間がかかる」ことを、目で見えるようにした。' },
+  { id: 'logbook', set: 'pioneer', name: '作業日誌', en: 'Logbook', kind: 'tool', rar: 2, text: 'これをつけたユニットが特殊状態になるとき、かわりにならない。そのあと、このどうぐをトラッシュする。', desc: 'コンピュータの作業や、起きたトラブルを書きとめておく記録（ログ）。いつ何が起きたかを残しておくと、原因を見つけて直しやすくなる。ハーバード・マークIIの作業日誌には、本物のバグ（蛾）がテープで貼られている。' },
   { id: 'ultimate', set: 'father', name: '究極の機械', en: 'Ultimate machine', kind: 'tool', rar: 3, text: 'これをつけたユニットがバトル場で相手のワザのダメージを受けたとき、ワザを使ったユニットをフリーズにする。そのあと、このどうぐをトラッシュする。', desc: 'スイッチが1つだけついた箱。スイッチを入れると、ふたが開いて中から手が出てきて、スイッチを切ってまたひっこむ。それしかしない機械。人工知能の研究者マービン・ミンスキーのアイデアを、シャノンが1950年代につくった。' },
 ];
 
@@ -893,8 +975,8 @@ const PRESETS = [
   },
   {
     id: 'p_base', name: 'プログラミング基礎', energy: ['algo', 'data'], key: ['turing', 'recursion'],
-    blurb: '無色のユニットはどのエネルギーでも動く。チューリングマシンexは相手のワザをコピー。',
-    cards: { variable: 1, loop: 2, func: 2, recursion: 2, lambda: 1, turing: 2, pair: 2, import: 2, grep: 1, hackathon: 1, debug: 1, ram: 1, honeypot: 1, optimize: 1, },
+    blurb: '無色のユニットはどのエネルギーでも動く。ループは二重ループに進化し、チューリングマシンexは相手のワザをコピー。',
+    cards: { nestloop: 1, loop: 2, func: 2, recursion: 2, lambda: 1, turing: 2, pair: 2, import: 2, grep: 1, hackathon: 1, debug: 1, ram: 1, honeypot: 1, optimize: 1, },
   },
   {
     id: 'p_graph', name: 'グラフ探索隊', energy: ['algo'], key: ['astar', 'greedy'],
@@ -909,7 +991,7 @@ const PRESETS = [
   {
     id: 'p_quantum', name: '量子とAI', energy: ['hw', 'ai'], key: ['quantum', 'diffusion'],
     blurb: '量子コンピュータexの重ね合わせと、回復する拡散モデルex。進化のいらない速攻デッキ。',
-    cards: { quantum: 2, diffusion: 2, knn: 2, mainmem: 1, cache: 1, vacuum: 2, pair: 2, import: 2, opensource: 1, hackathon: 1, optimize: 1, turtest: 2, search: 1 },
+    cards: { quantum: 2, diffusion: 2, knn: 2, mainmem: 1, cache: 1, vacuum: 2, pair: 2, import: 2, opensource: 1, hackathon: 1, optimize: 1, turtest: 2, nanosec: 1 },
   },
   {
     id: 'p_turing', name: '暗号解読班', energy: ['hw', 'sec'], key: ['ace', 'enigma'],
@@ -927,6 +1009,16 @@ const PRESETS = [
     cards: { bit: 2, parity: 2, hamming: 2, ldpc: 2, relay: 1, shannon: 1, compress: 2, ultimate: 1, pair: 2, import: 2, grep: 1, update: 1, debug: 1 },
   },
   {
+    id: 'p_ada', name: 'エイダのノート', energy: ['algo', 'ai'], key: ['noteg', 'nestloop'],
+    blurb: 'ノートGの「ベルヌーイ数」は使うたびに強くなる。ループを二重ループに進化させ、自動作曲はタイプをそろえずに場をにぎやかに。詩的科学で、どの色のエネルギーでもワザが使える。',
+    cards: { noteg: 2, loop: 2, nestloop: 2, compose: 2, func: 1, recursion: 1, ada: 1, poetical: 2, lovelace: 1, pair: 2, import: 2, grep: 1, debug: 1 },
+  },
+  {
+    id: 'p_hopper', name: 'COBOL開発チーム', energy: ['data', 'hw'], key: ['cobol', 'mark1'],
+    blurb: '機械語をFLOW-MATIC、COBOLへと進化させる。COBOLは1回だけHP10で持ちこたえる。ハーバード・マークIは大きな一撃のあと1回休み。ホッパーで進化カードを2枚まとめて探す。',
+    cards: { machinecode: 2, flowmatic: 2, cobol: 2, mark1: 1, moth: 1, compiler: 1, hopper: 1, nanosec: 2, logbook: 1, pair: 2, import: 2, grep: 1, update: 1, debug: 1 },
+  },
+  {
     id: 'p_compile', name: 'コンパイラ工房', energy: ['net'], key: ['compiler', 'lambda'],
     blurb: 'コンパイラexのビルドでベンチを育て、低コストのラムダ式で攻める。無色だけのデッキ。',
     cards: { hello: 2, ifstmt: 2, func: 2, lambda: 2, compiler: 2, pair: 2, opensource: 1, import: 2, grep: 1, hackathon: 1, debug: 1, ram: 1, alttab: 1 },
@@ -937,7 +1029,8 @@ const PRESETS = [
 const RARITY_MARK = { 1: '◆', 2: '◆◆', 3: '◆◆◆', 4: '◆◆◆◆' };
 function rarityOf(d) { return d.kind === 'mon' ? (d.ex ? 4 : d.stage) : (d.rar || 1); }
 const SERIES = [
-  { id: 'father', name: '「コンピュータの父」シリーズ', isNew: true, blurb: 'コンピュータ科学の土台をきずいた3人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
+  { id: 'pioneer', name: '「プログラミングの先駆者」シリーズ', short: 'プログラミングの先駆者', isNew: true, blurb: '「プログラムを書く」ことを切りひらいた人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
+  { id: 'father', name: '「コンピュータの父」シリーズ', short: 'コンピュータの父', blurb: 'コンピュータ科学の土台をきずいた3人の名前がついたパック。シリーズのカードは、このパックからしか出ない。' },
   { id: 'base', name: 'スタンダード', blurb: 'ふつうのカードとコマンドが入ったパック。' },
 ];
 const PACKS = [
@@ -952,9 +1045,19 @@ const PACKS = [
     ids: ['neumann', 'punch', 'diffeng', 'analytic', 'stored', 'eniac', 'montecarlo', 'minimax', 'gametheory', 'bubble', 'merge', 'mainmem'],
   },
   {
-    id: 'shannon', series: 'father', name: 'クロード・シャノン', en: 'CLAUDE SHANNON', cover: 'shannon', feature: 'shannon', c1: '#1f7a8c', c2: '#8a2f3c', isNew: true,
+    id: 'shannon', series: 'father', name: 'クロード・シャノン', en: 'CLAUDE SHANNON', cover: 'shannon', feature: 'shannon', c1: '#1f7a8c', c2: '#8a2f3c',
     tagline: '情報理論・デジタル回路・誤り訂正',
     ids: ['shannon', 'bit', 'parity', 'hamming', 'ldpc', 'relay', 'theseus', 'otp', 'compress', 'ultimate', 'transistor', 'gate'],
+  },
+  {
+    id: 'ada', series: 'pioneer', name: 'エイダ・ラブレス', en: 'ADA LOVELACE', cover: 'ada', feature: 'ada', c1: '#6b3fa0', c2: '#b03a5b', isNew: true,
+    tagline: '世界初のプログラム・ループ・詩的科学',
+    ids: ['ada', 'noteg', 'nestloop', 'jacquard', 'compose', 'adalang', 'poetical', 'lovelace', 'loop', 'variable', 'func'],
+  },
+  {
+    id: 'hopper', series: 'pioneer', name: 'グレース・ホッパー', en: 'GRACE HOPPER', cover: 'hopper', feature: 'hopper', c1: '#1f3a68', c2: '#a8742a', isNew: true,
+    tagline: 'コンパイラ・COBOL・バグの語源',
+    ids: ['hopper', 'machinecode', 'flowmatic', 'cobol', 'mark1', 'moth', 'nanosec', 'logbook', 'compiler', 'hello', 'debug'],
   },
   { id: 'logic', series: 'base', name: '論理と構造', en: 'LOGIC & STRUCTURE', types: ['algo', 'data', 'none'], cover: 'astar', c1: '#2f8a4f', c2: '#2c5fae' },
   { id: 'world', series: 'base', name: 'つながる世界', en: 'CONNECTED WORLD', types: ['net', 'sec'], cover: 'ransom', c1: '#b07f06', c2: '#c0392b' },
