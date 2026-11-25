@@ -16,8 +16,120 @@ const ICE_SERVERS = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudfl
 const TRANSPORT = () => (window.claude && typeof window.claude.use === 'function' ? 'claude' : 'p2p');
 const hasRTC = () => typeof RTCPeerConnection === 'function';
 
-/* 接続情報（SDP）を、送りやすい1行の文字列にする */
+/* ---------- コード（接続情報を、送りやすい1行の文字列にする） ----------
+   CS2：SDP から、つなぐのに本当に要るものだけを取り出してバイト列につめる（100文字くらい）。
+        ICE のユーザー名とパスワード・証明書の指紋（sha-256）・役割（setup）・接続先の候補（UDPのみ）。
+        受け取った側は、決まった形の SDP を組み立てなおす（データチャンネルだけの接続なので、ほかの行はいらない）。
+   CS1Z / CS1：SDP をまるごと（圧縮して）入れる古い形。CS2 にできない SDP のときに使う。読むのは今も両方できる。 */
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const toB64url = bytes => { let bin = ''; bytes.forEach(b => { bin += String.fromCharCode(b); }); return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const fromB64url = t => { const b = t.replace(/-/g, '+').replace(/_/g, '/'); return Uint8Array.from(atob(b + '='.repeat((4 - (b.length % 4)) % 4)), c => c.charCodeAt(0)); };
+const SETUPS = ['actpass', 'active', 'passive'];
+const CTYPES = ['host', 'srflx', 'prflx', 'relay'];
+const MDNS = /^([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{12})\.local$/i;
+const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+function ip6Bytes(a) {
+  if (!/^[0-9a-f:]+$/i.test(a) || a.split('::').length > 2) return null;
+  const [l, r] = a.includes('::') ? a.split('::') : [a, null];
+  const L = l ? l.split(':') : [], R = r ? r.split(':') : [];
+  const fill = r === null ? 0 : 8 - L.length - R.length;
+  if (fill < 0 || (r === null && L.length !== 8)) return null;
+  const parts = L.concat(Array(fill).fill('0'), R);
+  if (parts.some(x => !/^[0-9a-f]{1,4}$/i.test(x))) return null;
+  return parts.flatMap(x => { const v = parseInt(x, 16); return [v >> 8, v & 255]; });
+}
+const ip6Text = b => Array.from({ length: 8 }, (_, i) => ((b[i * 2] << 8) | b[i * 2 + 1]).toString(16)).join(':');
+const hex = b => Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+
+/* ICE のユーザー名・パスワード（使える文字は B64 の64文字）を6ビットずつつめる */
+function pushIce(out, t) {
+  if (!t || t.length > 255 || [...t].some(ch => !B64.includes(ch))) return false;
+  out.push(t.length);
+  let acc = 0, n = 0;
+  for (const ch of t) { acc = (acc << 6) | B64.indexOf(ch); n += 6; while (n >= 8) { n -= 8; out.push((acc >> n) & 255); } }
+  if (n) out.push((acc << (8 - n)) & 255);
+  return true;
+}
+function readIce(r) {
+  const len = r.u8();
+  let t = '', acc = 0, n = 0;
+  while (t.length < len) { if (n < 6) { acc = ((acc & 0xffff) << 8) | r.u8(); n += 8; } n -= 6; t += B64[(acc >> n) & 63]; }
+  return t;
+}
+
+/* SDP → バイト列。CS2 にできないときは null */
+function compactSDP(desc) {
+  const sdp = desc.sdp || '';
+  const get = k => { const m = sdp.match(new RegExp('^a=' + k + ':(.+?)\\s*$', 'm')); return m ? m[1] : ''; };
+  const ms = sdp.match(/^m=/gm) || [];
+  if (ms.length !== 1 || !/^m=application \d+ UDP\/DTLS\/SCTP webrtc-datachannel/m.test(sdp)) return null;
+  if (get('mid') !== '0' || !['', '5000'].includes(get('sctp-port'))) return null;
+  const fp = get('fingerprint').match(/^sha-256 ((?:[0-9A-F]{2}:){31}[0-9A-F]{2})$/i);
+  const setup = SETUPS.indexOf(get('setup'));
+  if (!fp || setup < 0) return null;
+  const out = [(desc.type === 'offer' ? 0 : 1) | (setup << 1)];
+  if (!pushIce(out, get('ice-ufrag')) || !pushIce(out, get('ice-pwd'))) return null;
+  fp[1].split(':').forEach(x => out.push(parseInt(x, 16)));
+  // 接続先の候補：UDP だけ。同じものは1つに。多すぎるときは優先度の高いものから8つ
+  const seen = new Set(), cands = [];
+  for (const line of sdp.match(/^a=candidate:.+$/gm) || []) {
+    const f = line.trim().split(/\s+/);
+    const typ = CTYPES.indexOf(f[f.indexOf('typ') + 1]);
+    if (f[2].toLowerCase() !== 'udp' || f[1] !== '1' || typ < 0) continue;
+    const key = f[4] + ' ' + f[5] + ' ' + typ;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cands.push({ pri: +f[3], addr: f[4], port: +f[5], typ });
+  }
+  cands.sort((a, b) => b.pri - a.pri);
+  const list = cands.slice(0, 8);
+  out.push(list.length);
+  for (const c of list) {
+    let kind, ab, m;
+    if ((m = c.addr.match(IPV4)) && m.slice(1).every(x => +x < 256)) { kind = 0; ab = m.slice(1).map(Number); }
+    else if ((m = c.addr.match(MDNS))) { kind = 2; ab = m.slice(1).join('').match(/../g).map(x => parseInt(x, 16)); }
+    else if ((ab = ip6Bytes(c.addr))) kind = 1;
+    else { if (c.addr.length > 255) return null; kind = 3; ab = [c.addr.length, ...new TextEncoder().encode(c.addr)]; }
+    out.push(c.typ | (kind << 2), ...ab, c.port >> 8, c.port & 255);
+  }
+  return new Uint8Array(out);
+}
+/* バイト列 → SDP */
+function expandSDP(bytes) {
+  let i = 0;
+  const r = { u8: () => { if (i >= bytes.length) throw new Error('short'); return bytes[i++]; } };
+  const take = n => Array.from({ length: n }, () => r.u8());
+  const h = r.u8();
+  const type = h & 1 ? 'answer' : 'offer', setup = SETUPS[(h >> 1) & 3];
+  if (!setup) throw new Error('setup');
+  const ufrag = readIce(r), pwd = readIce(r);
+  const fp = take(32).map(x => x.toString(16).padStart(2, '0').toUpperCase()).join(':');
+  const n = r.u8();
+  const pref = [126, 100, 110, 0];
+  const cl = [];
+  for (let k = 0; k < n; k++) {
+    const f = r.u8(), typ = f & 3, kind = (f >> 2) & 3;
+    let addr;
+    if (kind === 0) addr = take(4).join('.');
+    else if (kind === 1) addr = ip6Text(take(16));
+    else if (kind === 2) { const x = hex(take(16)); addr = `${x.slice(0, 8)}-${x.slice(8, 12)}-${x.slice(12, 16)}-${x.slice(16, 20)}-${x.slice(20)}.local`; }
+    else addr = new TextDecoder().decode(new Uint8Array(take(r.u8())));
+    const port = (r.u8() << 8) | r.u8();
+    const pri = pref[typ] * 2 ** 24 + (65535 - k) * 256 + 255;
+    cl.push(`a=candidate:${k + 1} 1 udp ${pri} ${addr} ${port} typ ${CTYPES[typ]}${typ ? ' raddr 0.0.0.0 rport 0' : ''}`);
+  }
+  if (i !== bytes.length) throw new Error('long');
+  const sdp = ['v=0', 'o=- 1 2 IN IP4 127.0.0.1', 's=-', 't=0 0', 'a=group:BUNDLE 0', 'a=msid-semantic: WMS',
+    'm=application 9 UDP/DTLS/SCTP webrtc-datachannel', 'c=IN IP4 0.0.0.0',
+    `a=ice-ufrag:${ufrag}`, `a=ice-pwd:${pwd}`, 'a=ice-options:trickle', `a=fingerprint:sha-256 ${fp}`,
+    `a=setup:${setup}`, 'a=mid:0', 'a=sctp-port:5000', 'a=max-message-size:262144', ...cl, 'a=end-of-candidates'].join('\r\n') + '\r\n';
+  return { t: type === 'offer' ? 'o' : 'a', s: sdp };
+}
+
 async function packCode(desc) {
+  const c = compactSDP(desc);
+  if (c) return 'CS2.' + toB64url(c);
+  // 古い形（SDP をまるごと）
   let bytes = new TextEncoder().encode(JSON.stringify({ t: desc.type === 'offer' ? 'o' : 'a', s: desc.sdp }));
   let tag = 'CS1';
   if (typeof CompressionStream === 'function') {
@@ -25,22 +137,22 @@ async function packCode(desc) {
     bytes = new Uint8Array(await new Response(zs).arrayBuffer());
     tag = 'CS1Z';
   }
-  let bin = '';
-  bytes.forEach(b => { bin += String.fromCharCode(b); });
-  return tag + '.' + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return tag + '.' + toB64url(bytes);
 }
 async function unpackCode(code, want) {
-  const m = String(code || '').replace(/\s+/g, '').match(/^(CS1Z?)\.([A-Za-z0-9_-]+)$/);
+  const m = String(code || '').replace(/\s+/g, '').match(/^(CS2|CS1Z?)\.([A-Za-z0-9_-]+)$/);
   if (!m) throw new Error('コードの形がちがいます。届いたコードを、そのまま全部貼ってください。');
   let o;
   try {
-    const b64 = m[2].replace(/-/g, '+').replace(/_/g, '/');
-    let bytes = Uint8Array.from(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4)), c => c.charCodeAt(0));
-    if (m[1] === 'CS1Z') {
-      const zs = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-      bytes = new Uint8Array(await new Response(zs).arrayBuffer());
+    let bytes = fromB64url(m[2]);
+    if (m[1] === 'CS2') o = expandSDP(bytes);
+    else {
+      if (m[1] === 'CS1Z') {
+        const zs = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        bytes = new Uint8Array(await new Response(zs).arrayBuffer());
+      }
+      o = JSON.parse(new TextDecoder().decode(bytes));
     }
-    o = JSON.parse(new TextDecoder().decode(bytes));
   } catch (e) {
     throw new Error('コードを読めませんでした。途中で切れていないか確かめてください。');
   }
@@ -264,7 +376,7 @@ function p2pPanelHTML() {
   if (!hasRTC()) return head + '<p class="msg warn">このブラウザでは、オンライン対戦を使えません。</p>';
   const err = P2P.err ? `<p class="msg err" role="alert">${esc(P2P.err)}</p>` : '';
   const codeBox = (label, note) => `<div class="p2p-code"><p class="silk">${label}</p>
-      <textarea class="code-out" readonly rows="3" aria-label="${label}">${esc(P2P.code)}</textarea>
+      <textarea class="code-out" readonly rows="2" aria-label="${label}">${esc(P2P.code)}</textarea>
       <div class="p2p-btns"><button type="button" class="btn gold" data-net="copy">コピー</button>${navigator.share ? '<button type="button" class="btn" data-net="share">送る</button>' : ''}</div>
       <p class="note">${note}</p></div>`;
   switch (P2P.stage) {

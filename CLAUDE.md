@@ -143,7 +143,7 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 - 手の形：`{t, s:通し番号, ...}`。`t` は `bench evolve attach trainer retreat ability attack`（盤面の操作）、`choice`（`pick` で選んだ番号 `i`）、`setup`（最初の配置 `a`, `b`）、`end`（番の終わり。盤面のしるし `h = stateHash(g)` つき）、`surrender`。
 - 自分の手も相手の手も `applyMove(g, p, m)` で盤面に反映する。`end` で受け取った `h` が自分の `stateHash(g)` とちがったら `netDesync()`（引き分けで終わり、チケットなし）。
 - Claude の中（`NET`、ui.js）：部屋は db の `pvp/<あいことば>`、手は `pvpm/<gid>_h` と `pvpm/<gid>_g<token>` に書き、room（チャンネル `'pvp-'+gid`）の `mv` / `need` で知らせる。room がなくても db だけで遊べる。
-- サイト版（src/p2p.js）：`RTCPeerConnection`（STUN は Google と Cloudflare、TURN はなし）。データチャンネルは `{negotiated:true, id:0, ordered:true}`。SDP は deflate-raw → base64url にして `CS1Z.` をつけたコード（560文字ほど）。メッセージは `again`（もう一度・デッキ）`start`（round, seed, gid, decks）`mv` `hb`（ハートビート）`need`（落ちた手の再送のお願い）`bye`。1.5秒ごとに `again` の再送とハートビート。
+- サイト版（src/p2p.js）：`RTCPeerConnection`（STUN は Google と Cloudflare、TURN はなし）。データチャンネルは `{negotiated:true, id:0, ordered:true}`。コードは `CS2.` ＋ base64url（`packCode` / `unpackCode`）。SDP から ICE のユーザー名・パスワード、証明書の指紋（sha-256）、setup、UDP の候補（最大8つ）だけをバイト列につめ、受け取った側が決まった形の SDP を組み立てなおす（`compactSDP` / `expandSDP`）。候補が1つで90文字、3つで140文字ほど。この形にできない SDP（mid が 0 でないなど）は、古い形（SDP をまるごと deflate-raw した `CS1Z.`、600文字ほど）で出す。古い形も読める。メッセージは `again`（もう一度・デッキ）`start`（round, seed, gid, decks）`mv` `hb`（ハートビート）`need`（落ちた手の再送のお願い）`bye`。1.5秒ごとに `again` の再送とハートビート。
 
 ### 画面（src/ui.js）
 
