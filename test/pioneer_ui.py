@@ -29,7 +29,7 @@ def wait_my_turn(page, limit=90):
     return False
 def attack_sheet(page):
     """バトル場のユニットのワザの一覧を開いて、[(ワザの文字, 使えるか, 下の注意書き)] を返す"""
-    click(page, '#actbar [data-act="attackmenu"]')
+    click(page, '#board .f-me .aslot .mslot')
     page.wait_for_selector('#sheet .btn.atk', timeout=3000)
     return page.evaluate("""[...document.querySelectorAll('#sheet .btn.atk')].map(b => [b.querySelector('.ab').innerText.replace(/\\s+/g, ' '), !b.disabled, (b.querySelector('.why') || {}).innerText || ''])""")
 def close_sheet(page):
@@ -116,8 +116,8 @@ with sync_playwright() as p:
     [pc] = give(page, 0, ['poetical'])
     page.evaluate('renderBattle()')
     page.click(f'#hand .hbtn[data-uid="{pc}"]', force=True)
-    page.wait_for_selector('#sheet .btn', timeout=3000)
-    page.click('#sheet .sheet-btns .btn.gold', force=True); page.wait_for_timeout(400)
+    page.wait_for_selector('#handact [data-act="play"]', timeout=3000)
+    page.click('#handact [data-act="play"]', force=True); page.wait_for_timeout(400)
     rows = attack_sheet(page)
     page.screenshot(path=str(OUT / 'p_poetical.png'))
     check(rows[1][1] and '詩的科学' in rows[1][2], f'詩的科学のあとは使える {rows[1]}')
@@ -135,8 +135,8 @@ with sync_playwright() as p:
     [ns] = give(page, 0, ['nanosec'])
     page.evaluate('renderBattle()')
     page.click(f'#hand .hbtn[data-uid="{ns}"]', force=True)
-    page.wait_for_selector('#sheet .btn', timeout=3000)
-    page.click('#sheet .sheet-btns .btn.gold', force=True)
+    page.wait_for_selector('#handact [data-act="play"]', timeout=3000)
+    page.click('#handact [data-act="play"]', force=True)
     picked = []
     for want in ['ループ', 'ノートG']:
         page.wait_for_selector('#choice:not([hidden]) .copt', timeout=4000)

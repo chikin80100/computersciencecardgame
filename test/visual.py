@@ -46,7 +46,7 @@ with sync_playwright() as p:
                         page.screenshot(path=str(OUT / 'v_target.png'))
                         page.query_selector('.mslot.tgt').click(force=True)
                     page.wait_for_timeout(500)
-                page.click('#actbar [data-act="attackmenu"]', force=True)
+                page.click('#board .f-me .aslot .mslot', force=True)
                 page.wait_for_timeout(400)
                 page.screenshot(path=str(OUT / 'v_sheet.png'))
                 page.click('#sheet [data-i="close"]', force=True)

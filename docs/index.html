@@ -227,7 +227,7 @@ button:focus-visible, input:focus-visible, .zone:focus-visible { outline: 2px so
 .zone.tap { border-color: var(--gold); cursor: pointer; animation: zonePulse 1.3s ease-in-out infinite; }
 @keyframes zonePulse { 50% { box-shadow: 0 0 0 3px rgba(217, 173, 85, .3), 0 0 16px rgba(217, 173, 85, .5); } }
 .zone.used .z-cur { opacity: .35; }
-.z-info { display: flex; flex-direction: column; gap: 2px; font-size: 11px; text-align: left; }
+.z-info { display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; text-align: left; }
 .z-next { display: flex; align-items: center; gap: 4px; }
 .mid { display: flex; align-items: center; gap: 8px; padding: 4px 2px; border-block: 1px solid rgba(230, 238, 226, .22); font-size: 12px; min-height: 36px; }
 .turn { font-family: var(--display); font-size: 16px; color: var(--gold); }
@@ -236,7 +236,58 @@ button:focus-visible, input:focus-visible, .zone:focus-visible { outline: 2px so
 .tk { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .85; }
 .tk.wrap { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; opacity: 1; line-height: 1.4; }
 .slot-empty { width: calc(var(--h) * .74); height: var(--h); border: 1.5px dashed rgba(230, 238, 226, .26); border-radius: 3px; display: grid; place-items: center; }
-.slot-empty span { font-size: 9px; letter-spacing: .14em; color: rgba(230, 238, 226, .42); }
+.slot-empty span { font-size: 11px; color: rgba(230, 238, 226, .5); }
+
+/* 上のバー（何ターン目・だれの番・点数） */
+#btop { flex: none; display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 4px 12px; background: rgba(4, 20, 14, .72); border-bottom: 1px solid rgba(230, 238, 226, .15); }
+#btop .turn { font-size: 18px; }
+.whose { font-size: 14px; white-space: nowrap; }
+.whose.mine { color: var(--gold); }
+.score { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: rgba(0, 0, 0, .35); border: 1px solid rgba(230, 238, 226, .2); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.score .leds { gap: 3px; }
+.score .led { width: 10px; height: 10px; }
+.sc-num { font-family: var(--display); font-weight: 400; font-size: 18px; line-height: 1; }
+/* 名前と山札などの数 */
+.prow { display: flex; align-items: center; gap: 8px; min-height: 24px; font-size: 12px; color: #c4d0c8; }
+.prow .who { font-weight: 700; font-size: 13px; color: var(--silk); display: inline-flex; align-items: center; gap: 6px; }
+.prow .who::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #082219; box-shadow: inset 0 0 0 1px rgba(230, 238, 226, .3); }
+.prow.cur .who::before { background: #5be38f; box-shadow: 0 0 8px #5be38f; }
+.prow .dname { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.piles { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+.piles b { color: var(--silk); font-variant-numeric: tabular-nums; font-size: 13px; }
+.piles .pl { gap: 4px; color: inherit; text-decoration: underline dotted rgba(230, 238, 226, .5); text-underline-offset: 3px; min-height: 24px; }
+/* 自分の場：左にエネルギー、まん中にバトル場、右にワザ */
+.arow.me { grid-template-columns: 86px auto minmax(0, 1fr); }
+.zone.v { justify-self: stretch; flex-direction: column; justify-content: center; gap: 2px; padding: 6px 4px; text-align: center; line-height: 1.25; }
+.z-lab { font-size: 11px; color: #c4d0c8; }
+.z-note { font-size: 11.5px; font-weight: 700; }
+.z-note.go { color: var(--gold); }
+.zone.v .z-next { justify-content: center; font-size: 11.5px; }
+.atkp { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.atkbtn { display: flex; flex-direction: column; gap: 1px; min-height: 50px; padding: 5px 8px; border: 0; border-radius: 6px; background: var(--gold); color: #2a1d05; text-align: left; font: inherit; cursor: pointer; }
+.atkbtn:disabled { background: rgba(0, 0, 0, .32); color: rgba(230, 238, 226, .78); box-shadow: inset 0 0 0 1.5px rgba(230, 238, 226, .28); cursor: not-allowed; }
+.ab-top { display: flex; align-items: center; gap: 2px; min-height: 18px; }
+.ab-top .cost { display: inline-flex; gap: 1px; }
+.ab-top .dmg { margin-left: auto; font-family: var(--display); font-weight: 400; font-size: 17px; line-height: 1; }
+.ab-name { font-weight: 700; font-size: 12.5px; line-height: 1.25; }
+.ab-why { font-size: 10.5px; line-height: 1.25; color: #ffb9ae; }
+.retbtn { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 2px 8px; border-radius: 6px; border: 1.5px solid rgba(230, 238, 226, .6); background: transparent; color: var(--silk); font: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+.retbtn:disabled { opacity: .45; cursor: not-allowed; }
+.retbtn .cost { display: inline-flex; gap: 1px; font-weight: 400; font-size: 11px; }
+/* 手札のカードを選んだときの吹き出し */
+#handwrap { position: relative; flex: none; }
+#handact { position: absolute; left: 10px; right: 10px; bottom: calc(100% + 2px); z-index: 20; }
+.ha-in { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "art txt x" "btns btns btns"; align-items: center; gap: 6px 10px; padding: 8px 10px 10px; border-radius: 8px; background: rgba(4, 20, 14, .96); border: 1.5px solid var(--gold); box-shadow: 0 6px 18px rgba(0, 0, 0, .55); }
+.ha-art { grid-area: art; width: 40px; height: 40px; display: grid; place-items: center; background: var(--card); border-radius: 4px; }
+.ha-art img { width: 32px; height: 32px; }
+.ha-txt { grid-area: txt; display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
+.ha-txt small { font-size: 11.5px; color: #c4d0c8; }
+.ha-txt .ha-why { color: #ffb9ae; }
+.ha-btns { grid-area: btns; display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+.ha-x { grid-area: x; min-width: 40px; min-height: 40px; font-size: 16px; }
+#hand .hbtn.sel { transform: translateY(-14px); filter: drop-shadow(0 0 3px var(--gold)) drop-shadow(0 0 10px rgba(217, 173, 85, .95)); }
+.mslot.cand { outline: 2px dashed var(--gold); outline-offset: 4px; }
+.cand-tag { position: absolute; left: 50%; top: -12px; transform: translateX(-50%); z-index: 5; white-space: nowrap; padding: 0 6px; border-radius: 3px; background: var(--gold); color: #2a1d05; font-size: 11px; font-weight: 700; line-height: 1.5; }
 
 /* 場のユニット */
 .mslot { position: relative; display: block; flex: none; width: calc(var(--h) * .74); height: var(--h); padding: 0; border: 0; background: none; color: inherit; cursor: pointer; transition: transform .2s, opacity .2s; }
@@ -385,12 +436,35 @@ button:focus-visible, input:focus-visible, .zone:focus-visible { outline: 2px so
 .res-in .btn { color: var(--ink); border-color: rgba(42, 34, 22, .5); }
 .res-in .btn.gold { color: #2a1d05; border-color: var(--gold); }
 
+/* ---------- 広い画面（iPad の横向き・パソコン）の対戦：左にログ、カードを大きく ---------- */
+#blog { display: none; }
+@media (min-width: 920px) and (min-height: 600px) {
+  #scr-battle { max-width: 1240px; display: grid; grid-template-columns: 280px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; column-gap: 20px; padding: 0 20px;
+    --h-act: clamp(112px, 16vh, 176px); --h-bench: clamp(86px, 11.5vh, 132px); --h-hand: clamp(92px, 12vh, 138px); }
+  #btop { grid-column: 1 / -1; margin: 0 -20px; padding: 4px 24px; }
+  #blog { grid-column: 1; grid-row: 2 / 5; display: flex; flex-direction: column; min-height: 0; margin: 14px 0; padding: 12px 14px; border-radius: 8px; background: rgba(4, 20, 14, .72); border: 1px solid rgba(230, 238, 226, .18); }
+  #board, #handwrap, #actbar { grid-column: 2; }
+  #board { padding-inline: 4px; }
+  .bl-h { margin: 0 0 8px; font-family: var(--display); font-weight: 400; font-size: 18px; color: var(--card); }
+  .bl-list { flex: 1; min-height: 0; overflow-y: auto; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; line-height: 1.5; color: #c4d0c8; scrollbar-width: thin; }
+  .bl-list li { padding-left: 10px; border-left: 2px solid rgba(230, 238, 226, .15); }
+  .bl-list li.last { color: var(--silk); border-left-color: var(--gold); }
+  .bl-list .lg-turn { margin-top: 6px; padding-left: 0; border: 0; font-family: var(--display); font-size: 13px; color: var(--gold); }
+  .mid [data-act="log"] { display: none; }
+  .arow.me { grid-template-columns: 120px auto minmax(0, 300px); justify-content: center; }
+  .arow { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  #handact { left: 0; right: auto; width: min(560px, 100%); }
+  #hand { padding-inline: 4px; }
+  .atkbtn { min-height: 58px; }
+  .ab-name { font-size: 14px; }
+}
 @media (max-width: 760px) {
   .ed-grid { grid-template-columns: 1fr; }
   .ed-side { position: static; max-height: none; }
 }
 @media (max-width: 380px) {
   .arow { gap: 4px; }
+  .arow.me { grid-template-columns: 76px auto minmax(0, 1fr); }
   .zone { padding: 4px 6px 4px 4px; gap: 5px; }
   .e.xl { --s: 32px; }
   .bench { gap: 6px; }
@@ -593,8 +667,10 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
   <section id="scr-dex" class="screen" hidden></section>
   <section id="scr-rules" class="screen" hidden></section>
   <section id="scr-battle" class="screen" hidden aria-label="対戦">
+    <div id="btop"></div>
+    <aside id="blog" aria-label="対戦ログ"></aside>
     <div id="board"></div>
-    <div id="hand" aria-label="手札"></div>
+    <div id="handwrap"><div id="handact" hidden></div><div id="hand" aria-label="手札"></div></div>
     <div id="actbar"></div>
   </section>
 </div>
@@ -5421,6 +5497,7 @@ const UI = {
   screen: 'title', g: null, mode: 'idle', targets: null, onTarget: null, targetLabel: '',
   busy: false, fast: false, turnResolve: null, setupResolve: null, chooseResolve: null, chooseOptions: null,
   deck: { me: 'p_algo', opp: 'random', p2: 'p_data' }, edit: null, me: 0, vs: 'cpu', vsPick: 'cpu', waitNote: '', dexFilter: 'all', poolFilter: 'all', lastLog: '', logs: [],
+  handSel: null, handCand: null, // 対戦中に選んでいる手札のカード（uid）と、それを使えるユニット
 };
 
 /* ---------- セーブデータ（アカウントに保存。使えないときはこのブラウザ） ---------- */
@@ -5633,7 +5710,10 @@ function monHTML(m, opts) {
   if (UI.mode === 'target') cls.push(UI.targets && UI.targets.has(m.uid) ? 'tgt' : 'dim');
   if (opts.hint) cls.push('hint');
   if (opts.setup) cls.push('setup');
-  return `<button type="button" class="${cls.join(' ')}" data-act="mon" data-uid="${m.uid}" aria-label="${esc(d.name)} 残りHP${left}">${inner}</button>`;
+  // 手札のカードを選んでいるとき、使える先のユニットに「ここに進化」などを出す
+  const cand = UI.handCand && UI.handCand.uids.has(m.uid) ? UI.handCand.tag : '';
+  if (cand) cls.push('cand');
+  return `<button type="button" class="${cls.join(' ')}" data-act="mon" data-uid="${m.uid}" aria-label="${esc(d.name)} 残りHP${left}${cand ? '（' + cand + '）' : ''}">${inner}${cand ? `<span class="cand-tag">${cand}</span>` : ''}</button>`;
 }
 
 function handCardHTML(c) {
@@ -6535,42 +6615,100 @@ function ownerOf(m) { return UI.g.players.find(p => inPlay(p).includes(m)); }
 function emptySlot(label) { return `<span class="slot-empty"><span>${label}</span></span>`; }
 function benchHTML(p, mine) {
   const out = [];
-  for (let i = 0; i < BENCH_MAX; i++) out.push(p.bench[i] ? monHTML(p.bench[i], { setup: mine && UI.mode === 'setup' }) : emptySlot('BENCH ' + (i + 1)));
+  for (let i = 0; i < BENCH_MAX; i++) out.push(p.bench[i] ? monHTML(p.bench[i], { setup: mine && UI.mode === 'setup' }) : emptySlot('ベンチ'));
   return out.join('');
 }
-function pbarHTML(p) {
+/* 点数の短い呼び名（上のバーはせまいので、この端末での2人対戦は P1・P2） */
+function shortWho(p) { return UI.vs === 'local' ? `P${p.idx + 1}` : whoLabel(p); }
+function ledsHTML(p) { return `<span class="leds" aria-hidden="true">${[0, 1, 2].map(i => `<i class="led ${i < p.points ? 'on' : ''}"></i>`).join('')}</span>`; }
+/* 上のバー：何ターン目か・だれの番か・点数 */
+function topbarHTML(g) {
+  const me = g.players[UI.me], op = g.players[1 - UI.me];
+  let st;
+  if (UI.mode === 'setup') st = '準備';
+  else if (g.over) st = '対戦終了';
+  else if (g.turn === 0) st = '準備中';
+  else st = turnLabel(g.players[g.cur]);
+  const mine = !g.over && g.turn > 0 && g.cur === UI.me && UI.mode !== 'setup';
+  return `<span class="turn">T${String(g.turn).padStart(2, '0')}</span><b class="whose ${mine ? 'mine' : ''}">${esc(st)}</b>
+    <span class="score" role="img" aria-label="点数 ${esc(whoLabel(me))}${me.points}点、${esc(whoLabel(op))}${op.points}点"><span class="sc-who">${esc(shortWho(me))}</span>${ledsHTML(me)}<b class="sc-num">${me.points} - ${op.points}</b>${ledsHTML(op)}<span class="sc-who">${esc(shortWho(op))}</span></span>`;
+}
+/* 名前・デッキ・山札などの数（相手は手札の枚数も） */
+function prowHTML(p) {
   const g = UI.g;
+  const mine = p.idx === UI.me;
   const cur = g.cur === p.idx && !g.over && UI.mode !== 'setup' && g.turn > 0;
-  return `<div class="pbar ${p.idx !== UI.me ? 'opp' : 'me'} ${cur ? 'cur' : ''}">
+  return `<div class="prow ${mine ? 'me' : 'opp'} ${cur ? 'cur' : ''}">
     <span class="who">${esc(whoLabel(p))}</span><span class="dname">${esc(p.deckName)}</span>
-    <span class="pts"><span class="silk">PTS</span><span class="leds" role="img" aria-label="${p.points}ポイント">${[0, 1, 2].map(i => `<i class="led ${i < p.points ? 'on' : ''}"></i>`).join('')}</span></span>
+    <span class="piles"><span>山札 <b>${p.deck.length}</b></span>${mine ? '' : `<span>手札 <b>${p.hand.length}</b></span>`}<button type="button" class="pl trash" data-act="trash" data-p="${p.idx}">トラッシュ <b>${p.discard.length}</b></button></span>
   </div>`;
 }
-function pileHTML(p) {
-  return `<div class="pile">
-    <span class="pl"><span class="silk">DECK</span><b>${p.deck.length}</b></span>
-    ${p.idx !== UI.me ? `<span class="pl"><span class="silk">HAND</span><b>${p.hand.length}</b></span>` : ''}
-    <button type="button" class="pl trash" data-act="trash" data-p="${p.idx}"><span class="silk">TRASH</span><b>${p.discard.length}</b></button>
-  </div>`;
-}
+/* エネルギーゾーン。自分のは縦長で「タップしてつける」を出す */
 function zoneHTML(p, mine) {
   const g = UI.g;
   const can = mine && isMyTurn() && UI.mode === 'idle' && canAttachEnergy(g, p);
   const cur = p.energyCur ? eI(p.energyCur, 'xl') : '<i class="e xl empty"></i>';
-  const inner = `<span class="z-cur">${cur}</span><span class="z-info"><span class="silk">ENERGY</span><span class="z-next">次 ${p.energyNext ? eI(p.energyNext, 's') : '−'}</span></span>`;
+  const next = `<span class="z-next">次は ${p.energyNext ? eI(p.energyNext, 's') : '−'}</span>`;
+  if (!mine) return `<div class="zone"><span class="z-cur">${cur}</span><span class="z-info"><span class="z-lab">エネルギー</span>${next}</span></div>`;
+  const used = g.cur === UI.me && g.turn > 0 && UI.mode !== 'setup' && p.t.energyDone;
+  const note = can ? '<span class="z-note go">タップして<br>つける</span>' : used ? '<span class="z-note">この番は<br>つけた</span>' : '';
+  const inner = `<span class="z-lab">エネルギー</span><span class="z-cur">${cur}</span>${note}${next}`;
   return can
-    ? `<button type="button" class="zone tap" data-act="zone" aria-label="エネルギーをつける">${inner}</button>`
-    : `<div class="zone ${mine && p.t.energyDone ? 'used' : ''}">${inner}</div>`;
+    ? `<button type="button" class="zone v tap" data-act="zone" aria-label="エネルギーをつける">${inner}</button>`
+    : `<div class="zone v ${used ? 'used' : ''}">${inner}</div>`;
+}
+/* バトル場のワザ・にげる・特性。自分の番なら1タップで使える */
+function atkPanelHTML(p) {
+  const g = UI.g, m = p.active;
+  if (!m || UI.mode === 'setup' || g.turn === 0) return '<div class="atkp"></div>';
+  const my = isMyTurn() && UI.mode === 'idle';
+  const d = DEF[m.id];
+  const out = d.atk.map((a, i) => {
+    const info = my ? attackInfo(g, p, i) : { ok: false, reason: '' };
+    const cost = my ? atkCost(p, a) : a.costArr;
+    const dmg = a.label || (a.dmg ? String(a.dmg) : '');
+    const why = my && !info.ok && info.reason ? info.reason : '';
+    return `<button type="button" class="atkbtn" data-act="atk" data-i="${i}" ${info.ok ? '' : 'disabled'} aria-label="ワザ「${esc(a.name)}」${esc(dmg)}${why ? '（' + esc(why) + '）' : ''}">
+      <span class="ab-top"><span class="cost">${cost.map(x => eI(x, 'xs')).join('') || '<span class="free">0</span>'}</span><b class="dmg">${esc(dmg)}</b></span>
+      <span class="ab-name">${esc(a.name)}</span>${why ? `<span class="ab-why">${esc(why)}</span>` : ''}
+    </button>`;
+  });
+  const r = retreatInfo(g, p);
+  out.push(`<button type="button" class="retbtn" data-act="retreat" ${my && r.ok ? '' : 'disabled'} title="${esc(my ? r.reason : '')}">にげる <span class="cost">${r.cost ? eI('none', 'xs').repeat(r.cost) : 'なし'}</span></button>`);
+  const ab = d.ability;
+  if (ab && ab.kind === 'active') {
+    const ai = abilityInfo(g, p, m);
+    out.push(`<button type="button" class="retbtn" data-act="ability" data-uid="${m.uid}" ${my && ai.ok ? '' : 'disabled'} title="${esc(my ? ai.reason : '')}">特性「${esc(ab.name)}」</button>`);
+  }
+  return `<div class="atkp" role="group" aria-label="バトル場のワザ">${out.join('')}</div>`;
 }
 function midHTML(g) {
   let main;
-  if (UI.mode === 'setup') main = '<b>準備</b><span class="tk wrap">手札のv1ユニットをタップして、バトル場とベンチ（3体まで）に出そう</span>';
-  else if (g.over) main = '<b>対戦終了</b>';
-  else if (UI.mode === 'target') main = `<b>選択</b><span class="tk wrap">${esc(UI.targetLabel)}</span>`;
-  else if (g.turn === 0) main = '<b>準備中</b>';
-  else main = `<b>${esc(turnLabel(g.players[g.cur]))}</b><span class="tk">${esc(UI.lastLog)}</span>`;
+  if (UI.mode === 'setup') main = '<span class="tk wrap">手札のv1ユニットをタップして、バトル場とベンチ（3体まで）に出そう</span>';
+  else if (g.over) main = '<span class="tk">対戦が終わりました</span>';
+  else if (UI.mode === 'target') main = `<b>えらぶ</b><span class="tk wrap">${esc(UI.targetLabel)}</span>`;
+  else if (g.turn === 0) main = '<span class="tk">準備中…</span>';
+  else main = `<span class="tk">${esc(UI.lastLog)}</span>`;
   const field = g.field ? `<button type="button" class="iconbtn fieldchip" data-act="field" aria-label="フィールド「${esc(DEF[g.field.card.id].name)}」の説明">${artImg(g.field.card.id)}<span>${esc(DEF[g.field.card.id].name)}</span></button>` : '';
-  return `<span class="turn">T${String(g.turn).padStart(2, '0')}</span><span class="midtxt">${main}</span>${field}<button type="button" class="iconbtn" data-act="log">ログ</button>`;
+  return `<span class="midtxt">${main}</span>${field}<button type="button" class="iconbtn" data-act="log">ログ</button>`;
+}
+/* 選んでいる手札のカード（自分の番だけ）。なければ null */
+function selectedHand() {
+  const g = UI.g;
+  if (!g || UI.handSel == null || !isMyTurn() || UI.mode !== 'idle') return null;
+  return meP().hand.find(c => c.uid === UI.handSel) || null;
+}
+/* 手札のカードを選んだときに出る吹き出し：いちばんよく使う操作と「くわしく」 */
+function handActHTML(c) {
+  const g = UI.g, p = meP(), d = DEF[c.id];
+  const info = handInfo(g, p, c);
+  const sub = d.kind === 'mon' ? `${stageLabel(d)}${d.from ? ` ・ 「${esc(d.from)}」から進化` : ''}` : esc(KIND[d.kind].name);
+  return `<div class="ha-in" role="group" aria-label="${esc(d.name)}をどうするか">
+    <span class="ha-art" aria-hidden="true">${artImg(c.id)}</span>
+    <span class="ha-txt"><b>${esc(d.name)}${d.ex ? 'ex' : ''}</b><small>${sub}</small>${!info.ok && info.reason ? `<small class="ha-why">${esc(info.reason)}</small>` : ''}</span>
+    <span class="ha-btns"><button type="button" class="btn gold" data-act="play" ${info.ok ? '' : 'disabled'}>${esc(info.label)}</button><button type="button" class="btn ghost" data-act="detail">くわしく</button></span>
+    <button type="button" class="iconbtn ha-x" data-act="unsel" aria-label="えらぶのをやめる">×</button>
+  </div>`;
 }
 
 function renderBattle() {
@@ -6581,26 +6719,39 @@ function renderBattle() {
   const hs = handEl.scrollLeft;
   const myTurn = isMyTurn();
   const hideOpp = g.turn === 0 && UI.vs !== 'cpu'; // 準備が終わるまで、相手の並べ方は見せない
+  const sel = selectedHand();
+  if (!sel) UI.handSel = null;
+  UI.handCand = null;
+  if (sel) {
+    const info = handInfo(g, me, sel);
+    if (info.ok && info.targets) UI.handCand = { uids: new Set(info.targets.map(m => m.uid)), tag: DEF[sel.id].kind === 'mon' ? 'ここに進化' : 'ここに使う' };
+  }
+  $('#btop').innerHTML = topbarHTML(g);
   $('#board').innerHTML = `
-    ${pbarHTML(op)}
+    ${prowHTML(op)}
     <div class="field f-opp">
-      <div class="bench">${hideOpp ? [1, 2, 3].map(i => emptySlot('BENCH ' + i)).join('') : benchHTML(op, false)}</div>
-      <div class="arow">${pileHTML(op)}<div class="aslot">${op.active && !hideOpp ? monHTML(op.active) : emptySlot(g.turn === 0 ? '準備中…' : 'ACTIVE')}</div>${zoneHTML(op, false)}</div>
+      <div class="bench">${hideOpp ? [1, 2, 3].map(() => emptySlot('ベンチ')).join('') : benchHTML(op, false)}</div>
+      <div class="arow"><span></span><div class="aslot">${op.active && !hideOpp ? monHTML(op.active) : emptySlot(g.turn === 0 ? '準備中…' : 'バトル場')}</div>${zoneHTML(op, false)}</div>
     </div>
     <div class="mid">${midHTML(g)}</div>
     <div class="field f-me">
-      <div class="arow">${pileHTML(me)}<div class="aslot">${me.active ? monHTML(me.active, { hint: myTurn && UI.mode === 'idle', setup: UI.mode === 'setup' }) : emptySlot('ACTIVE')}</div>${zoneHTML(me, true)}</div>
+      <div class="arow me">${zoneHTML(me, true)}<div class="aslot">${me.active ? monHTML(me.active, { hint: myTurn && UI.mode === 'idle' && !sel, setup: UI.mode === 'setup' }) : emptySlot('バトル場')}</div>${atkPanelHTML(me)}</div>
       <div class="bench">${benchHTML(me, true)}</div>
     </div>
-    ${pbarHTML(me)}`;
+    ${prowHTML(me)}`;
   handEl.innerHTML = me.hand.map(c => {
     let ok = false;
     if (UI.mode === 'setup') ok = isBasic(c) && (!me.active || me.bench.length < BENCH_MAX);
     else if (myTurn && UI.mode === 'idle') ok = handInfo(g, me, c).ok;
-    return `<button type="button" class="hbtn ${ok ? 'ok' : ''} ${UI.mode === 'target' ? 'dim' : ''}" data-act="hand" data-uid="${c.uid}" aria-label="${esc(DEF[c.id].name)}">${handCardHTML(c)}</button>`;
+    const on = sel && sel.uid === c.uid;
+    return `<button type="button" class="hbtn ${ok ? 'ok' : ''} ${on ? 'sel' : ''} ${UI.mode === 'target' ? 'dim' : ''}" data-act="hand" data-uid="${c.uid}" aria-pressed="${on ? 'true' : 'false'}" aria-label="${esc(DEF[c.id].name)}">${handCardHTML(c)}</button>`;
   }).join('') || '<p class="silk empty-hand">手札なし</p>';
   handEl.scrollLeft = hs;
+  const ha = $('#handact');
+  ha.innerHTML = sel ? handActHTML(sel) : '';
+  ha.hidden = !sel;
   renderActbar();
+  renderSideLog();
 }
 function renderActbar() {
   const g = UI.g;
@@ -6611,7 +6762,7 @@ function renderActbar() {
   if (UI.mode === 'setup') main = `<button type="button" class="btn gold grow" data-act="ready" ${meP().active ? '' : 'disabled'}>準備OK</button>`;
   else if (UI.mode === 'target') main = '<button type="button" class="btn grow" data-act="cancel">キャンセル</button>';
   else if (g.over) main = '<button type="button" class="btn gold grow" data-act="result">結果を見る</button>';
-  else if (isMyTurn()) main = `<button type="button" class="btn grow" data-act="attackmenu" ${meP().active ? '' : 'disabled'}>ワザ・にげる</button><button type="button" class="btn gold grow" data-act="end">番を終わる</button>`;
+  else if (isMyTurn()) main = '<button type="button" class="btn gold grow" data-act="end">番を終わる</button>';
   else {
     let w = '…';
     if (UI.vs === 'online' && NET.oppHere === false) w = NET.mode === 'p2p' ? '相手との接続が不安定です…' : '相手の接続を待っています…';
@@ -6643,10 +6794,21 @@ $('#scr-battle').addEventListener('click', e => {
     return;
   }
   if (act === 'end') return onEndTurn();
-  if (act === 'attackmenu') { const a = meP().active; if (a) onMon(a.uid); return; }
-  if (act === 'zone') return onZone();
+  if (act === 'zone') { UI.handSel = null; return onZone(); }
   if (act === 'hand') return onHandCard(uid);
-  if (act === 'mon') return onMon(uid);
+  if (act === 'play') { const c = selectedHand(); if (c) playHand(c); return; }
+  if (act === 'detail') { const c = selectedHand(); if (c) openHandSheet(c); return; }
+  if (act === 'unsel') { UI.handSel = null; renderBattle(); return; }
+  if (act === 'atk') { if (isMyTurn()) { UI.handSel = null; doMove({ t: 'attack', i: +el.dataset.i }, true); } return; }
+  if (act === 'retreat') return onRetreat();
+  if (act === 'ability') { if (isMyTurn()) { UI.handSel = null; doMove({ t: 'ability', m: uid }); } return; }
+  if (act === 'mon') {
+    // 手札のカードを選んでいて、そのユニットに使えるなら、そのまま使う
+    const c = selectedHand();
+    if (c && UI.handCand && UI.handCand.uids.has(uid)) return playHand(c, findMon(uid));
+    if (c) { UI.handSel = null; renderBattle(); }
+    return onMon(uid);
+  }
 });
 
 function onSetupClick(act, uid) {
@@ -6674,6 +6836,7 @@ function chooseTarget(targets, label, cb) {
   if (!targets || !targets.length) return;
   if (targets.length === 1) { cb(targets[0]); return; }
   UI.mode = 'target';
+  UI.handSel = null;
   UI.targets = new Set(targets.map(m => m.uid));
   UI.onTarget = cb;
   UI.targetLabel = label;
@@ -6688,6 +6851,7 @@ async function act(fn, endTurn) {
   const g = UI.g;
   if (!g || UI.busy || !UI.turnResolve) return;
   UI.busy = true;
+  UI.handSel = null;
   closeSheet();
   renderBattle();
   let r = false;
@@ -6707,23 +6871,49 @@ function finishHumanTurn() {
   const r = UI.turnResolve;
   UI.turnResolve = null;
   UI.mode = 'idle';
+  UI.handSel = null;
   renderBattle();
   if (r) r();
 }
 
+/* 手札のカードをタップ：自分の番なら選んで吹き出しを出す（もう一度タップでやめる）。相手の番なら説明を見る */
 function onHandCard(uid) {
-  const g = UI.g, p = meP();
+  const p = meP();
   const card = p.hand.find(c => c.uid === uid);
   if (!card) return;
-  const d = DEF[card.id];
   if (!isMyTurn()) { openSheet(cardHTML(card.id), []); return; }
+  UI.handSel = UI.handSel === uid ? null : uid;
+  renderBattle();
+}
+/* 手札のカードを使う。target があれば、そのユニットに（進化・どうぐなど） */
+function playHand(card, target) {
+  const g = UI.g, p = meP(), d = DEF[card.id];
   const info = handInfo(g, p, card);
-  const b = { label: info.label, disabled: !info.ok, note: info.reason, cls: 'gold' };
-  if (d.kind === 'mon' && d.stage === 1) b.fn = () => doMove({ t: 'bench', u: card.uid });
-  else if (d.kind === 'mon') b.fn = () => chooseTarget(info.targets, `${d.name}に進化させるユニットを選んでください`, m => doMove({ t: 'evolve', u: card.uid, to: m.uid }));
-  else if (info.targets) b.fn = () => chooseTarget(info.targets, `「${d.name}」を使うユニットを選んでください`, m => doMove({ t: 'trainer', u: card.uid, to: m.uid }));
-  else b.fn = () => doMove({ t: 'trainer', u: card.uid });
-  openSheet(cardHTML(card.id), [b]);
+  if (!info.ok) return;
+  UI.handSel = null;
+  if (d.kind === 'mon' && d.stage === 1) { doMove({ t: 'bench', u: card.uid }); return; }
+  if (d.kind === 'mon') {
+    if (target) { doMove({ t: 'evolve', u: card.uid, to: target.uid }); return; }
+    chooseTarget(info.targets, `${d.name}に進化させるユニットを選んでください`, m => doMove({ t: 'evolve', u: card.uid, to: m.uid }));
+    return;
+  }
+  if (info.targets) {
+    if (target) { doMove({ t: 'trainer', u: card.uid, to: target.uid }); return; }
+    chooseTarget(info.targets, `「${d.name}」を使うユニットを選んでください`, m => doMove({ t: 'trainer', u: card.uid, to: m.uid }));
+    return;
+  }
+  doMove({ t: 'trainer', u: card.uid });
+}
+/* 吹き出しの「くわしく」：カードの説明と、使うボタン */
+function openHandSheet(card) {
+  const info = handInfo(UI.g, meP(), card);
+  openSheet(cardHTML(card.id), [{ label: info.label, disabled: !info.ok, note: info.reason, cls: 'gold', fn: () => playHand(card) }]);
+}
+function onRetreat() {
+  const g = UI.g, me = meP();
+  if (!isMyTurn() || !retreatInfo(g, me).ok) return;
+  UI.handSel = null;
+  chooseTarget(me.bench, 'バトル場に出すベンチのユニットを選んでください', b => doMove({ t: 'retreat', to: b.uid }));
 }
 
 function onZone() {
@@ -6816,7 +7006,8 @@ function openMenu() {
         <li>先に3ポイント取ったら勝ち。exをダウンさせると2ポイント。</li>
         <li>エネルギーは1ターンに1個。エネルギーゾーンをタップしてつける。</li>
         <li>サポートは1ターンに1枚、グッズは何枚でも。</li>
-        <li>バトル場のユニットをタップすると、ワザ・にげるが選べる。ワザを使うと番が終わる。</li>
+        <li>ワザとにげるは、バトル場のとなりのボタンで使う。ワザを使うと番が終わる。</li>
+        <li>手札のカードはタップすると、その場で出したり使ったりできる。</li>
         <li>弱点のタイプからは+20ダメージ。</li></ul></div>`, []);
     }
   };
@@ -7184,6 +7375,16 @@ function addLog(msg, cls) {
   if (UI.logs.length > 400) UI.logs.shift();
   if (cls !== 'turn') UI.lastLog = msg;
   if (!$('#logpanel').hidden) renderLogPanel();
+  renderSideLog();
+}
+/* 広い画面だけ出る、左のログ（新しいものが下） */
+function renderSideLog() {
+  const el = $('#blog');
+  if (!el || UI.screen !== 'battle' || !el.offsetParent) return;
+  const list = UI.logs.slice(-60);
+  el.innerHTML = `<h2 class="bl-h">ログ</h2><ol class="bl-list">${list.map((l, i) => `<li class="lg-${l.cls || 'n'} ${i === list.length - 1 ? 'last' : ''}">${esc(l.msg)}</li>`).join('')}</ol>`;
+  const ol = $('.bl-list', el);
+  if (ol) ol.scrollTop = ol.scrollHeight;
 }
 function renderLogPanel() {
   const p = $('#logpanel');

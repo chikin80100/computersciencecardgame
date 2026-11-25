@@ -29,7 +29,7 @@ def wait_my_turn(page, limit=90):
     return False
 def attack_sheet(page):
     """バトル場のユニットのワザの一覧を開いて、[(ワザの文字, 使えるか, 下の注意書き)] を返す"""
-    click(page, '#actbar [data-act="attackmenu"]')
+    click(page, '#board .f-me .aslot .mslot')
     page.wait_for_selector('#sheet .btn.atk', timeout=3000)
     return page.evaluate("""[...document.querySelectorAll('#sheet .btn.atk')].map(b => [b.querySelector('.ab').innerText.replace(/\\s+/g, ' '), !b.disabled, (b.querySelector('.why') || {}).innerText || ''])""")
 def close_sheet(page):
@@ -106,6 +106,8 @@ with sync_playwright() as p:
     [fc] = give(page, 0, ['tronhouse'])
     page.evaluate('renderBattle()')
     page.click(f'#hand .hbtn[data-uid="{fc}"]', force=True)
+    page.wait_for_selector('#handact [data-act="detail"]', timeout=3000)
+    page.click('#handact [data-act="detail"]', force=True)  # 吹き出しの「くわしく」から説明のシートへ
     page.wait_for_selector('#sheet .btn', timeout=3000)
     page.screenshot(path=str(OUT / 'u_field_sheet.png'))
     page.click('#sheet .sheet-btns .btn.gold', force=True); page.wait_for_timeout(500)
@@ -132,8 +134,8 @@ with sync_playwright() as p:
     page.evaluate('renderBattle()')
     hand_before = page.evaluate('UI.g.players[0].hand.length')
     page.click(f'#hand .hbtn[data-uid="{cm}"]', force=True)
-    page.wait_for_selector('#sheet .btn', timeout=3000)
-    page.click('#sheet .sheet-btns .btn.gold', force=True)
+    page.wait_for_selector('#handact [data-act="play"]', timeout=3000)
+    page.click('#handact [data-act="play"]', force=True)
     page.wait_for_selector('#choice:not([hidden]) .copt', timeout=4000)
     page.screenshot(path=str(OUT / 'u_calm.png'))
     labels = page.evaluate("[...document.querySelectorAll('#choice .copt')].map(b => b.innerText)")

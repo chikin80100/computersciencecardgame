@@ -47,10 +47,10 @@ def play_my_turn(page, shot=None):
         if not oks:
             break
         oks[0].click(force=True)
-        page.wait_for_selector('#sheet .btn', timeout=3000)
-        btn = page.query_selector('#sheet .sheet-btns .btn.gold:not([disabled])')
+        page.wait_for_selector('#handact [data-act="play"]', timeout=3000)
+        btn = page.query_selector('#handact [data-act="play"]:not([disabled])')
         if not btn:
-            page.click(force=True, selector='#sheet [data-i="close"]')
+            page.click(force=True, selector='#handact [data-act="unsel"]')
             break
         btn.click(force=True)
         page.wait_for_timeout(120)
@@ -70,7 +70,7 @@ def play_my_turn(page, shot=None):
     if not my_turn(page):
         return
     # ワザ
-    page.click(force=True, selector='#actbar [data-act="attackmenu"]')
+    page.click(force=True, selector='#board .f-me .aslot .mslot')
     page.wait_for_selector('#sheet .btn', timeout=3000)
     atks = page.query_selector_all('#sheet .btn.atk:not([disabled])')
     if atks:

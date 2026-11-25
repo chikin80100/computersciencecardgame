@@ -25,9 +25,9 @@ def wait_my_turn(page, limit=60):
     return False
 def use_card(page, uid):
     page.click(f'#hand .hbtn[data-uid="{uid}"]', force=True)
-    page.wait_for_selector('#sheet .btn', timeout=3000)
-    b = page.query_selector('#sheet .sheet-btns .btn.gold:not([disabled])')
-    assert b, 'use button disabled: ' + page.inner_text('#sheet')[:200]
+    page.wait_for_selector('#handact [data-act="play"]', timeout=3000)
+    b = page.query_selector('#handact [data-act="play"]:not([disabled])')
+    assert b, 'use button disabled: ' + page.inner_text('#handact')[:200]
     b.click(force=True)
     page.wait_for_selector('#choice:not([hidden]) .copt', timeout=4000)
 def end_turn(page):

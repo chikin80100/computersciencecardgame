@@ -29,9 +29,9 @@ def play_turn(page, other):
         ok = page.query_selector('#hand .hbtn.ok')
         if not ok: break
         ok.click(force=True)
-        page.wait_for_selector('#sheet .btn', timeout=3000)
-        b = page.query_selector('#sheet .sheet-btns .btn.gold:not([disabled])')
-        if not b: click(page, '#sheet [data-i="close"]'); break
+        page.wait_for_selector('#handact [data-act="play"]', timeout=3000)
+        b = page.query_selector('#handact [data-act="play"]:not([disabled])')
+        if not b: click(page, '#handact [data-act="unsel"]'); break
         b.click(force=True); page.wait_for_timeout(120)
         if page.query_selector('#actbar [data-act="cancel"]'): click(page, '.mslot.tgt')
         for _ in range(80):
@@ -42,7 +42,7 @@ def play_turn(page, other):
         if page.query_selector('#actbar [data-act="cancel"]'): click(page, '.mslot.tgt')
         page.wait_for_timeout(150)
     if not my_turn(page): return
-    click(page, '#actbar [data-act="attackmenu"]')
+    click(page, '#board .f-me .aslot .mslot')
     page.wait_for_selector('#sheet .btn', timeout=3000)
     atks = page.query_selector_all('#sheet .btn.atk:not([disabled])')
     if atks:
