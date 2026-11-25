@@ -149,6 +149,7 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 
 - `UI.me`：どちらの席の目線で盤面を見るか（CPU戦は0、オンラインは自分の席、この端末での2人対戦は操作している人）。`UI.vs`：`'cpu' | 'local' | 'online'`。
 - 画面は `show(名前)` で切り替え（`ROUTES`）。対戦画面は `renderBattle()`、人の操作は `doMove()` → `applyMove()`、番の終わりは `finishHumanTurn()`。
+- 対戦画面（`renderBattle()`）：上のバー `#btop`（何ターン目・だれの番・点数）、名前と山札などの行 `prowHTML()`、エネルギーゾーン `zoneHTML()`（自分のは縦長で「タップしてつける」）、バトル場のとなりのワザ `atkPanelHTML()`（`data-act="atk"` と `data-i`、にげるは `retreat`、特性は `ability`。自分の番なら1タップで使える）。手札はタップで選ぶ（`UI.handSel`）と、`#handact` に吹き出し（`data-act="play"` 出す・進化・使う／`detail` くわしく＝前のシート／`unsel` やめる）。使える先のユニットには「ここに進化」「ここに使う」（`UI.handCand`）が出て、そのユニットをタップしても使える。バトル場のユニットをタップすると、前と同じ説明とワザのシートが出る（テストはこれでワザの注意書きを見ている）。広い画面（幅920px以上）では左に `#blog`（ログ全部）を出し、カードを大きくする。
 - パック：`openPack(packId, n)` で開ける（n は 1 か `MULTI_PACKS`＝10。10連はチケット10枚・パックポイント10パック分）。中身は1パックずつ `rollPack(pack)`。10連は1枚ずつめくらず、`multiDoneHTML()` で、同じカード（ホロかどうかも同じ）をまとめて「×枚数」をつけ、ホロ → レア度の高い順にならべて、裏から順にめくれる絵で見せる（動きを減らす設定では、すぐ表）。おまけの確定枠はなく、確率は1パックずつと同じ。`rollPack` は test/odds.js が `function packPool` 〜 `function packHTML` の間を切り出して使うので、その間に画面の関数を入れない。5枚目と4枚目にレアが出やすい。シリーズのパックは目玉の人物カード（`feature`）が ◆◆◆◆ の半分をしめる（だいたい18%のパックに入る）。`isNew: true` のシリーズとパックには NEW のしるしがつく。シリーズは `SERIES` の順に、パックはシリーズの中で NEW が先頭に出る（いまは「遍在する計算機」のマーク・ワイザー・TRON・落合陽一）。ふつうのパックには `set` つきのカードは入らない。ゴッドパックは0.5%ほど。
 - チケット：`REWARD = {start:30, win:5, lose:3, draw:3, daily:10}`（`grantReward()`）。`start` は、はじめての人（セーブに `tickets` がない人）だけに配る。前の版のセーブの枚数は変えない（2026年11月24日に20→30。前に10→20にしたときは、`bonus2` で前のセーブにも差を配った）。降参した人・この端末での2人対戦・ずれて終わった対戦はもらえない。
 
@@ -171,6 +172,14 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 
 - **GitHub Pages**：`python3 build.py` → docs/index.html を commit して push。リポジトリの Settings → Pages → 「Deploy from a branch」→ `main` の `/docs`。
 - **Claude のアーティファクト**：slug `bab068e2-cfa2-4379-bf49-c553dfd2e285`（https://claude.ai/artifact/Q45rL3wkYszVFoTaqEKWRa）。だれでも見られる共有になっている。使っている機能（capabilities）は `{db:{}, user:{}, room:{topics:{mv:'interact', need:'interact'}}}`。アーティファクトを公開する道具は claude.ai のチャットにあるので、更新するときはそちらで dist/index.html をわたし「このアーティファクトに新しい版として公開して」とたのむ（共有中なので `shared_live:'public'` と今のタイトル「CS用語カードバトル」が要る）。最後に公開したのは「遍在する計算機」シリーズを入れた版（2026年11月24日、版 `1795506705-9ef3`）。
+
+## UI・UXの見直し（作業中）
+
+- 見本（デザインのキャンバス）：https://claude.ai/artifact/GHgSbCVURfQvFUHbkLvyqm 。スマホと iPad 横向きで「今の画面」と「A案（今の見た目のまま、配置と流れを直す）」をならべてある。B案（明るい方眼紙の見た目）は参考で、採用しない。
+- 方針：A案を中心に、見本から変えてもよいので、よくしながら実装する（frontend-design スキルを使う）。
+- できた：対戦画面（上の「画面」の対戦画面の行）。
+- まだ：対戦の準備（自分と相手のデッキを横スクロールで選ぶ。対戦スタートをいつも画面の中に。いまは縦に約6,700px）、ホームと下のタブ（ホーム・対戦・パック・図鑑・デッキ。広い画面では左に縦のメニュー）、パック（シリーズのタブ＋えらんだパックを大きく1つ。いまは縦に約12,600px）、デッキ編集（上に枚数と保存、一覧のカードに −／＋）、図鑑（集めた数のバー、絞り込みを1段に、持っていないカードに交換ポイント）。
+- iPad の横向きは、ホーム・対戦の準備・対戦中のどれも、まん中のせまい列になっていた（対戦中は直した）。
 
 ## 生きている人にかかわるカード（落合陽一・TRON など）
 
