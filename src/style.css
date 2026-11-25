@@ -629,3 +629,8 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 .scan-in { width: min(420px, 100%); display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
 .scan-in video { width: 100%; aspect-ratio: 1; object-fit: cover; border: 3px solid var(--gold); border-radius: 10px; background: #000; }
 .scan-in p { margin: 0; }
+
+/* オート対戦のボタン（オンのあいだは金色で点灯） */
+.autobtn { font-size: 12px; padding: 4px 6px; }
+.autobtn[aria-pressed="true"] { background: var(--gold); color: #2a1d05; border-color: var(--gold); }
+.autonote { color: var(--gold); }
