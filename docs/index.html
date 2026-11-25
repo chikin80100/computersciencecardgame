@@ -40,6 +40,8 @@ h1, h2, h3 { text-wrap: balance; }
 .btn.ghost { border-color: rgba(230, 238, 226, .35); }
 .btn.danger { border-color: #e0675a; color: #ffb9ae; }
 .btn:disabled { opacity: .42; cursor: not-allowed; }
+.btn.gold:disabled { opacity: 1; background: transparent; border-style: dashed; border-color: rgba(217, 173, 85, .55); color: rgba(217, 173, 85, .8); }
+.btn.gold:disabled .why { color: var(--silk); opacity: .8; }
 .btn.big { min-height: 54px; font-size: 17px; padding: .6em 2em; }
 .btn.sm { min-height: 34px; padding: .25em .9em; font-size: 12px; }
 .btn small { font-weight: 400; opacity: .75; font-size: 11px; }
@@ -75,9 +77,18 @@ button:focus-visible, input:focus-visible, .zone:focus-visible { outline: 2px so
 .fan-c { position: absolute; left: 50%; top: 8px; width: 148px; transform-origin: 50% 100%; animation: deal .75s cubic-bezier(.2, .8, .2, 1) both; filter: drop-shadow(0 10px 16px rgba(0, 0, 0, .45)); }
 @keyframes deal { from { opacity: 0; margin-top: 48px; } }
 .menu { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.menu .big, .menu .wide { grid-column: 1 / -1; }
-.menu .btn small { display: block; }
 .menu .btn { flex-direction: column; gap: 0; }
+.menu .btn small { display: block; }
+/* 金の塗りは「CPUと対戦する」だけ。ほかは枠だけにして、どれが本命かをはっきりさせる */
+.m-main { grid-column: 1 / -1; min-height: 60px; font-size: 19px; }
+.m-sub { min-height: 62px; font-size: 15px; }
+.m-pack { border-color: var(--gold); color: var(--gold); }
+.m-pack small { color: var(--silk); }
+.menu .m-new { color: var(--silk); opacity: 1; }
+.m-new b { font-size: 9.5px; padding: 0 4px; margin-right: 2px; border-radius: 2px; background: #d63b2f; color: #fff; letter-spacing: .04em; }
+.m-tools { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.m-tools .btn { min-height: 48px; font-weight: 400; font-size: 13.5px; }
+.m-tools .btn small { opacity: .7; font-size: 10.5px; }
 .foot { margin-top: 4px; }
 
 /* ---------- ページ共通 ---------- */
@@ -156,7 +167,20 @@ button:focus-visible, input:focus-visible, .zone:focus-visible { outline: 2px so
 .dtile { display: flex; flex-direction: column; gap: 6px; height: 100%; background: var(--card); color: var(--ink); clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%, 0 14px); padding: 0 0 12px; }
 .dt-stripe { height: 7px; }
 .dt-name { font-family: var(--display); font-size: 18px; padding: 4px 14px 0 18px; line-height: 1.25; }
-.dtile-b[aria-pressed="true"] .dt-name::after { content: ' ← 選択中'; font-family: var(--body); font-size: 11px; font-weight: 700; color: #2f8a4f; }
+.dtile { position: relative; }
+.dtile-b[aria-pressed="true"] .dtile { box-shadow: inset 0 0 0 3px var(--gold); }
+.dtile-b[aria-pressed="true"] .dtile::after { content: '選択中'; position: absolute; top: 12px; right: 8px; font-size: 10px; font-weight: 700; line-height: 1; padding: 3px 5px; border-radius: 2px; background: var(--ink); color: var(--gold); }
+/* 選んでいるデッキのくわしい説明 */
+.dsel { display: flex; flex-direction: column; gap: 6px; max-width: 560px; margin: 0 0 12px; padding: 0 0 12px; background: var(--card); color: var(--ink); clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%, 0 14px); }
+.dsel p { margin: 0; }
+.ds-name { font-family: var(--display); font-size: 22px; line-height: 1.2; padding: 4px 14px 0 18px; }
+.pick .h3 { margin-bottom: 8px; }
+/* 下に固定する「対戦スタート」の帯 */
+.matchbar { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; gap: 12px; margin: 8px -16px -48px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: #07261b; border-top: 2px solid var(--gold); }
+.mb-vs { flex: 1; min-width: 0; margin: 0; display: flex; flex-direction: column; font-size: 13px; font-weight: 700; line-height: 1.35; }
+.mb-vs span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mb-vs i { font-style: normal; font-family: var(--display); font-size: 11px; color: var(--gold); }
+.matchbar .btn.big { flex: none; padding: .6em 1.4em; }
 .dt-meta { display: flex; align-items: center; gap: 4px; padding: 0 14px; font-size: 11px; color: var(--muted); }
 .dt-meta span { margin-left: 6px; }
 .dt-blurb { font-size: 12px; padding: 0 14px; line-height: 1.5; }
@@ -236,7 +260,8 @@ button:focus-visible, input:focus-visible, .zone:focus-visible { outline: 2px so
 .tk { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .85; }
 .tk.wrap { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; opacity: 1; line-height: 1.4; }
 .slot-empty { width: calc(var(--h) * .74); height: var(--h); border: 1.5px dashed rgba(230, 238, 226, .26); border-radius: 3px; display: grid; place-items: center; }
-.slot-empty span { font-size: 9px; letter-spacing: .14em; color: rgba(230, 238, 226, .42); }
+.slot-empty span { font-size: 10px; letter-spacing: .08em; color: rgba(230, 238, 226, .45); }
+#scr-battle .silk { letter-spacing: .04em; font-size: 10.5px; }
 
 /* 場のユニット */
 .mslot { position: relative; display: block; flex: none; width: calc(var(--h) * .74); height: var(--h); padding: 0; border: 0; background: none; color: inherit; cursor: pointer; transition: transform .2s, opacity .2s; }
@@ -374,8 +399,8 @@ button:focus-visible, input:focus-visible, .zone:focus-visible { outline: 2px so
 .lg-dmg { color: #ffcabe; } .lg-heal { color: #9ff0bd; } .lg-coin { color: #cbd7ff; } .lg-evo { color: #f5dfae; } .lg-atk { font-weight: 700; }
 .res-in { width: min(440px, 100%); background: var(--card); color: var(--ink); clip-path: polygon(22px 0, 100% 0, 100% 100%, 0 100%, 0 22px); padding: 22px 22px 22px; text-align: center; display: flex; flex-direction: column; gap: 8px; animation: rise .3s ease-out; }
 @keyframes rise { from { transform: translateY(24px); } }
-.res-in .silk { color: var(--muted); }
-.res-h { font-family: var(--display); font-weight: 400; font-size: 48px; margin: 0; line-height: 1.1; }
+.res-turn { margin: 0; font-size: 12px; color: var(--muted); }
+.res-h { font-family: var(--display); font-weight: 400; font-size: 52px; margin: 0; line-height: 1.1; }
 .res-in.win .res-h { color: #2f8a4f; } .res-in.lose .res-h { color: #a5281b; } .res-in.draw .res-h { color: var(--muted); }
 .res-sub { margin: 0; font-size: 13px; }
 .res-score { display: flex; justify-content: center; align-items: baseline; gap: 14px; font-size: 14px; }
@@ -422,6 +447,8 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 .wl-v { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; }
 .wl b { font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1.1; color: var(--gold); font-variant-numeric: tabular-nums; }
 .wl small { font-size: 11px; opacity: .8; }
+#scr-packs .wallet { position: sticky; top: 0; z-index: 5; max-width: none; margin: 0 -16px 10px; padding: 8px 16px; background: rgba(7, 38, 27, .96); border-bottom: 1px solid rgba(230, 238, 226, .18); }
+#scr-packs .wl { max-width: 180px; }
 .packs { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 24px; margin: 18px 0 28px; }
 .pack-cell { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
 .pk-prog { margin: 0; font-size: 12px; color: rgba(230, 238, 226, .8); }
@@ -534,6 +561,22 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
   .po-grid.multi .t-badge { top: 19px; right: 2px; font-size: 7.5px; }
   .po-grid.multi .po-cnt { font-size: 11px; min-width: 24px; padding: 0 5px; }
   .menu .btn small { font-size: 10px; }
+  /* タイトル：スマホでもメニューが1画面に入るように、カードの扇を小さく */
+  #scr-title { padding-top: 18px; }
+  .title-wrap { gap: 12px; }
+  .lead { font-size: 13px; line-height: 1.55; }
+  .fan { height: 178px; }
+  .fan-c { width: 112px; }
+  /* パック：2列にして、画面の長さを半分に */
+  .packs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 10px; }
+  .packs .pack { --w: 136px; }
+  .packs .pk-sub, .packs .pk-en { display: none; }
+  .packs .pk-new { font-size: 11px; top: -6px; right: -6px; }
+  .pk-prog { font-size: 11px; line-height: 1.45; }
+  .pk-btns { gap: 6px; }
+  .pk-btns .btn { min-height: 40px; padding: .35em .5em; font-size: 12.5px; }
+  .pk-btns .btn.ten small { font-size: 9.5px; }
+  .matchbar .btn.big { font-size: 15px; padding: .5em 1em; min-height: 50px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .thumb.holo::before, .card.holo::after, .pk-body::after, .po-pack { animation: none !important; }
@@ -570,7 +613,9 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 .net-wait p { margin: 0; }
 .net-code { font-family: var(--display); font-size: 48px; letter-spacing: .18em; color: var(--gold); line-height: 1.1; }
 .decks.compact { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-.decks.compact .dt-name { font-size: 15px; }
+.decks.compact .dtile { gap: 4px; padding-bottom: 9px; }
+.decks.compact .dt-name { font-size: 15px; padding-right: 52px; }
+.decks.compact .dtile-b[aria-pressed="false"] .dt-name { padding-right: 10px; }
 
 /* コード交換（WebRTC） */
 .net-in textarea, .code-out { width: 100%; padding: 8px 10px; font: 13px/1.45 var(--body); word-break: break-all; color: var(--silk); background: #062018; border: 1.5px solid rgba(230, 238, 226, .35); border-radius: 6px; resize: vertical; }
@@ -5683,15 +5728,17 @@ function renderTitle() {
   <div class="title-wrap">
     <p class="silk">REV 3.0 ── COMPUTER SCIENCE TERMS ── ${ALL_IDS.length} CARDS</p>
     <h1 class="logo"><span>CS用語</span><span>カードバトル</span></h1>
-    <p class="lead">コンピュータ科学の用語でたたかう、ポケポケ風カードゲーム。パックをひらいてカードを集め、20枚のデッキでCPUと対戦しよう。カードの「用語解説」を読めば、用語にも強くなれる。</p>
+    <p class="lead">コンピュータ科学の用語でたたかうカードゲーム。パックでカードを集めて、20枚のデッキで対戦しよう。カードの「用語解説」を読めば、用語にもくわしくなれる。</p>
     <div class="fan" aria-hidden="true">${picks.map((id, i) => `<div class="fan-c" style="transform:${pose[i]};animation-delay:${i * 0.12}s">${thumbHTML(id)}</div>`).join('')}</div>
     <nav class="menu" aria-label="メニュー">
-      <button type="button" class="btn gold big" data-nav="select" data-vs="cpu">対戦する<small>CPUと対戦</small></button>
-      <button type="button" class="btn gold big" data-nav="select" data-vs="online">対人戦<small>オンライン ・ この端末で2人</small></button>
-      <button type="button" class="btn gold big" data-nav="packs">パックをひらく<small>新シリーズ「遍在する計算機」登場！ ・ チケット ${STORE.tickets}枚</small></button>
-      <button type="button" class="btn" data-nav="dex">カード図鑑<small>${ownedKinds()} / ${ALL_IDS.length}種</small></button>
-      <button type="button" class="btn" data-nav="decks">デッキをつくる</button>
-      <button type="button" class="btn wide" data-nav="rules">あそびかた</button>
+      <button type="button" class="btn gold big m-main" data-nav="select" data-vs="cpu">CPUと対戦する</button>
+      <button type="button" class="btn m-sub" data-nav="select" data-vs="online">人と対戦する<small>オンライン・この端末で2人</small></button>
+      <button type="button" class="btn m-sub m-pack" data-nav="packs">パックをひらく<small>チケット ${STORE.tickets}枚</small>${SERIES.filter(se => se.isNew).map(se => `<small class="m-new"><b>NEW</b> ${esc(se.name)}</small>`).join('')}</button>
+      <div class="m-tools">
+        <button type="button" class="btn ghost" data-nav="dex">図鑑<small>${ownedKinds()}/${ALL_IDS.length}</small></button>
+        <button type="button" class="btn ghost" data-nav="decks">デッキ</button>
+        <button type="button" class="btn ghost" data-nav="rules">あそびかた</button>
+      </div>
     </nav>
     <p class="silk foot">${TYPE_ORDER.length} TYPES ・ ${MONSTERS.length} UNITS ・ ${TRAINERS.length} COMMANDS ・ ${PACKS.length} PACKS</p>
   </div>`;
@@ -5706,35 +5753,57 @@ function deckTileHTML(d, pressed, side, compact) {
     <span class="dtile">
       <span class="dt-stripe" style="background:linear-gradient(90deg,${(d.energy || []).map(t => TYPES[t].c).join(',') || '#777'}${(d.energy || []).length === 1 ? ',' + TYPES[d.energy[0]].c : ''})"></span>
       <span class="dt-name">${esc(d.name)}</span>
-      <span class="dt-meta">${(d.energy || []).map(t => eI(t, 's')).join('')}<span>${d.id.startsWith('p_') ? 'プリセット' : 'マイデッキ'}</span></span>
+      <span class="dt-meta">${(d.energy || []).map(t => eI(t, 's')).join('')}${compact && d.id.startsWith('p_') ? '' : `<span>${d.id === 'random' ? 'おまかせ' : d.id.startsWith('p_') ? 'プリセット' : 'マイデッキ'}</span>`}</span>
       ${d.blurb && !compact ? `<span class="dt-blurb">${esc(d.blurb)}</span>` : ''}
       ${keys.length && !compact ? `<span class="dt-keys">${keys.map(id => `<span>${artImg(id, { cls: 'ic' })}${esc(DEF[id].name)}${DEF[id].ex ? 'ex' : ''}</span>`).join('')}</span>` : ''}
       ${bad ? `<span class="dt-bad">${esc(v.errs[0])}</span>` : ''}
     </span>
   </button>`;
 }
+// 選んでいるデッキのくわしい説明（押せない。一覧の上に出す）
+function deckDetailHTML(d) {
+  const keys = (d.key || Object.keys(d.cards || {}).filter(id => DEF[id] && DEF[id].ex).slice(0, 2));
+  const cols = (d.energy || []).map(t => TYPES[t].c);
+  return `<div class="dsel" aria-live="polite">
+    <span class="dt-stripe" style="background:${cols.length ? `linear-gradient(90deg,${cols.concat(cols.length === 1 ? cols : []).join(',')})` : '#8a7d5c'}"></span>
+    <p class="ds-name">${esc(d.name)}</p>
+    <p class="dt-meta">${(d.energy || []).map(t => eI(t, 's')).join('')}<span>${d.id === 'random' ? 'おまかせ' : d.id.startsWith('p_') ? 'プリセット' : 'マイデッキ'}</span></p>
+    ${d.blurb ? `<p class="dt-blurb">${esc(d.blurb)}</p>` : ''}
+    ${keys.length ? `<p class="dt-keys">${keys.map(id => `<span>${artImg(id, { cls: 'ic' })}${esc(DEF[id].name)}${DEF[id].ex ? 'ex' : ''}</span>`).join('')}</p>` : ''}
+  </div>`;
+}
 function renderSelect() {
   if (!deckById(UI.deck.me)) UI.deck.me = PRESETS[0].id;
   if (!deckById(UI.deck.p2)) UI.deck.p2 = PRESETS[1].id;
   const mode = UI.vsPick || 'cpu';
-  const rndDeck = { id: 'random', name: 'ランダム', energy: [], blurb: 'あなたと違うプリセットデッキから選ぶ' };
-  const tiles = (side, compact) => allDecks().map(d => deckTileHTML(d, UI.deck[side] === d.id, side, compact)).join('');
+  const rndDeck = { id: 'random', name: 'ランダム', energy: [], blurb: 'あなたと違うプリセットデッキから、そのつど選びます。' };
+  // 選んでいるデッキだけをくわしく見せ、一覧は小さなタイルにする（19個のデッキを2回ならべると、とても長くなるため）
+  const picker = (side, list, title) => {
+    const cur = list.find(d => d.id === UI.deck[side]) || list[0];
+    return `<section class="sec pick">
+      <h3 class="h3">${title}</h3>
+      ${deckDetailHTML(cur)}
+      <div class="decks compact" role="group" aria-label="${title}">${list.map(d => deckTileHTML(d, UI.deck[side] === d.id, side, true)).join('')}</div>
+    </section>`;
+  };
+  const nameOf = id => (id === 'random' ? 'ランダム' : (deckById(id) || {}).name || '');
+  const bar = (left, right, btn) => `<div class="matchbar"><p class="mb-vs"><span>${esc(left)}</span><i>vs</i><span>${esc(right)}</span></p>${btn}</div>`;
   let body;
   if (mode === 'local') {
     body = `<p class="note">1台の端末を、2人で交代しながら使います。番が変わるたびに「端末を渡す」画面が出るので、手札を見られずに遊べます。この遊び方では、パックチケットはもらえません。</p>
-    <section class="sec"><h3 class="h3">プレイヤー1のデッキ</h3><div class="decks compact">${tiles('me', true)}</div></section>
-    <section class="sec"><h3 class="h3">プレイヤー2のデッキ</h3><div class="decks compact">${tiles('p2', true)}</div></section>
-    <div class="cta"><button type="button" class="btn gold big" id="startLocal">2人で対戦スタート</button></div>`;
+    ${picker('me', allDecks(), 'プレイヤー1のデッキ')}
+    ${picker('p2', allDecks(), 'プレイヤー2のデッキ')}
+    ${bar(nameOf(UI.deck.me), nameOf(UI.deck.p2), '<button type="button" class="btn gold big" id="startLocal">2人で対戦スタート</button>')}`;
   } else if (mode === 'online') {
     const claude = TRANSPORT() === 'claude';
     if (claude && !NETUI.checked) netInit().then(r => { NETUI.checked = true; NETUI.why = r.ok ? '' : r.why; if (UI.screen === 'select') renderSelect(); });
     body = `<section class="sec net">${netPanelHTML()}</section>
-    ${claude && NETUI.stage === 'waiting' ? '' : `<section class="sec"><h3 class="h3">あなたのデッキ</h3><div class="decks">${tiles('me')}</div></section>`}`;
+    ${claude && NETUI.stage === 'waiting' ? '' : picker('me', allDecks(), 'あなたのデッキ')}`;
   } else {
-    body = `<section class="sec"><h3 class="h3">あなたのデッキ</h3><div class="decks">${tiles('me')}</div>
-      <p class="note">自分だけのデッキは「<button type="button" class="linkbtn" data-nav="decks">デッキをつくる</button>」で作れます。</p></section>
-    <section class="sec"><h3 class="h3">対戦相手（CPU）のデッキ</h3><div class="decks">${[rndDeck].concat(PRESETS).map(d => deckTileHTML(d, UI.deck.opp === d.id, 'opp')).join('')}</div></section>
-    <div class="cta"><button type="button" class="btn gold big" id="startBtn">対戦スタート</button></div>`;
+    body = `${picker('me', allDecks(), 'あなたのデッキ')}
+      <p class="note">自分だけのデッキは「<button type="button" class="linkbtn" data-nav="decks">デッキをつくる</button>」で作れます。</p>
+    ${picker('opp', [rndDeck].concat(PRESETS), '対戦相手（CPU）のデッキ')}
+    ${bar(nameOf(UI.deck.me), nameOf(UI.deck.opp), '<button type="button" class="btn gold big" id="startBtn">対戦スタート</button>')}`;
   }
   const modes = [['cpu', 'CPUと対戦'], ['local', '2人で対戦（この端末）'], ['online', 'オンライン対戦']];
   $('#scr-select').innerHTML = `<div class="page">
@@ -5855,7 +5924,7 @@ function renderDecks() {
       <p class="note">マイデッキは、このブラウザの中だけに保存されます。</p>
       <div class="row"><button type="button" class="btn gold" data-new="1">＋ 新しいデッキ</button></div>
     </section>
-    <section class="sec"><h3 class="h3">プリセットをコピーして改造</h3><div class="decks">${PRESETS.map(d => `<button type="button" class="dtile-b" data-copy="${d.id}"><span class="dtile"><span class="dt-stripe" style="background:${TYPES[d.energy[0]].c}"></span><span class="dt-name">${esc(d.name)}</span><span class="dt-meta">${d.energy.map(t => eI(t, 's')).join('')}<span>コピーして編集</span></span></span></button>`).join('')}</div></section>
+    <section class="sec"><h3 class="h3">プリセットをコピーして改造</h3><div class="decks compact">${PRESETS.map(d => `<button type="button" class="dtile-b" data-copy="${d.id}"><span class="dtile"><span class="dt-stripe" style="background:${TYPES[d.energy[0]].c}"></span><span class="dt-name">${esc(d.name)}</span><span class="dt-meta">${d.energy.map(t => eI(t, 's')).join('')}<span>コピーして編集</span></span></span></button>`).join('')}</div></section>
   </div>`;
   $('#scr-decks').onclick = e => {
     const t = e.target.closest('[data-edit],[data-del],[data-new],[data-copy]');
@@ -6535,7 +6604,7 @@ function ownerOf(m) { return UI.g.players.find(p => inPlay(p).includes(m)); }
 function emptySlot(label) { return `<span class="slot-empty"><span>${label}</span></span>`; }
 function benchHTML(p, mine) {
   const out = [];
-  for (let i = 0; i < BENCH_MAX; i++) out.push(p.bench[i] ? monHTML(p.bench[i], { setup: mine && UI.mode === 'setup' }) : emptySlot('BENCH ' + (i + 1)));
+  for (let i = 0; i < BENCH_MAX; i++) out.push(p.bench[i] ? monHTML(p.bench[i], { setup: mine && UI.mode === 'setup' }) : emptySlot('ベンチ'));
   return out.join('');
 }
 function pbarHTML(p) {
@@ -6543,21 +6612,21 @@ function pbarHTML(p) {
   const cur = g.cur === p.idx && !g.over && UI.mode !== 'setup' && g.turn > 0;
   return `<div class="pbar ${p.idx !== UI.me ? 'opp' : 'me'} ${cur ? 'cur' : ''}">
     <span class="who">${esc(whoLabel(p))}</span><span class="dname">${esc(p.deckName)}</span>
-    <span class="pts"><span class="silk">PTS</span><span class="leds" role="img" aria-label="${p.points}ポイント">${[0, 1, 2].map(i => `<i class="led ${i < p.points ? 'on' : ''}"></i>`).join('')}</span></span>
+    <span class="pts"><span class="silk">ポイント</span><span class="leds" role="img" aria-label="${p.points}ポイント">${[0, 1, 2].map(i => `<i class="led ${i < p.points ? 'on' : ''}"></i>`).join('')}</span></span>
   </div>`;
 }
 function pileHTML(p) {
   return `<div class="pile">
-    <span class="pl"><span class="silk">DECK</span><b>${p.deck.length}</b></span>
-    ${p.idx !== UI.me ? `<span class="pl"><span class="silk">HAND</span><b>${p.hand.length}</b></span>` : ''}
-    <button type="button" class="pl trash" data-act="trash" data-p="${p.idx}"><span class="silk">TRASH</span><b>${p.discard.length}</b></button>
+    <span class="pl"><span class="silk">山札</span><b>${p.deck.length}</b></span>
+    ${p.idx !== UI.me ? `<span class="pl"><span class="silk">手札</span><b>${p.hand.length}</b></span>` : ''}
+    <button type="button" class="pl trash" data-act="trash" data-p="${p.idx}"><span class="silk">トラッシュ</span><b>${p.discard.length}</b></button>
   </div>`;
 }
 function zoneHTML(p, mine) {
   const g = UI.g;
   const can = mine && isMyTurn() && UI.mode === 'idle' && canAttachEnergy(g, p);
   const cur = p.energyCur ? eI(p.energyCur, 'xl') : '<i class="e xl empty"></i>';
-  const inner = `<span class="z-cur">${cur}</span><span class="z-info"><span class="silk">ENERGY</span><span class="z-next">次 ${p.energyNext ? eI(p.energyNext, 's') : '−'}</span></span>`;
+  const inner = `<span class="z-cur">${cur}</span><span class="z-info"><span class="silk">エネルギー</span><span class="z-next">次 ${p.energyNext ? eI(p.energyNext, 's') : '−'}</span></span>`;
   return can
     ? `<button type="button" class="zone tap" data-act="zone" aria-label="エネルギーをつける">${inner}</button>`
     : `<div class="zone ${mine && p.t.energyDone ? 'used' : ''}">${inner}</div>`;
@@ -6584,12 +6653,12 @@ function renderBattle() {
   $('#board').innerHTML = `
     ${pbarHTML(op)}
     <div class="field f-opp">
-      <div class="bench">${hideOpp ? [1, 2, 3].map(i => emptySlot('BENCH ' + i)).join('') : benchHTML(op, false)}</div>
-      <div class="arow">${pileHTML(op)}<div class="aslot">${op.active && !hideOpp ? monHTML(op.active) : emptySlot(g.turn === 0 ? '準備中…' : 'ACTIVE')}</div>${zoneHTML(op, false)}</div>
+      <div class="bench">${hideOpp ? [1, 2, 3].map(i => emptySlot('ベンチ')).join('') : benchHTML(op, false)}</div>
+      <div class="arow">${pileHTML(op)}<div class="aslot">${op.active && !hideOpp ? monHTML(op.active) : emptySlot(g.turn === 0 ? '準備中…' : 'バトル場')}</div>${zoneHTML(op, false)}</div>
     </div>
     <div class="mid">${midHTML(g)}</div>
     <div class="field f-me">
-      <div class="arow">${pileHTML(me)}<div class="aslot">${me.active ? monHTML(me.active, { hint: myTurn && UI.mode === 'idle', setup: UI.mode === 'setup' }) : emptySlot('ACTIVE')}</div>${zoneHTML(me, true)}</div>
+      <div class="arow">${pileHTML(me)}<div class="aslot">${me.active ? monHTML(me.active, { hint: myTurn && UI.mode === 'idle', setup: UI.mode === 'setup' }) : emptySlot('バトル場')}</div>${zoneHTML(me, true)}</div>
       <div class="bench">${benchHTML(me, true)}</div>
     </div>
     ${pbarHTML(me)}`;
@@ -7214,19 +7283,18 @@ function showResult(g) {
   const win = !local && g.winner === UI.me, draw = g.winner === null;
   const p0 = g.players[0], p1 = g.players[1];
   const me = g.players[UI.me], op = g.players[1 - UI.me];
-  const head = local ? (draw ? 'DRAW' : `PLAYER ${g.winner + 1} WIN`) : (win ? 'YOU WIN' : draw ? 'DRAW' : 'YOU LOSE');
-  const sub = local ? (draw ? '引き分け' : `プレイヤー${g.winner + 1}の勝ち！`) : (win ? 'あなたの勝ち！' : draw ? '引き分け' : 'あなたの負け…');
+  const head = local ? (draw ? '引き分け' : `プレイヤー${g.winner + 1}の勝ち`) : (win ? '勝ち！' : draw ? '引き分け' : '負け');
   const score = local
     ? `<span>プレイヤー1 <b>${p0.points}</b></span><span class="vs">-</span><span><b>${p1.points}</b> プレイヤー2</span>`
     : `<span>あなた <b>${me.points}</b></span><span class="vs">-</span><span><b>${op.points}</b> ${online ? '相手' : 'CPU'}</span>`;
   const p2p = online && NET.mode === 'p2p';
   const btns = online
-    ? `${p2p ? '<button type="button" class="btn gold" data-r="again2">もう一度（同じ相手と）</button>' : ''}<button type="button" class="btn ${p2p ? '' : 'gold'}" data-r="online">オンライン対戦にもどる</button><button type="button" class="btn gold" data-r="packs" ${STORE.tickets < 1 ? 'disabled' : ''}>パックをひらく</button><button type="button" class="btn ghost" data-r="close">盤面を見る</button>`
-    : `<button type="button" class="btn gold" data-r="again">もう一度</button>${local ? '' : `<button type="button" class="btn gold" data-r="packs" ${STORE.tickets < 1 ? 'disabled' : ''}>パックをひらく</button>`}<button type="button" class="btn" data-r="select">デッキをえらぶ</button><button type="button" class="btn ghost" data-r="close">盤面を見る</button>`;
+    ? `${p2p ? '<button type="button" class="btn gold" data-r="again2">もう一度（同じ相手と）</button>' : ''}<button type="button" class="btn ${p2p ? '' : 'gold'}" data-r="online">オンライン対戦にもどる</button><button type="button" class="btn" data-r="packs" ${STORE.tickets < 1 ? 'disabled' : ''}>パックをひらく</button><button type="button" class="btn ghost" data-r="close">盤面を見る</button>`
+    : `<button type="button" class="btn gold" data-r="again">もう一度</button>${local ? '' : `<button type="button" class="btn" data-r="packs" ${STORE.tickets < 1 ? 'disabled' : ''}>パックをひらく</button>`}<button type="button" class="btn" data-r="select">デッキをえらぶ</button><button type="button" class="btn ghost" data-r="close">盤面を見る</button>`;
   r.innerHTML = `<div class="res-in ${local ? (draw ? 'draw' : 'win') : win ? 'win' : draw ? 'draw' : 'lose'}" role="dialog" aria-modal="true">
-    <p class="silk">RESULT ── TURN ${g.turn}</p>
+    <p class="res-turn">${g.turn}ターンで決着</p>
     <h2 class="res-h">${head}</h2>
-    <p class="res-sub">${sub}　${esc(g.reason)}</p>
+    <p class="res-sub">${esc(g.reason)}</p>
     <div class="res-score">${score}</div>
     <p class="res-deck">${esc(local ? p0.deckName : me.deckName)} vs ${esc(local ? p1.deckName : op.deckName)}</p>
     ${local ? '' : `<p class="res-reward">パックチケット <b>+${g.reward || 0}</b>（いま ${STORE.tickets}枚）</p>`}
