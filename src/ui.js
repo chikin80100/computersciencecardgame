@@ -273,15 +273,17 @@ function renderTitle() {
   <div class="title-wrap">
     <p class="silk">REV 3.0 ── COMPUTER SCIENCE TERMS ── ${ALL_IDS.length} CARDS</p>
     <h1 class="logo"><span>CS用語</span><span>カードバトル</span></h1>
-    <p class="lead">コンピュータ科学の用語でたたかう、ポケポケ風カードゲーム。パックをひらいてカードを集め、20枚のデッキでCPUと対戦しよう。カードの「用語解説」を読めば、用語にも強くなれる。</p>
+    <p class="lead">コンピュータ科学の用語でたたかうカードゲーム。パックでカードを集めて、20枚のデッキで対戦しよう。カードの「用語解説」を読めば、用語にもくわしくなれる。</p>
     <div class="fan" aria-hidden="true">${picks.map((id, i) => `<div class="fan-c" style="transform:${pose[i]};animation-delay:${i * 0.12}s">${thumbHTML(id)}</div>`).join('')}</div>
     <nav class="menu" aria-label="メニュー">
-      <button type="button" class="btn gold big" data-nav="select" data-vs="cpu">対戦する<small>CPUと対戦</small></button>
-      <button type="button" class="btn gold big" data-nav="select" data-vs="online">対人戦<small>オンライン ・ この端末で2人</small></button>
-      <button type="button" class="btn gold big" data-nav="packs">パックをひらく<small>新シリーズ「遍在する計算機」登場！ ・ チケット ${STORE.tickets}枚</small></button>
-      <button type="button" class="btn" data-nav="dex">カード図鑑<small>${ownedKinds()} / ${ALL_IDS.length}種</small></button>
-      <button type="button" class="btn" data-nav="decks">デッキをつくる</button>
-      <button type="button" class="btn wide" data-nav="rules">あそびかた</button>
+      <button type="button" class="btn gold big m-main" data-nav="select" data-vs="cpu">CPUと対戦する</button>
+      <button type="button" class="btn m-sub" data-nav="select" data-vs="online">人と対戦する<small>オンライン・この端末で2人</small></button>
+      <button type="button" class="btn m-sub m-pack" data-nav="packs">パックをひらく<small>チケット ${STORE.tickets}枚</small>${SERIES.filter(se => se.isNew).map(se => `<small class="m-new"><b>NEW</b> ${esc(se.name)}</small>`).join('')}</button>
+      <div class="m-tools">
+        <button type="button" class="btn ghost" data-nav="dex">図鑑<small>${ownedKinds()}/${ALL_IDS.length}</small></button>
+        <button type="button" class="btn ghost" data-nav="decks">デッキ</button>
+        <button type="button" class="btn ghost" data-nav="rules">あそびかた</button>
+      </div>
     </nav>
     <p class="silk foot">${TYPE_ORDER.length} TYPES ・ ${MONSTERS.length} UNITS ・ ${TRAINERS.length} COMMANDS ・ ${PACKS.length} PACKS</p>
   </div>`;
@@ -296,35 +298,57 @@ function deckTileHTML(d, pressed, side, compact) {
     <span class="dtile">
       <span class="dt-stripe" style="background:linear-gradient(90deg,${(d.energy || []).map(t => TYPES[t].c).join(',') || '#777'}${(d.energy || []).length === 1 ? ',' + TYPES[d.energy[0]].c : ''})"></span>
       <span class="dt-name">${esc(d.name)}</span>
-      <span class="dt-meta">${(d.energy || []).map(t => eI(t, 's')).join('')}<span>${d.id.startsWith('p_') ? 'プリセット' : 'マイデッキ'}</span></span>
+      <span class="dt-meta">${(d.energy || []).map(t => eI(t, 's')).join('')}${compact && d.id.startsWith('p_') ? '' : `<span>${d.id === 'random' ? 'おまかせ' : d.id.startsWith('p_') ? 'プリセット' : 'マイデッキ'}</span>`}</span>
       ${d.blurb && !compact ? `<span class="dt-blurb">${esc(d.blurb)}</span>` : ''}
       ${keys.length && !compact ? `<span class="dt-keys">${keys.map(id => `<span>${artImg(id, { cls: 'ic' })}${esc(DEF[id].name)}${DEF[id].ex ? 'ex' : ''}</span>`).join('')}</span>` : ''}
       ${bad ? `<span class="dt-bad">${esc(v.errs[0])}</span>` : ''}
     </span>
   </button>`;
 }
+// 選んでいるデッキのくわしい説明（押せない。一覧の上に出す）
+function deckDetailHTML(d) {
+  const keys = (d.key || Object.keys(d.cards || {}).filter(id => DEF[id] && DEF[id].ex).slice(0, 2));
+  const cols = (d.energy || []).map(t => TYPES[t].c);
+  return `<div class="dsel" aria-live="polite">
+    <span class="dt-stripe" style="background:${cols.length ? `linear-gradient(90deg,${cols.concat(cols.length === 1 ? cols : []).join(',')})` : '#8a7d5c'}"></span>
+    <p class="ds-name">${esc(d.name)}</p>
+    <p class="dt-meta">${(d.energy || []).map(t => eI(t, 's')).join('')}<span>${d.id === 'random' ? 'おまかせ' : d.id.startsWith('p_') ? 'プリセット' : 'マイデッキ'}</span></p>
+    ${d.blurb ? `<p class="dt-blurb">${esc(d.blurb)}</p>` : ''}
+    ${keys.length ? `<p class="dt-keys">${keys.map(id => `<span>${artImg(id, { cls: 'ic' })}${esc(DEF[id].name)}${DEF[id].ex ? 'ex' : ''}</span>`).join('')}</p>` : ''}
+  </div>`;
+}
 function renderSelect() {
   if (!deckById(UI.deck.me)) UI.deck.me = PRESETS[0].id;
   if (!deckById(UI.deck.p2)) UI.deck.p2 = PRESETS[1].id;
   const mode = UI.vsPick || 'cpu';
-  const rndDeck = { id: 'random', name: 'ランダム', energy: [], blurb: 'あなたと違うプリセットデッキから選ぶ' };
-  const tiles = (side, compact) => allDecks().map(d => deckTileHTML(d, UI.deck[side] === d.id, side, compact)).join('');
+  const rndDeck = { id: 'random', name: 'ランダム', energy: [], blurb: 'あなたと違うプリセットデッキから、そのつど選びます。' };
+  // 選んでいるデッキだけをくわしく見せ、一覧は小さなタイルにする（19個のデッキを2回ならべると、とても長くなるため）
+  const picker = (side, list, title) => {
+    const cur = list.find(d => d.id === UI.deck[side]) || list[0];
+    return `<section class="sec pick">
+      <h3 class="h3">${title}</h3>
+      ${deckDetailHTML(cur)}
+      <div class="decks compact" role="group" aria-label="${title}">${list.map(d => deckTileHTML(d, UI.deck[side] === d.id, side, true)).join('')}</div>
+    </section>`;
+  };
+  const nameOf = id => (id === 'random' ? 'ランダム' : (deckById(id) || {}).name || '');
+  const bar = (left, right, btn) => `<div class="matchbar"><p class="mb-vs"><span>${esc(left)}</span><i>vs</i><span>${esc(right)}</span></p>${btn}</div>`;
   let body;
   if (mode === 'local') {
     body = `<p class="note">1台の端末を、2人で交代しながら使います。番が変わるたびに「端末を渡す」画面が出るので、手札を見られずに遊べます。この遊び方では、パックチケットはもらえません。</p>
-    <section class="sec"><h3 class="h3">プレイヤー1のデッキ</h3><div class="decks compact">${tiles('me', true)}</div></section>
-    <section class="sec"><h3 class="h3">プレイヤー2のデッキ</h3><div class="decks compact">${tiles('p2', true)}</div></section>
-    <div class="cta"><button type="button" class="btn gold big" id="startLocal">2人で対戦スタート</button></div>`;
+    ${picker('me', allDecks(), 'プレイヤー1のデッキ')}
+    ${picker('p2', allDecks(), 'プレイヤー2のデッキ')}
+    ${bar(nameOf(UI.deck.me), nameOf(UI.deck.p2), '<button type="button" class="btn gold big" id="startLocal">2人で対戦スタート</button>')}`;
   } else if (mode === 'online') {
     const claude = TRANSPORT() === 'claude';
     if (claude && !NETUI.checked) netInit().then(r => { NETUI.checked = true; NETUI.why = r.ok ? '' : r.why; if (UI.screen === 'select') renderSelect(); });
     body = `<section class="sec net">${netPanelHTML()}</section>
-    ${claude && NETUI.stage === 'waiting' ? '' : `<section class="sec"><h3 class="h3">あなたのデッキ</h3><div class="decks">${tiles('me')}</div></section>`}`;
+    ${claude && NETUI.stage === 'waiting' ? '' : picker('me', allDecks(), 'あなたのデッキ')}`;
   } else {
-    body = `<section class="sec"><h3 class="h3">あなたのデッキ</h3><div class="decks">${tiles('me')}</div>
-      <p class="note">自分だけのデッキは「<button type="button" class="linkbtn" data-nav="decks">デッキをつくる</button>」で作れます。</p></section>
-    <section class="sec"><h3 class="h3">対戦相手（CPU）のデッキ</h3><div class="decks">${[rndDeck].concat(PRESETS).map(d => deckTileHTML(d, UI.deck.opp === d.id, 'opp')).join('')}</div></section>
-    <div class="cta"><button type="button" class="btn gold big" id="startBtn">対戦スタート</button></div>`;
+    body = `${picker('me', allDecks(), 'あなたのデッキ')}
+      <p class="note">自分だけのデッキは「<button type="button" class="linkbtn" data-nav="decks">デッキをつくる</button>」で作れます。</p>
+    ${picker('opp', [rndDeck].concat(PRESETS), '対戦相手（CPU）のデッキ')}
+    ${bar(nameOf(UI.deck.me), nameOf(UI.deck.opp), '<button type="button" class="btn gold big" id="startBtn">対戦スタート</button>')}`;
   }
   const modes = [['cpu', 'CPUと対戦'], ['local', '2人で対戦（この端末）'], ['online', 'オンライン対戦']];
   $('#scr-select').innerHTML = `<div class="page">
@@ -445,7 +469,7 @@ function renderDecks() {
       <p class="note">マイデッキは、このブラウザの中だけに保存されます。</p>
       <div class="row"><button type="button" class="btn gold" data-new="1">＋ 新しいデッキ</button></div>
     </section>
-    <section class="sec"><h3 class="h3">プリセットをコピーして改造</h3><div class="decks">${PRESETS.map(d => `<button type="button" class="dtile-b" data-copy="${d.id}"><span class="dtile"><span class="dt-stripe" style="background:${TYPES[d.energy[0]].c}"></span><span class="dt-name">${esc(d.name)}</span><span class="dt-meta">${d.energy.map(t => eI(t, 's')).join('')}<span>コピーして編集</span></span></span></button>`).join('')}</div></section>
+    <section class="sec"><h3 class="h3">プリセットをコピーして改造</h3><div class="decks compact">${PRESETS.map(d => `<button type="button" class="dtile-b" data-copy="${d.id}"><span class="dtile"><span class="dt-stripe" style="background:${TYPES[d.energy[0]].c}"></span><span class="dt-name">${esc(d.name)}</span><span class="dt-meta">${d.energy.map(t => eI(t, 's')).join('')}<span>コピーして編集</span></span></span></button>`).join('')}</div></section>
   </div>`;
   $('#scr-decks').onclick = e => {
     const t = e.target.closest('[data-edit],[data-del],[data-new],[data-copy]');
@@ -558,7 +582,7 @@ function renderDex() {
   const holoKinds = ALL_IDS.filter(id => STORE.holo[id]).length;
   $('#scr-dex').innerHTML = `<div class="page">
     <header class="top"><button type="button" class="back" data-nav="title">← タイトル</button><h2>カード図鑑</h2></header>
-    ${walletHTML([['COLLECTION', ownedKinds(), `/ ${ALL_IDS.length}種`], ['HOLO', holoKinds, '種'], ['PACK PTS', STORE.points, 'pt']])}
+    ${walletHTML([['集めたカード', ownedKinds(), `/ ${ALL_IDS.length}種`], ['ホロ', holoKinds, '種'], ['パックポイント', STORE.points, 'pt']])}
     <p class="note">カードをタップすると用語解説が読めます。持っていないカードは影になっています（パックポイントで交換もできます）。</p>
     ${chipsHTML(f, 'data-df')}
     ${TYPES[f] && f !== 'none' ? `<p class="note">${eI(f, 's')} ${TYPES[f].name}の弱点は ${eI(WEAK[f], 's')} ${TYPES[WEAK[f]].name}。${esc(WEAK_WHY[f])}。</p>` : ''}
@@ -819,7 +843,7 @@ function renderPacks() {
   const none10 = STORE.tickets < MULTI_PACKS || loading;
   $('#scr-packs').innerHTML = `<div class="page">
     <header class="top"><button type="button" class="back" data-nav="title">← タイトル</button><h2>パックをひらく</h2></header>
-    ${walletHTML([['TICKETS', STORE.tickets, '枚'], ['PACK PTS', STORE.points, 'pt'], ['COLLECTION', ownedKinds(), `/ ${ALL_IDS.length}種`]])}
+    ${walletHTML([['チケット', STORE.tickets, '枚'], ['パックポイント', STORE.points, 'pt'], ['集めたカード', ownedKinds(), `/ ${ALL_IDS.length}種`]])}
     <p class="note">チケット1枚で1パック（5枚）。「${MULTI_PACKS}連」なら、チケット${MULTI_PACKS}枚で${MULTI_PACKS}パックをまとめてひらけます。チケットは対戦すると増えます（${REWARD_TEXT}）。毎日はじめて遊ぶと+${REWARD.daily}。${SAVE.where === 'cloud' ? 'コレクションはあなたのアカウントに保存されます。' : 'コレクションはこのブラウザに保存されます。'}</p>
     ${loading ? '<p class="msg">セーブデータを読み込み中…</p>' : STORE.tickets < 1 ? '<p class="msg warn">チケットがありません。対戦してチケットを増やそう。</p>' : ''}
     ${SERIES.map(se => `<section class="series">
@@ -1125,7 +1149,7 @@ function ownerOf(m) { return UI.g.players.find(p => inPlay(p).includes(m)); }
 function emptySlot(label) { return `<span class="slot-empty"><span>${label}</span></span>`; }
 function benchHTML(p, mine) {
   const out = [];
-  for (let i = 0; i < BENCH_MAX; i++) out.push(p.bench[i] ? monHTML(p.bench[i], { setup: mine && UI.mode === 'setup' }) : emptySlot('BENCH ' + (i + 1)));
+  for (let i = 0; i < BENCH_MAX; i++) out.push(p.bench[i] ? monHTML(p.bench[i], { setup: mine && UI.mode === 'setup' }) : emptySlot('ベンチ'));
   return out.join('');
 }
 function pbarHTML(p) {
@@ -1133,21 +1157,21 @@ function pbarHTML(p) {
   const cur = g.cur === p.idx && !g.over && UI.mode !== 'setup' && g.turn > 0;
   return `<div class="pbar ${p.idx !== UI.me ? 'opp' : 'me'} ${cur ? 'cur' : ''}">
     <span class="who">${esc(whoLabel(p))}</span><span class="dname">${esc(p.deckName)}</span>
-    <span class="pts"><span class="silk">PTS</span><span class="leds" role="img" aria-label="${p.points}ポイント">${[0, 1, 2].map(i => `<i class="led ${i < p.points ? 'on' : ''}"></i>`).join('')}</span></span>
+    <span class="pts"><span class="silk">ポイント</span><span class="leds" role="img" aria-label="${p.points}ポイント">${[0, 1, 2].map(i => `<i class="led ${i < p.points ? 'on' : ''}"></i>`).join('')}</span></span>
   </div>`;
 }
 function pileHTML(p) {
   return `<div class="pile">
-    <span class="pl"><span class="silk">DECK</span><b>${p.deck.length}</b></span>
-    ${p.idx !== UI.me ? `<span class="pl"><span class="silk">HAND</span><b>${p.hand.length}</b></span>` : ''}
-    <button type="button" class="pl trash" data-act="trash" data-p="${p.idx}"><span class="silk">TRASH</span><b>${p.discard.length}</b></button>
+    <span class="pl"><span class="silk">山札</span><b>${p.deck.length}</b></span>
+    ${p.idx !== UI.me ? `<span class="pl"><span class="silk">手札</span><b>${p.hand.length}</b></span>` : ''}
+    <button type="button" class="pl trash" data-act="trash" data-p="${p.idx}"><span class="silk">トラッシュ</span><b>${p.discard.length}</b></button>
   </div>`;
 }
 function zoneHTML(p, mine) {
   const g = UI.g;
   const can = mine && isMyTurn() && UI.mode === 'idle' && canAttachEnergy(g, p);
   const cur = p.energyCur ? eI(p.energyCur, 'xl') : '<i class="e xl empty"></i>';
-  const inner = `<span class="z-cur">${cur}</span><span class="z-info"><span class="silk">ENERGY</span><span class="z-next">次 ${p.energyNext ? eI(p.energyNext, 's') : '−'}</span></span>`;
+  const inner = `<span class="z-cur">${cur}</span><span class="z-info"><span class="silk">エネルギー</span><span class="z-next">次 ${p.energyNext ? eI(p.energyNext, 's') : '−'}</span></span>`;
   return can
     ? `<button type="button" class="zone tap" data-act="zone" aria-label="エネルギーをつける">${inner}</button>`
     : `<div class="zone ${mine && p.t.energyDone ? 'used' : ''}">${inner}</div>`;
@@ -1174,12 +1198,12 @@ function renderBattle() {
   $('#board').innerHTML = `
     ${pbarHTML(op)}
     <div class="field f-opp">
-      <div class="bench">${hideOpp ? [1, 2, 3].map(i => emptySlot('BENCH ' + i)).join('') : benchHTML(op, false)}</div>
-      <div class="arow">${pileHTML(op)}<div class="aslot">${op.active && !hideOpp ? monHTML(op.active) : emptySlot(g.turn === 0 ? '準備中…' : 'ACTIVE')}</div>${zoneHTML(op, false)}</div>
+      <div class="bench">${hideOpp ? [1, 2, 3].map(i => emptySlot('ベンチ')).join('') : benchHTML(op, false)}</div>
+      <div class="arow">${pileHTML(op)}<div class="aslot">${op.active && !hideOpp ? monHTML(op.active) : emptySlot(g.turn === 0 ? '準備中…' : 'バトル場')}</div>${zoneHTML(op, false)}</div>
     </div>
     <div class="mid">${midHTML(g)}</div>
     <div class="field f-me">
-      <div class="arow">${pileHTML(me)}<div class="aslot">${me.active ? monHTML(me.active, { hint: myTurn && UI.mode === 'idle', setup: UI.mode === 'setup' }) : emptySlot('ACTIVE')}</div>${zoneHTML(me, true)}</div>
+      <div class="arow">${pileHTML(me)}<div class="aslot">${me.active ? monHTML(me.active, { hint: myTurn && UI.mode === 'idle', setup: UI.mode === 'setup' }) : emptySlot('バトル場')}</div>${zoneHTML(me, true)}</div>
       <div class="bench">${benchHTML(me, true)}</div>
     </div>
     ${pbarHTML(me)}`;
@@ -1804,19 +1828,18 @@ function showResult(g) {
   const win = !local && g.winner === UI.me, draw = g.winner === null;
   const p0 = g.players[0], p1 = g.players[1];
   const me = g.players[UI.me], op = g.players[1 - UI.me];
-  const head = local ? (draw ? 'DRAW' : `PLAYER ${g.winner + 1} WIN`) : (win ? 'YOU WIN' : draw ? 'DRAW' : 'YOU LOSE');
-  const sub = local ? (draw ? '引き分け' : `プレイヤー${g.winner + 1}の勝ち！`) : (win ? 'あなたの勝ち！' : draw ? '引き分け' : 'あなたの負け…');
+  const head = local ? (draw ? '引き分け' : `プレイヤー${g.winner + 1}の勝ち`) : (win ? '勝ち！' : draw ? '引き分け' : '負け');
   const score = local
     ? `<span>プレイヤー1 <b>${p0.points}</b></span><span class="vs">-</span><span><b>${p1.points}</b> プレイヤー2</span>`
     : `<span>あなた <b>${me.points}</b></span><span class="vs">-</span><span><b>${op.points}</b> ${online ? '相手' : 'CPU'}</span>`;
   const p2p = online && NET.mode === 'p2p';
   const btns = online
-    ? `${p2p ? '<button type="button" class="btn gold" data-r="again2">もう一度（同じ相手と）</button>' : ''}<button type="button" class="btn ${p2p ? '' : 'gold'}" data-r="online">オンライン対戦にもどる</button><button type="button" class="btn gold" data-r="packs" ${STORE.tickets < 1 ? 'disabled' : ''}>パックをひらく</button><button type="button" class="btn ghost" data-r="close">盤面を見る</button>`
-    : `<button type="button" class="btn gold" data-r="again">もう一度</button>${local ? '' : `<button type="button" class="btn gold" data-r="packs" ${STORE.tickets < 1 ? 'disabled' : ''}>パックをひらく</button>`}<button type="button" class="btn" data-r="select">デッキをえらぶ</button><button type="button" class="btn ghost" data-r="close">盤面を見る</button>`;
+    ? `${p2p ? '<button type="button" class="btn gold" data-r="again2">もう一度（同じ相手と）</button>' : ''}<button type="button" class="btn ${p2p ? '' : 'gold'}" data-r="online">オンライン対戦にもどる</button><button type="button" class="btn" data-r="packs" ${STORE.tickets < 1 ? 'disabled' : ''}>パックをひらく</button><button type="button" class="btn ghost" data-r="close">盤面を見る</button>`
+    : `<button type="button" class="btn gold" data-r="again">もう一度</button>${local ? '' : `<button type="button" class="btn" data-r="packs" ${STORE.tickets < 1 ? 'disabled' : ''}>パックをひらく</button>`}<button type="button" class="btn" data-r="select">デッキをえらぶ</button><button type="button" class="btn ghost" data-r="close">盤面を見る</button>`;
   r.innerHTML = `<div class="res-in ${local ? (draw ? 'draw' : 'win') : win ? 'win' : draw ? 'draw' : 'lose'}" role="dialog" aria-modal="true">
-    <p class="silk">RESULT ── TURN ${g.turn}</p>
+    <p class="res-turn">${g.turn}ターンで決着</p>
     <h2 class="res-h">${head}</h2>
-    <p class="res-sub">${sub}　${esc(g.reason)}</p>
+    <p class="res-sub">${esc(g.reason)}</p>
     <div class="res-score">${score}</div>
     <p class="res-deck">${esc(local ? p0.deckName : me.deckName)} vs ${esc(local ? p1.deckName : op.deckName)}</p>
     ${local ? '' : `<p class="res-reward">パックチケット <b>+${g.reward || 0}</b>（いま ${STORE.tickets}枚）</p>`}

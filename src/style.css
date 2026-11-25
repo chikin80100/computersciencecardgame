@@ -30,6 +30,8 @@ h1, h2, h3 { text-wrap: balance; }
 .btn.ghost { border-color: rgba(230, 238, 226, .35); }
 .btn.danger { border-color: #e0675a; color: #ffb9ae; }
 .btn:disabled { opacity: .42; cursor: not-allowed; }
+.btn.gold:disabled { opacity: 1; background: transparent; border-style: dashed; border-color: rgba(217, 173, 85, .55); color: rgba(217, 173, 85, .8); }
+.btn.gold:disabled .why { color: var(--silk); opacity: .8; }
 .btn.big { min-height: 54px; font-size: 17px; padding: .6em 2em; }
 .btn.sm { min-height: 34px; padding: .25em .9em; font-size: 12px; }
 .btn small { font-weight: 400; opacity: .75; font-size: 11px; }
@@ -65,9 +67,18 @@ button:focus-visible, input:focus-visible, .zone:focus-visible { outline: 2px so
 .fan-c { position: absolute; left: 50%; top: 8px; width: 148px; transform-origin: 50% 100%; animation: deal .75s cubic-bezier(.2, .8, .2, 1) both; filter: drop-shadow(0 10px 16px rgba(0, 0, 0, .45)); }
 @keyframes deal { from { opacity: 0; margin-top: 48px; } }
 .menu { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.menu .big, .menu .wide { grid-column: 1 / -1; }
-.menu .btn small { display: block; }
 .menu .btn { flex-direction: column; gap: 0; }
+.menu .btn small { display: block; }
+/* 金の塗りは「CPUと対戦する」だけ。ほかは枠だけにして、どれが本命かをはっきりさせる */
+.m-main { grid-column: 1 / -1; min-height: 60px; font-size: 19px; }
+.m-sub { min-height: 62px; font-size: 15px; }
+.m-pack { border-color: var(--gold); color: var(--gold); }
+.m-pack small { color: var(--silk); }
+.menu .m-new { color: var(--silk); opacity: 1; }
+.m-new b { font-size: 9.5px; padding: 0 4px; margin-right: 2px; border-radius: 2px; background: #d63b2f; color: #fff; letter-spacing: .04em; }
+.m-tools { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.m-tools .btn { min-height: 48px; font-weight: 400; font-size: 13.5px; }
+.m-tools .btn small { opacity: .7; font-size: 10.5px; }
 .foot { margin-top: 4px; }
 
 /* ---------- ページ共通 ---------- */
@@ -146,7 +157,22 @@ button:focus-visible, input:focus-visible, .zone:focus-visible { outline: 2px so
 .dtile { display: flex; flex-direction: column; gap: 6px; height: 100%; background: var(--card); color: var(--ink); clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%, 0 14px); padding: 0 0 12px; }
 .dt-stripe { height: 7px; }
 .dt-name { font-family: var(--display); font-size: 18px; padding: 4px 14px 0 18px; line-height: 1.25; }
-.dtile-b[aria-pressed="true"] .dt-name::after { content: ' ← 選択中'; font-family: var(--body); font-size: 11px; font-weight: 700; color: #2f8a4f; }
+.dtile { position: relative; }
+.dtile-b[aria-pressed="true"] .dtile { box-shadow: inset 0 0 0 3px var(--gold); }
+.dtile-b[aria-pressed="true"] .dtile::after { content: '選択中'; position: absolute; top: 12px; right: 8px; font-size: 10px; font-weight: 700; line-height: 1; padding: 3px 5px; border-radius: 2px; background: var(--ink); color: var(--gold); }
+/* 選んでいるデッキのくわしい説明 */
+.dsel { display: flex; flex-direction: column; gap: 6px; max-width: 560px; margin: 0 0 12px; padding: 0 0 12px; background: var(--card); color: var(--ink); clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%, 0 14px); }
+.dsel p { margin: 0; }
+.ds-name { font-family: var(--display); font-size: 22px; line-height: 1.2; padding: 4px 14px 0 18px; }
+.pick .h3 { margin-bottom: 8px; }
+/* 下に固定する「対戦スタート」の帯 */
+/* 帯の下にフォーカスやスクロール先が隠れないように、帯の高さ分をあける */
+html:has(body[data-screen="select"]) { scroll-padding-bottom: 110px; }
+.matchbar { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; gap: 12px; margin: 8px -16px -48px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: #07261b; border-top: 2px solid var(--gold); }
+.mb-vs { flex: 1; min-width: 0; margin: 0; display: flex; flex-direction: column; font-size: 13px; font-weight: 700; line-height: 1.35; }
+.mb-vs span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mb-vs i { font-style: normal; font-family: var(--display); font-size: 11px; color: var(--gold); }
+.matchbar .btn.big { flex: none; padding: .6em 1.4em; }
 .dt-meta { display: flex; align-items: center; gap: 4px; padding: 0 14px; font-size: 11px; color: var(--muted); }
 .dt-meta span { margin-left: 6px; }
 .dt-blurb { font-size: 12px; padding: 0 14px; line-height: 1.5; }
@@ -226,7 +252,8 @@ button:focus-visible, input:focus-visible, .zone:focus-visible { outline: 2px so
 .tk { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .85; }
 .tk.wrap { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; opacity: 1; line-height: 1.4; }
 .slot-empty { width: calc(var(--h) * .74); height: var(--h); border: 1.5px dashed rgba(230, 238, 226, .26); border-radius: 3px; display: grid; place-items: center; }
-.slot-empty span { font-size: 9px; letter-spacing: .14em; color: rgba(230, 238, 226, .42); }
+.slot-empty span { font-size: 10px; letter-spacing: .08em; color: rgba(230, 238, 226, .45); }
+#scr-battle .silk { letter-spacing: .04em; font-size: 10.5px; }
 
 /* 場のユニット */
 .mslot { position: relative; display: block; flex: none; width: calc(var(--h) * .74); height: var(--h); padding: 0; border: 0; background: none; color: inherit; cursor: pointer; transition: transform .2s, opacity .2s; }
@@ -364,8 +391,8 @@ button:focus-visible, input:focus-visible, .zone:focus-visible { outline: 2px so
 .lg-dmg { color: #ffcabe; } .lg-heal { color: #9ff0bd; } .lg-coin { color: #cbd7ff; } .lg-evo { color: #f5dfae; } .lg-atk { font-weight: 700; }
 .res-in { width: min(440px, 100%); background: var(--card); color: var(--ink); clip-path: polygon(22px 0, 100% 0, 100% 100%, 0 100%, 0 22px); padding: 22px 22px 22px; text-align: center; display: flex; flex-direction: column; gap: 8px; animation: rise .3s ease-out; }
 @keyframes rise { from { transform: translateY(24px); } }
-.res-in .silk { color: var(--muted); }
-.res-h { font-family: var(--display); font-weight: 400; font-size: 48px; margin: 0; line-height: 1.1; }
+.res-turn { margin: 0; font-size: 12px; color: var(--muted); }
+.res-h { font-family: var(--display); font-weight: 400; font-size: 52px; margin: 0; line-height: 1.1; }
 .res-in.win .res-h { color: #2f8a4f; } .res-in.lose .res-h { color: #a5281b; } .res-in.draw .res-h { color: var(--muted); }
 .res-sub { margin: 0; font-size: 13px; }
 .res-score { display: flex; justify-content: center; align-items: baseline; gap: 14px; font-size: 14px; }
@@ -408,11 +435,13 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 /* ---------- お財布・パック ---------- */
 .wallet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 540px; margin-bottom: 10px; }
 .wl { display: flex; flex-direction: column; min-width: 0; background: rgba(0, 0, 0, .25); border: 1px solid rgba(230, 238, 226, .2); border-radius: 6px; padding: 6px 10px 4px; }
-.wl .silk { font-size: 9px; letter-spacing: .12em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wl .silk { font-size: 10px; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wl-v { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; }
 .wl b { font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1.1; color: var(--gold); font-variant-numeric: tabular-nums; }
 .wl small { font-size: 11px; opacity: .8; }
-.packs { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 24px; margin: 18px 0 28px; }
+#scr-packs .wallet { position: sticky; top: 0; z-index: 5; max-width: none; margin: 0 -16px 10px; padding: 8px 16px; background: rgba(7, 38, 27, .96); border-bottom: 1px solid rgba(230, 238, 226, .18); }
+#scr-packs .wallet { grid-template-columns: repeat(3, minmax(0, 180px)); }
+.packs { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 24px; margin: 18px 0 28px; }
 .pack-cell { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
 .pk-prog { margin: 0; font-size: 12px; color: rgba(230, 238, 226, .8); }
 .pack-btn { position: relative; padding: 0; border: 0; background: none; cursor: pointer; transition: transform .2s; }
@@ -524,6 +553,22 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
   .po-grid.multi .t-badge { top: 19px; right: 2px; font-size: 7.5px; }
   .po-grid.multi .po-cnt { font-size: 11px; min-width: 24px; padding: 0 5px; }
   .menu .btn small { font-size: 10px; }
+  /* タイトル：スマホでもメニューが1画面に入るように、カードの扇を小さく */
+  #scr-title { padding-top: 18px; }
+  .title-wrap { gap: 12px; }
+  .lead { font-size: 13px; line-height: 1.55; }
+  .fan { height: 178px; }
+  .fan-c { width: 112px; }
+  /* パック：2列にして、画面の長さを半分に */
+  .packs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 10px; }
+  .packs .pack { --w: 136px; }
+  .packs .pk-sub, .packs .pk-en { display: none; }
+  .packs .pk-new { font-size: 11px; top: -6px; right: -6px; }
+  .pk-prog { font-size: 11px; line-height: 1.45; }
+  .pk-btns { gap: 6px; }
+  .pk-btns .btn { min-height: 40px; padding: .35em .5em; font-size: 12.5px; }
+  .pk-btns .btn.ten small { font-size: 9.5px; }
+  .matchbar .btn.big { font-size: 15px; padding: .5em 1em; min-height: 50px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .thumb.holo::before, .card.holo::after, .pk-body::after, .po-pack { animation: none !important; }
@@ -560,7 +605,9 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 .net-wait p { margin: 0; }
 .net-code { font-family: var(--display); font-size: 48px; letter-spacing: .18em; color: var(--gold); line-height: 1.1; }
 .decks.compact { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-.decks.compact .dt-name { font-size: 15px; }
+.decks.compact .dtile { gap: 4px; padding-bottom: 9px; }
+.decks.compact .dt-name { font-size: 15px; padding-right: 52px; }
+.decks.compact .dtile-b[aria-pressed="false"] .dt-name { padding-right: 10px; }
 
 /* コード交換（WebRTC） */
 .net-in textarea, .code-out { width: 100%; padding: 8px 10px; font: 13px/1.45 var(--body); word-break: break-all; color: var(--silk); background: #062018; border: 1.5px solid rgba(230, 238, 226, .35); border-radius: 6px; resize: vertical; }
