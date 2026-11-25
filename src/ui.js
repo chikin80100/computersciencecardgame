@@ -260,6 +260,7 @@ document.addEventListener('click', e => {
   if (nav) { e.preventDefault(); if (nav.dataset.vs) UI.vsPick = nav.dataset.vs; show(nav.dataset.nav); }
 });
 window.addEventListener('hashchange', () => {
+  if (/^#[ja]=/.test(location.hash) && !(UI.g && !UI.g.over)) { const to = p2pFromHash(); if (to) { show(to); return; } }
   const h = location.hash.replace('#', '');
   if ((UI.screen === 'battle' && UI.g && !UI.g.over) || UI.screen === 'editor') return;
   if (ROUTES.includes(h) && h !== UI.screen) show(h);
@@ -343,7 +344,7 @@ function renderSelect() {
     const claude = TRANSPORT() === 'claude';
     if (claude && !NETUI.checked) netInit().then(r => { NETUI.checked = true; NETUI.why = r.ok ? '' : r.why; if (UI.screen === 'select') renderSelect(); });
     body = `<section class="sec net">${netPanelHTML()}</section>
-    ${claude && NETUI.stage === 'waiting' ? '' : picker('me', allDecks(), 'あなたのデッキ')}`;
+    ${(claude && NETUI.stage === 'waiting') || (!claude && P2P.handoff) ? '' : picker('me', allDecks(), 'あなたのデッキ')}`;
   } else {
     body = `${picker('me', allDecks(), 'あなたのデッキ')}
       <p class="note">自分だけのデッキは「<button type="button" class="linkbtn" data-nav="decks">デッキをつくる</button>」で作れます。</p>
@@ -699,7 +700,7 @@ function renderRules() {
     <section><h3 class="h3">対人戦</h3><ul>
       <li><b>2人で対戦（この端末）</b>：1台の端末を2人で交代して使う。番が変わるたびに「端末を渡す」画面が出る。パックチケットはもらえない。</li>
       <li><b>オンライン対戦</b>：${TRANSPORT() === 'p2p'
-        ? '1人が「部屋をつくる」を押し、出てきた「招待コード」を相手に送る。相手はそれを「部屋に入る」に貼って「参加コード」をつくり、送り返す。最初の人が参加コードを貼って「つなぐ」を押すと対戦がはじまる。ログインはいらない。'
+        ? '1人が「部屋をつくる」を押すと、「招待リンク」とQRコードが出る。相手はQRコードをスマホのカメラで読む（またはリンクを開く）と、「参加リンク」とQRコードが出る。最初の人がそれをカメラで読む（またはリンクを貼って「つなぐ」を押す）と、対戦がはじまる。ログインはいらない。'
         : '1人が「部屋をつくる」を押し、出てきた6けたの「あいことば」を相手に伝える。相手は「部屋に入る」にあいことばを入れる。2人ともClaudeにログインして、このページを開いている必要がある。'}</li>
       <li>オンライン対戦は、勝つとパックチケット+${REWARD.win}、負け・引き分けで+${REWARD.lose}。途中でぬけると降参になる。</li>
     </ul></section>
@@ -1923,8 +1924,10 @@ function boot(data) {
   injectArtCSS();
   drawPCB();
   const h = location.hash.replace('#', '');
-  const start = data.screen && ROUTES.includes(data.screen) ? data.screen : (ROUTES.includes(h) ? h : 'title');
+  const link = p2pFromHash(); // 招待リンク・参加リンクから開いたとき
+  const start = link || (data.screen && ROUTES.includes(data.screen) ? data.screen : (ROUTES.includes(h) ? h : 'title'));
   show(start);
+  p2pListen();
   initCloud();
 }
 if (window.claude && window.claude.hot && window.claude.hot.snapshot) {
