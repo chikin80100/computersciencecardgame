@@ -29,9 +29,9 @@ with sync_playwright() as p:
         for pg in (host, guest): pg.on('pageerror', lambda e: errs.append(str(e)))
         host.goto(URL + '#select'); guest.goto(URL + '#select'); host.wait_for_timeout(300)
         host.click('[data-vs="online"]', force=True); guest.click('[data-vs="online"]', force=True)
-        host.click('[data-net="create"]', force=True); host.wait_for_selector('.code-out', timeout=15000)
+        host.click('[data-net="create"]', force=True); host.wait_for_selector('.code-out', state='attached', timeout=15000)
         guest.fill('#p2pInvite', host.eval_on_selector('.code-out', 'e => e.value')); guest.click('[data-net="join"]', force=True)
-        guest.wait_for_selector('.code-out', timeout=15000)
+        guest.wait_for_selector('.code-out', state='attached', timeout=15000)
         host.fill('#p2pAnswer', guest.eval_on_selector('.code-out', 'e => e.value')); host.click('[data-net="connect"]', force=True)
         try:
             host.wait_for_selector('#actbar [data-act="ready"]', timeout=12000); guest.wait_for_selector('#actbar [data-act="ready"]', timeout=5000)

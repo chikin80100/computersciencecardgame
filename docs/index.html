@@ -627,6 +627,19 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 .p2p-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 .net-ok { margin: 0; font-weight: 700; color: #8fe0a6; }
 
+/* リンク交換（QRコード） */
+.qr { display: block; width: min(232px, 64vw); height: auto; margin: 2px auto 4px; border-radius: 4px; }
+.p2p-lbl { margin: 0; font-family: var(--display); font-size: 18px; color: var(--gold); }
+.p2p-code .p2p-btns { justify-content: center; }
+.p2p-raw summary { cursor: pointer; font-size: 12px; opacity: .75; padding: 4px 0; }
+.p2p-raw textarea { margin-top: 4px; }
+.msg.ok { background: rgba(143, 224, 166, .16); color: #c9f5d6; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.scan-ov { z-index: 90; }
+.scan-in { width: min(420px, 100%); display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.scan-in video { width: 100%; aspect-ratio: 1; object-fit: cover; border: 3px solid var(--gold); border-radius: 10px; background: #000; }
+.scan-in p { margin: 0; }
+
 </style>
 </head>
 <body data-screen="title">
@@ -5161,15 +5174,193 @@ function injectArtCSS() {
 const tileClass = d => 'tile-' + (d.kind === 'mon' ? d.type : d.kind);
 
 /* =========================================================
+   QRコードをつくる（外部のライブラリは使わない）
+   バイトモード・誤り訂正レベルL・型番1〜20。仕様（JIS X 0510 / ISO/IEC 18004）どおりにつくる。
+   qrMatrix(文字列) → 黒なら true の2次元配列。qrSVG(文字列) → SVGの文字列。
+   ========================================================= */
+const QR_ECC_L = [-1, 7, 10, 15, 20, 26, 18, 20, 24, 30, 18, 20, 24, 26, 30, 22, 24, 28, 30, 28, 28]; // 1ブロックの誤り訂正コード語の数
+const QR_BLOCKS_L = [-1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 4, 4, 4, 4, 6, 6, 6, 6, 7, 8]; // ブロックの数
+
+/* 型番ごとの、データに使えるマスの数 */
+function qrRawModules(ver) {
+  let r = (16 * ver + 128) * ver + 64;
+  if (ver >= 2) {
+    const na = Math.floor(ver / 7) + 2;
+    r -= (25 * na - 10) * na - 55;
+    if (ver >= 7) r -= 36;
+  }
+  return r;
+}
+const qrDataCodewords = ver => Math.floor(qrRawModules(ver) / 8) - QR_ECC_L[ver] * QR_BLOCKS_L[ver];
+
+/* ガロア体 GF(256) のかけ算（リード・ソロモン符号用） */
+function qrMul(x, y) {
+  let z = 0;
+  for (let i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11d); z ^= ((y >>> i) & 1) * x; }
+  return z & 255;
+}
+function qrRSDivisor(deg) {
+  const r = Array(deg).fill(0);
+  r[deg - 1] = 1;
+  let root = 1;
+  for (let i = 0; i < deg; i++) {
+    for (let j = 0; j < r.length; j++) { r[j] = qrMul(r[j], root); if (j + 1 < r.length) r[j] ^= r[j + 1]; }
+    root = qrMul(root, 2);
+  }
+  return r;
+}
+function qrRSRemainder(data, div) {
+  const r = div.map(() => 0);
+  for (const b of data) {
+    const f = b ^ r.shift();
+    r.push(0);
+    div.forEach((c, i) => { r[i] ^= qrMul(c, f); });
+  }
+  return r;
+}
+
+function qrMatrix(text) {
+  const bytes = Array.from(new TextEncoder().encode(text));
+  let ver = 1;
+  for (; ver <= 20; ver++) {
+    const cnt = ver < 10 ? 8 : 16;
+    if (4 + cnt + bytes.length * 8 <= qrDataCodewords(ver) * 8) break;
+  }
+  if (ver > 20) throw new Error('QRコードにするには長すぎます');
+  const size = ver * 4 + 17;
+  // データのビット列：モード（バイト）・文字数・中身・終わり・うめ草
+  const bits = [];
+  const put = (v, n) => { for (let i = n - 1; i >= 0; i--) bits.push((v >>> i) & 1); };
+  put(4, 4); put(bytes.length, ver < 10 ? 8 : 16); bytes.forEach(b => put(b, 8));
+  const cap = qrDataCodewords(ver) * 8;
+  put(0, Math.min(4, cap - bits.length));
+  put(0, (8 - (bits.length % 8)) % 8);
+  for (let pad = 0xec; bits.length < cap; pad ^= 0xec ^ 0x11) put(pad, 8);
+  const data = [];
+  for (let i = 0; i < bits.length; i += 8) data.push(parseInt(bits.slice(i, i + 8).join(''), 2));
+  // ブロックに分けて誤り訂正をつけ、交互にならべる
+  const nb = QR_BLOCKS_L[ver], ecl = QR_ECC_L[ver], raw = Math.floor(qrRawModules(ver) / 8);
+  const nShort = nb - (raw % nb), shortLen = Math.floor(raw / nb);
+  const div = qrRSDivisor(ecl);
+  const blocks = [];
+  for (let i = 0, k = 0; i < nb; i++) {
+    const dat = data.slice(k, k + shortLen - ecl + (i < nShort ? 0 : 1));
+    k += dat.length;
+    const b = dat.concat(qrRSRemainder(dat, div));
+    if (i < nShort) b.splice(shortLen - ecl, 0, null); // 短いブロックは1つ空ける
+    blocks.push(b);
+  }
+  const all = [];
+  for (let i = 0; i < blocks[0].length; i++) blocks.forEach((b, j) => { if (i !== shortLen - ecl || j >= nShort) all.push(b[i]); });
+
+  // マスを用意して、決まった模様（位置・タイミング・位置合わせ）を描く
+  const M = Array.from({ length: size }, () => Array(size).fill(false));
+  const F = Array.from({ length: size }, () => Array(size).fill(false)); // 決まった模様のマス
+  const set = (x, y, d) => { M[y][x] = d; F[y][x] = true; };
+  for (let i = 0; i < size; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  const finder = (cx, cy) => {
+    for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+      const x = cx + dx, y = cy + dy, d = Math.max(Math.abs(dx), Math.abs(dy));
+      if (x >= 0 && x < size && y >= 0 && y < size) set(x, y, d !== 2 && d !== 4);
+    }
+  };
+  finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+  if (ver >= 2) {
+    const na = Math.floor(ver / 7) + 2, step = Math.ceil((ver * 4 + 4) / (na * 2 - 2)) * 2;
+    const pos = [6];
+    for (let p = size - 7; pos.length < na; p -= step) pos.splice(1, 0, p);
+    pos.forEach((x, i) => pos.forEach((y, j) => {
+      if ((i === 0 && j === 0) || (i === 0 && j === na - 1) || (i === na - 1 && j === 0)) return;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) set(x + dx, y + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+    }));
+  }
+  const drawFormat = mask => {
+    const d = (1 << 3) | mask; // 誤り訂正レベルL = 01
+    let r = d;
+    for (let i = 0; i < 10; i++) r = (r << 1) ^ ((r >>> 9) * 0x537);
+    const b = ((d << 10) | r) ^ 0x5412;
+    const bit = i => ((b >>> i) & 1) === 1;
+    for (let i = 0; i <= 5; i++) set(8, i, bit(i));
+    set(8, 7, bit(6)); set(8, 8, bit(7)); set(7, 8, bit(8));
+    for (let i = 9; i < 15; i++) set(14 - i, 8, bit(i));
+    for (let i = 0; i < 8; i++) set(size - 1 - i, 8, bit(i));
+    for (let i = 8; i < 15; i++) set(8, size - 15 + i, bit(i));
+    set(8, size - 8, true);
+  };
+  drawFormat(0); // 場所を取っておく（あとで本物を描く）
+  if (ver >= 7) {
+    let r = ver;
+    for (let i = 0; i < 12; i++) r = (r << 1) ^ ((r >>> 11) * 0x1f25);
+    const b = (ver << 12) | r;
+    for (let i = 0; i < 18; i++) {
+      const d = ((b >>> i) & 1) === 1, a = size - 11 + (i % 3), c = Math.floor(i / 3);
+      set(a, c, d); set(c, a, d);
+    }
+  }
+  // データをジグザグに置く
+  let k = 0;
+  for (let right = size - 1; right >= 1; right -= 2) {
+    if (right === 6) right = 5;
+    for (let v = 0; v < size; v++) for (let j = 0; j < 2; j++) {
+      const x = right - j, up = ((right + 1) & 2) === 0, y = up ? size - 1 - v : v;
+      if (!F[y][x] && k < all.length * 8) { M[y][x] = ((all[k >>> 3] >>> (7 - (k & 7))) & 1) === 1; k++; }
+    }
+  }
+  // 8つのマスクをためして、いちばん読みやすい（減点の少ない）ものを使う
+  const MASKS = [(x, y) => (x + y) % 2, (x, y) => y % 2, x => x % 3, (x, y) => (x + y) % 3, (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2,
+    (x, y) => ((x * y) % 2) + ((x * y) % 3), (x, y) => (((x * y) % 2) + ((x * y) % 3)) % 2, (x, y) => (((x + y) % 2) + ((x * y) % 3)) % 2];
+  const applyMask = m => { for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!F[y][x] && MASKS[m](x, y) === 0) M[y][x] = !M[y][x]; };
+  const penalty = () => {
+    let p = 0, dark = 0;
+    const line = get => { // 同じ色が5つ以上つづく所と、位置の模様に似た所
+      let run = 0, prev = null;
+      const seq = [];
+      for (let i = 0; i < size; i++) {
+        const c = get(i);
+        seq.push(c ? 1 : 0);
+        if (c === prev) { run++; if (run === 5) p += 3; else if (run > 5) p++; } else { run = 1; prev = c; }
+      }
+      const s = seq.join('');
+      for (const pat of ['10111010000', '00001011101']) for (let i = s.indexOf(pat); i >= 0; i = s.indexOf(pat, i + 1)) p += 40;
+    };
+    for (let y = 0; y < size; y++) line(x => M[y][x]);
+    for (let x = 0; x < size; x++) line(y => M[y][x]);
+    for (let y = 0; y < size - 1; y++) for (let x = 0; x < size - 1; x++) { const c = M[y][x]; if (c === M[y][x + 1] && c === M[y + 1][x] && c === M[y + 1][x + 1]) p += 3; }
+    M.forEach(row => row.forEach(c => { if (c) dark++; }));
+    p += Math.floor(Math.abs(dark * 20 - size * size * 10) / (size * size)) * 10;
+    return p;
+  };
+  let best = 0, bestP = Infinity;
+  for (let m = 0; m < 8; m++) {
+    applyMask(m); drawFormat(m);
+    const p = penalty();
+    if (p < bestP) { bestP = p; best = m; }
+    applyMask(m);
+  }
+  applyMask(best); drawFormat(best);
+  return M;
+}
+
+/* SVG にする（まわりに4マスの余白） */
+function qrSVG(text, label) {
+  const M = qrMatrix(text), n = M.length, q = 4;
+  let d = '';
+  M.forEach((row, y) => row.forEach((c, x) => { if (c) d += `M${x + q},${y + q}h1v1h-1z`; }));
+  return `<svg class="qr" viewBox="0 0 ${n + q * 2} ${n + q * 2}" role="img" aria-label="${label || 'QRコード'}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
+if (typeof module !== 'undefined') module.exports = { qrMatrix, qrSVG };
+
+/* =========================================================
    オンライン対戦（Claude以外のサイトに置いたとき）
    WebRTC で2台を直接つなぐ。ログインもサーバーもいらない。
-   最初に「招待コード」と「参加コード」を1回ずつ送り合う。
+   最初に「招待リンク」と「参加リンク」（QRコードでも読める）を1回ずつ送り合う。
    つながったあとは、同じ相手と何回でも対戦できる。
    ========================================================= */
 const P2P = {
   pc: null, dc: null, role: '', stage: 'idle', code: '', err: '', inInvite: '', inAnswer: '',
   connected: false, meAgain: false, oppAgain: false, oppDeck: null, timer: null, busy: false,
   round: 0, lastStart: null, tick: null, needAt: 0,
+  link: '', handoff: '', handCode: '', fromLink: false,
 };
 /* チャンネルは両方の端末で同じ番号（id 0）を使ってつくる。片方だけでつくると、最初の通信が落ちることがある */
 const DC_OPTS = { negotiated: true, id: 0, ordered: true };
@@ -5302,7 +5493,8 @@ async function packCode(desc) {
   return tag + '.' + toB64url(bytes);
 }
 async function unpackCode(code, want) {
-  const m = String(code || '').replace(/\s+/g, '').match(/^(CS2|CS1Z?)\.([A-Za-z0-9_-]+)$/);
+  // コードだけでも、コードの入ったリンク（…#j=CS2.… / …#a=CS2.…）でもよい
+  const m = String(code || '').replace(/\s+/g, '').match(/(?:^|[#=&/])(CS2|CS1Z?)\.([A-Za-z0-9_-]+)$/);
   if (!m) throw new Error('コードの形がちがいます。届いたコードを、そのまま全部貼ってください。');
   let o;
   try {
@@ -5322,6 +5514,73 @@ async function unpackCode(code, want) {
   if (want && o.t !== want) throw new Error(want === 'o' ? 'これは「参加コード」です。「招待コード」を貼ってください。' : 'これは「招待コード」です。相手から届いた「参加コード」を貼ってください。');
   return { type: o.t === 'o' ? 'offer' : 'answer', sdp: o.s };
 }
+/* コードを、このページへのリンクにする（j＝招待、a＝参加）。QRコードやLINEで送ると、押すだけで開ける */
+const p2pLink = (code, kind) => location.href.split('#')[0] + '#' + kind + '=' + code;
+
+/* リンクから開いたとき（boot から呼ぶ）。開く画面の名前を返す。リンクでなければ null */
+const P2P_BC = 'cs-term-p2p';
+function p2pFromHash() {
+  if (TRANSPORT() !== 'p2p') return null;
+  const m = location.hash.match(/^#([ja])=((?:CS2|CS1Z?)\.[A-Za-z0-9_-]+)$/);
+  if (!m) return null;
+  try { history.replaceState(null, '', '#select'); } catch (e) { /* noop */ }
+  UI.vsPick = 'online';
+  if (m[1] === 'j') { P2P.inInvite = m[2]; P2P.fromLink = true; return 'select'; }
+  // 参加コードのリンク：同じブラウザで部屋をつくった画面があれば、そちらへ渡す
+  P2P.handoff = 'wait'; P2P.handCode = m[2];
+  let bc = null;
+  try { bc = new BroadcastChannel(P2P_BC); } catch (e) { bc = null; }
+  const id = Math.random().toString(36).slice(2);
+  const done = took => { if (bc) bc.close(); if (P2P.handoff === 'wait') { P2P.handoff = took ? 'sent' : 'orphan'; p2pRefresh(); } };
+  if (!bc) { setTimeout(() => done(false), 0); return 'select'; }
+  bc.onmessage = e => { if (e.data && e.data.k === 'took' && e.data.id === id) done(true); };
+  bc.postMessage({ k: 'answer', code: m[2], id });
+  setTimeout(() => done(false), 1500);
+  return 'select';
+}
+/* 部屋をつくった画面：別のタブで開かれた参加コードを受け取る */
+function p2pListen() {
+  if (TRANSPORT() !== 'p2p' || typeof BroadcastChannel !== 'function') return;
+  const bc = new BroadcastChannel(P2P_BC);
+  bc.onmessage = e => {
+    const d = e.data;
+    if (!d || d.k !== 'answer' || P2P.stage !== 'offer' || P2P.role !== 'host' || P2P.busy) return;
+    bc.postMessage({ k: 'took', id: d.id });
+    P2P.inAnswer = d.code;
+    if (UI.screen !== 'select') { UI.vsPick = 'online'; show('select'); }
+    p2pAction('connect');
+  };
+}
+
+/* カメラでQRコードを読む（BarcodeDetector が使えるブラウザだけ） */
+const canScan = () => typeof window.BarcodeDetector === 'function' && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+async function p2pScan(onCode) {
+  const ov = document.createElement('div');
+  ov.className = 'overlay center scan-ov';
+  ov.innerHTML = '<div class="scan-in" role="dialog" aria-modal="true" aria-label="QRコードを読む"><video playsinline muted></video><p>相手の画面のQRコードを、わくの中に入れてください。</p><button type="button" class="btn ghost">やめる</button></div>';
+  document.body.appendChild(ov);
+  let stream = null, alive = true;
+  const stop = () => { alive = false; if (stream) stream.getTracks().forEach(t => t.stop()); ov.remove(); };
+  ov.querySelector('button').onclick = stop;
+  try {
+    const det = new window.BarcodeDetector({ formats: ['qr_code'] });
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    if (!alive) { stream.getTracks().forEach(t => t.stop()); return; }
+    const v = ov.querySelector('video');
+    v.srcObject = stream;
+    await v.play();
+    while (alive) {
+      const found = await det.detect(v).catch(() => []);
+      const hit = found.map(f => f.rawValue).find(t => /(?:CS2|CS1Z?)\.[A-Za-z0-9_-]+/.test(t || ''));
+      if (hit) { stop(); onCode(hit); return; }
+      await new Promise(r => setTimeout(r, 250));
+    }
+  } catch (e) {
+    stop();
+    toast('カメラを使えませんでした。コードを貼りつけてください');
+  }
+}
+
 /* 接続の候補を集め終わるまで待つ（STUNが遅いときは、あるものだけで進む） */
 function iceDone(pc, ms) {
   return new Promise(res => {
@@ -5336,7 +5595,7 @@ function p2pClose() {
   clearInterval(P2P.tick);
   try { if (P2P.dc) { P2P.dc.onclose = null; P2P.dc.onmessage = null; P2P.dc.close(); } } catch (e) { /* noop */ }
   try { if (P2P.pc) { P2P.pc.onconnectionstatechange = null; P2P.pc.close(); } } catch (e) { /* noop */ }
-  Object.assign(P2P, { pc: null, dc: null, role: '', connected: false, meAgain: false, oppAgain: false, oppDeck: null, code: '', round: 0, lastStart: null, tick: null });
+  Object.assign(P2P, { pc: null, dc: null, role: '', connected: false, meAgain: false, oppAgain: false, oppDeck: null, code: '', link: '', round: 0, lastStart: null, tick: null });
 }
 const p2pInGame = () => !!(UI.g && !UI.g.over && UI.vs === 'online' && NET.mode === 'p2p');
 /* 1.5秒ごとに：準備OKを送りなおす／対戦中は自分の手の数を知らせる（届いていない手があれば、相手が送りなおしを頼む） */
@@ -5474,7 +5733,7 @@ function p2pResultButtons() {
   b.textContent = P2P.meAgain ? '相手を待っています…' : P2P.oppAgain ? 'もう一度（相手は準備OK）' : 'もう一度（同じ相手と）';
 }
 async function p2pCopy() {
-  const t = P2P.code;
+  const t = P2P.link || P2P.code;
   if (!t) return;
   let ok = false;
   try { await navigator.clipboard.writeText(t); ok = true; } catch (e) { /* 下の方法で */ }
@@ -5486,7 +5745,9 @@ async function p2pCopy() {
 }
 async function p2pAction(k) {
   if (k === 'copy') { p2pCopy(); return; }
-  if (k === 'share') { if (navigator.share) navigator.share({ text: P2P.code }).catch(() => {}); return; }
+  if (k === 'share') { if (navigator.share) navigator.share({ url: P2P.link || P2P.code }).catch(() => {}); return; }
+  if (k === 'scan') { p2pScan(t => { P2P.inAnswer = t; p2pRefresh(); p2pAction('connect'); }); return; }
+  if (k === 'copyhand') { P2P.code = P2P.handCode; P2P.link = ''; p2pCopy(); return; }
   if (k === 'again') { p2pAgain(); return; }
   if (k === 'cancel') { p2pSendRaw({ k: 'bye' }); p2pClose(); Object.assign(P2P, { stage: 'idle', err: '' }); p2pRefresh(); return; }
   if (P2P.busy) return;
@@ -5504,6 +5765,7 @@ async function p2pAction(k) {
       await iceDone(pc, 4000);
       if (P2P.pc !== pc) return;
       P2P.code = await packCode(pc.localDescription);
+      P2P.link = p2pLink(P2P.code, 'j');
       P2P.stage = 'offer';
     } else if (k === 'join') {
       const desc = await unpackCode(P2P.inInvite, 'o');
@@ -5515,6 +5777,7 @@ async function p2pAction(k) {
       await iceDone(pc, 4000);
       if (P2P.pc !== pc) return;
       P2P.code = await packCode(pc.localDescription);
+      P2P.link = p2pLink(P2P.code, 'a');
       P2P.stage = 'answer';
     } else if (k === 'connect') {
       if (!P2P.pc || P2P.role !== 'host') throw new Error('先に「部屋をつくる」を押してください。');
@@ -5533,23 +5796,27 @@ async function p2pAction(k) {
   p2pRefresh();
 }
 function p2pPanelHTML() {
-  const head = `<h3 class="h3">オンライン対戦（コード交換）</h3>
-    <p class="note">「招待コード」と「参加コード」を1回ずつ送り合うと、2台が直接つながります。ログインはいりません。つながったあとは、同じ相手と何回でも対戦できます。</p>`;
+  const head = `<h3 class="h3">オンライン対戦（リンク交換）</h3>
+    <p class="note">「招待リンク」と「参加リンク」を1回ずつ送り合うと、2台が直接つながります。そばにいるなら、QRコードをスマホのカメラで読むだけ。はなれているなら、リンクをLINEなどで送ります。ログインはいりません。</p>`;
   if (!hasRTC()) return head + '<p class="msg warn">このブラウザでは、オンライン対戦を使えません。</p>';
   const err = P2P.err ? `<p class="msg err" role="alert">${esc(P2P.err)}</p>` : '';
-  const codeBox = (label, note) => `<div class="p2p-code"><p class="silk">${label}</p>
-      <textarea class="code-out" readonly rows="2" aria-label="${label}">${esc(P2P.code)}</textarea>
-      <div class="p2p-btns"><button type="button" class="btn gold" data-net="copy">コピー</button>${navigator.share ? '<button type="button" class="btn" data-net="share">送る</button>' : ''}</div>
-      <p class="note">${note}</p></div>`;
+  // QRコード（リンク）とコピー・送るボタン。gold は、その画面の本命の操作のときだけ
+  const codeBox = (label, note, gold) => `<div class="p2p-code"><p class="p2p-lbl">${label}</p>
+      ${P2P.link ? qrSVG(P2P.link, label + 'のQRコード') : ''}
+      <p class="note">${note}</p>
+      <div class="p2p-btns"><button type="button" class="btn ${gold ? 'gold' : ''}" data-net="copy">リンクをコピー</button>${navigator.share ? '<button type="button" class="btn" data-net="share">送る</button>' : ''}</div>
+      <details class="p2p-raw"><summary>リンクの文字を見る</summary><textarea class="code-out" readonly rows="3" aria-label="${label}">${esc(P2P.link || P2P.code)}</textarea></details></div>`;
   switch (P2P.stage) {
     case 'making':
-      return head + '<p class="msg">コードをつくっています…</p>';
+      return head + '<p class="msg">リンクをつくっています…</p>';
     case 'offer':
-      return head + codeBox('招待コード', 'このコードを、LINEなどで相手に送ってください。') + `
-        <label class="net-in"><span>相手から届いた「参加コード」</span><textarea id="p2pAnswer" rows="3" placeholder="ここに貼る" autocomplete="off">${esc(P2P.inAnswer)}</textarea></label>
-        <div class="p2p-btns"><button type="button" class="btn gold" data-net="connect">つなぐ</button><button type="button" class="btn ghost" data-net="cancel">やめる</button></div>${err}`;
+      return head + codeBox('招待リンク', '相手のスマホのカメラでこのQRコードを読んでもらうか、リンクを送ってください。', false) + `
+        <div class="p2p-code"><p class="p2p-lbl">相手から届いた「参加リンク」</p>
+        <p class="note">相手の画面に出たQRコードを、このスマホのカメラで読むと、この画面でつながります（同じブラウザで開いたとき）。${canScan() ? '下の「カメラで読む」でも読めます。' : ''}リンクが届いたら、ここに貼ってもかまいません。</p>
+        <label class="net-in"><span class="sr">参加リンク</span><textarea id="p2pAnswer" rows="2" placeholder="ここに貼る" autocomplete="off">${esc(P2P.inAnswer)}</textarea></label>
+        <div class="p2p-btns"><button type="button" class="btn gold" data-net="connect">つなぐ</button>${canScan() ? '<button type="button" class="btn" data-net="scan">カメラで読む</button>' : ''}<button type="button" class="btn ghost" data-net="cancel">やめる</button></div></div>${err}`;
     case 'answer':
-      return head + codeBox('参加コード', 'このコードを相手に送ってください。相手が「つなぐ」を押すと、対戦がはじまります。') + `
+      return head + codeBox('参加リンク', '部屋をつくった人に、このQRコードをカメラで読んでもらうか、リンクを送ってください。読んでもらえば、対戦がはじまります。', true) + `
         <p class="waiting">相手を待っています…</p><div class="p2p-btns"><button type="button" class="btn ghost" data-net="cancel">やめる</button></div>${err}`;
     case 'connecting':
       return head + '<p class="msg">つないでいます…</p><div class="p2p-btns"><button type="button" class="btn ghost" data-net="cancel">やめる</button></div>' + err;
@@ -5558,12 +5825,22 @@ function p2pPanelHTML() {
         ${P2P.meAgain ? '<p class="waiting">相手の準備を待っています…</p>' : '<button type="button" class="btn gold" data-net="again">この相手と対戦する</button>'}
         ${P2P.oppAgain && !P2P.meAgain ? '<p class="note">相手は準備OKです。</p>' : ''}
         <button type="button" class="btn ghost" data-net="cancel">接続を切る</button></div>${err}`;
-    default:
-      return head + `<div class="net-grid">
-        <div class="net-box"><h4>部屋をつくる</h4><p class="note">招待コードが出るので、相手に送ります。</p><button type="button" class="btn gold" data-net="create">部屋をつくる</button></div>
-        <div class="net-box"><h4>部屋に入る</h4><label class="net-in"><span>相手から届いた「招待コード」</span><textarea id="p2pInvite" rows="3" placeholder="ここに貼る" autocomplete="off">${esc(P2P.inInvite)}</textarea></label><button type="button" class="btn gold" data-net="join">参加コードをつくる</button></div>
+    default: {
+      // 参加リンクを別のタブで開いたとき
+      const hand = P2P.handoff === 'wait' ? '<p class="msg">部屋をつくった画面をさがしています…</p>'
+        : P2P.handoff === 'sent' ? '<div class="net-wait"><p class="net-ok">部屋をつくった画面に、参加リンクをわたしました</p><p>もとの画面にもどってください。この画面は閉じてかまいません。</p></div>'
+        : P2P.handoff === 'orphan' ? `<div class="p2p-code"><p class="msg warn">部屋をつくった画面が、このブラウザで見つかりませんでした。</p>
+            <p class="note">リンクをコピーして、部屋をつくった画面の「参加リンク」に貼ってください。</p>
+            <div class="p2p-btns"><button type="button" class="btn gold" data-net="copyhand">リンクをコピー</button></div></div>` : '';
+      if (hand) return head + hand;
+      const got = !!P2P.inInvite;
+      return head + `${got && P2P.fromLink ? '<p class="msg ok">招待リンクから開きました。下でデッキを選んで、「参加リンクをつくる」を押してください。</p>' : ''}
+      <div class="net-grid">
+        <div class="net-box"><h4>部屋をつくる</h4><p class="note">招待リンクとQRコードが出るので、相手に読んでもらいます。</p><button type="button" class="btn ${got ? '' : 'gold'}" data-net="create">部屋をつくる</button></div>
+        <div class="net-box"><h4>部屋に入る</h4><label class="net-in"><span>相手から届いた「招待リンク」</span><textarea id="p2pInvite" rows="2" placeholder="ここに貼る（QRコードで開いたときは、もう入っています）" autocomplete="off">${esc(P2P.inInvite)}</textarea></label><button type="button" class="btn ${got ? 'gold' : ''}" data-net="join">参加リンクをつくる</button></div>
       </div>${err}
       <p class="note">2台を同じWi-Fiにつなぐと、つながりやすくなります。学校や会社のネットワークでは、つながらないこともあります。勝つとパックチケット+${REWARD.win}、負け・引き分けで+${REWARD.lose}。</p>`;
+    }
   }
 }
 
@@ -5829,6 +6106,7 @@ document.addEventListener('click', e => {
   if (nav) { e.preventDefault(); if (nav.dataset.vs) UI.vsPick = nav.dataset.vs; show(nav.dataset.nav); }
 });
 window.addEventListener('hashchange', () => {
+  if (/^#[ja]=/.test(location.hash) && !(UI.g && !UI.g.over)) { const to = p2pFromHash(); if (to) { show(to); return; } }
   const h = location.hash.replace('#', '');
   if ((UI.screen === 'battle' && UI.g && !UI.g.over) || UI.screen === 'editor') return;
   if (ROUTES.includes(h) && h !== UI.screen) show(h);
@@ -5912,7 +6190,7 @@ function renderSelect() {
     const claude = TRANSPORT() === 'claude';
     if (claude && !NETUI.checked) netInit().then(r => { NETUI.checked = true; NETUI.why = r.ok ? '' : r.why; if (UI.screen === 'select') renderSelect(); });
     body = `<section class="sec net">${netPanelHTML()}</section>
-    ${claude && NETUI.stage === 'waiting' ? '' : picker('me', allDecks(), 'あなたのデッキ')}`;
+    ${(claude && NETUI.stage === 'waiting') || (!claude && P2P.handoff) ? '' : picker('me', allDecks(), 'あなたのデッキ')}`;
   } else {
     body = `${picker('me', allDecks(), 'あなたのデッキ')}
       <p class="note">自分だけのデッキは「<button type="button" class="linkbtn" data-nav="decks">デッキをつくる</button>」で作れます。</p>
@@ -6268,7 +6546,7 @@ function renderRules() {
     <section><h3 class="h3">対人戦</h3><ul>
       <li><b>2人で対戦（この端末）</b>：1台の端末を2人で交代して使う。番が変わるたびに「端末を渡す」画面が出る。パックチケットはもらえない。</li>
       <li><b>オンライン対戦</b>：${TRANSPORT() === 'p2p'
-        ? '1人が「部屋をつくる」を押し、出てきた「招待コード」を相手に送る。相手はそれを「部屋に入る」に貼って「参加コード」をつくり、送り返す。最初の人が参加コードを貼って「つなぐ」を押すと対戦がはじまる。ログインはいらない。'
+        ? '1人が「部屋をつくる」を押すと、「招待リンク」とQRコードが出る。相手はQRコードをスマホのカメラで読む（またはリンクを開く）と、「参加リンク」とQRコードが出る。最初の人がそれをカメラで読む（またはリンクを貼って「つなぐ」を押す）と、対戦がはじまる。ログインはいらない。'
         : '1人が「部屋をつくる」を押し、出てきた6けたの「あいことば」を相手に伝える。相手は「部屋に入る」にあいことばを入れる。2人ともClaudeにログインして、このページを開いている必要がある。'}</li>
       <li>オンライン対戦は、勝つとパックチケット+${REWARD.win}、負け・引き分けで+${REWARD.lose}。途中でぬけると降参になる。</li>
     </ul></section>
@@ -7492,8 +7770,10 @@ function boot(data) {
   injectArtCSS();
   drawPCB();
   const h = location.hash.replace('#', '');
-  const start = data.screen && ROUTES.includes(data.screen) ? data.screen : (ROUTES.includes(h) ? h : 'title');
+  const link = p2pFromHash(); // 招待リンク・参加リンクから開いたとき
+  const start = link || (data.screen && ROUTES.includes(data.screen) ? data.screen : (ROUTES.includes(h) ? h : 'title'));
   show(start);
+  p2pListen();
   initCloud();
 }
 if (window.claude && window.claude.hot && window.claude.hot.snapshot) {

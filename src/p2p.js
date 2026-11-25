@@ -1,13 +1,14 @@
 /* =========================================================
    オンライン対戦（Claude以外のサイトに置いたとき）
    WebRTC で2台を直接つなぐ。ログインもサーバーもいらない。
-   最初に「招待コード」と「参加コード」を1回ずつ送り合う。
+   最初に「招待リンク」と「参加リンク」（QRコードでも読める）を1回ずつ送り合う。
    つながったあとは、同じ相手と何回でも対戦できる。
    ========================================================= */
 const P2P = {
   pc: null, dc: null, role: '', stage: 'idle', code: '', err: '', inInvite: '', inAnswer: '',
   connected: false, meAgain: false, oppAgain: false, oppDeck: null, timer: null, busy: false,
   round: 0, lastStart: null, tick: null, needAt: 0,
+  link: '', handoff: '', handCode: '', fromLink: false,
 };
 /* チャンネルは両方の端末で同じ番号（id 0）を使ってつくる。片方だけでつくると、最初の通信が落ちることがある */
 const DC_OPTS = { negotiated: true, id: 0, ordered: true };
@@ -140,7 +141,8 @@ async function packCode(desc) {
   return tag + '.' + toB64url(bytes);
 }
 async function unpackCode(code, want) {
-  const m = String(code || '').replace(/\s+/g, '').match(/^(CS2|CS1Z?)\.([A-Za-z0-9_-]+)$/);
+  // コードだけでも、コードの入ったリンク（…#j=CS2.… / …#a=CS2.…）でもよい
+  const m = String(code || '').replace(/\s+/g, '').match(/(?:^|[#=&/])(CS2|CS1Z?)\.([A-Za-z0-9_-]+)$/);
   if (!m) throw new Error('コードの形がちがいます。届いたコードを、そのまま全部貼ってください。');
   let o;
   try {
@@ -160,6 +162,73 @@ async function unpackCode(code, want) {
   if (want && o.t !== want) throw new Error(want === 'o' ? 'これは「参加コード」です。「招待コード」を貼ってください。' : 'これは「招待コード」です。相手から届いた「参加コード」を貼ってください。');
   return { type: o.t === 'o' ? 'offer' : 'answer', sdp: o.s };
 }
+/* コードを、このページへのリンクにする（j＝招待、a＝参加）。QRコードやLINEで送ると、押すだけで開ける */
+const p2pLink = (code, kind) => location.href.split('#')[0] + '#' + kind + '=' + code;
+
+/* リンクから開いたとき（boot から呼ぶ）。開く画面の名前を返す。リンクでなければ null */
+const P2P_BC = 'cs-term-p2p';
+function p2pFromHash() {
+  if (TRANSPORT() !== 'p2p') return null;
+  const m = location.hash.match(/^#([ja])=((?:CS2|CS1Z?)\.[A-Za-z0-9_-]+)$/);
+  if (!m) return null;
+  try { history.replaceState(null, '', '#select'); } catch (e) { /* noop */ }
+  UI.vsPick = 'online';
+  if (m[1] === 'j') { P2P.inInvite = m[2]; P2P.fromLink = true; return 'select'; }
+  // 参加コードのリンク：同じブラウザで部屋をつくった画面があれば、そちらへ渡す
+  P2P.handoff = 'wait'; P2P.handCode = m[2];
+  let bc = null;
+  try { bc = new BroadcastChannel(P2P_BC); } catch (e) { bc = null; }
+  const id = Math.random().toString(36).slice(2);
+  const done = took => { if (bc) bc.close(); if (P2P.handoff === 'wait') { P2P.handoff = took ? 'sent' : 'orphan'; p2pRefresh(); } };
+  if (!bc) { setTimeout(() => done(false), 0); return 'select'; }
+  bc.onmessage = e => { if (e.data && e.data.k === 'took' && e.data.id === id) done(true); };
+  bc.postMessage({ k: 'answer', code: m[2], id });
+  setTimeout(() => done(false), 1500);
+  return 'select';
+}
+/* 部屋をつくった画面：別のタブで開かれた参加コードを受け取る */
+function p2pListen() {
+  if (TRANSPORT() !== 'p2p' || typeof BroadcastChannel !== 'function') return;
+  const bc = new BroadcastChannel(P2P_BC);
+  bc.onmessage = e => {
+    const d = e.data;
+    if (!d || d.k !== 'answer' || P2P.stage !== 'offer' || P2P.role !== 'host' || P2P.busy) return;
+    bc.postMessage({ k: 'took', id: d.id });
+    P2P.inAnswer = d.code;
+    if (UI.screen !== 'select') { UI.vsPick = 'online'; show('select'); }
+    p2pAction('connect');
+  };
+}
+
+/* カメラでQRコードを読む（BarcodeDetector が使えるブラウザだけ） */
+const canScan = () => typeof window.BarcodeDetector === 'function' && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+async function p2pScan(onCode) {
+  const ov = document.createElement('div');
+  ov.className = 'overlay center scan-ov';
+  ov.innerHTML = '<div class="scan-in" role="dialog" aria-modal="true" aria-label="QRコードを読む"><video playsinline muted></video><p>相手の画面のQRコードを、わくの中に入れてください。</p><button type="button" class="btn ghost">やめる</button></div>';
+  document.body.appendChild(ov);
+  let stream = null, alive = true;
+  const stop = () => { alive = false; if (stream) stream.getTracks().forEach(t => t.stop()); ov.remove(); };
+  ov.querySelector('button').onclick = stop;
+  try {
+    const det = new window.BarcodeDetector({ formats: ['qr_code'] });
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    if (!alive) { stream.getTracks().forEach(t => t.stop()); return; }
+    const v = ov.querySelector('video');
+    v.srcObject = stream;
+    await v.play();
+    while (alive) {
+      const found = await det.detect(v).catch(() => []);
+      const hit = found.map(f => f.rawValue).find(t => /(?:CS2|CS1Z?)\.[A-Za-z0-9_-]+/.test(t || ''));
+      if (hit) { stop(); onCode(hit); return; }
+      await new Promise(r => setTimeout(r, 250));
+    }
+  } catch (e) {
+    stop();
+    toast('カメラを使えませんでした。コードを貼りつけてください');
+  }
+}
+
 /* 接続の候補を集め終わるまで待つ（STUNが遅いときは、あるものだけで進む） */
 function iceDone(pc, ms) {
   return new Promise(res => {
@@ -174,7 +243,7 @@ function p2pClose() {
   clearInterval(P2P.tick);
   try { if (P2P.dc) { P2P.dc.onclose = null; P2P.dc.onmessage = null; P2P.dc.close(); } } catch (e) { /* noop */ }
   try { if (P2P.pc) { P2P.pc.onconnectionstatechange = null; P2P.pc.close(); } } catch (e) { /* noop */ }
-  Object.assign(P2P, { pc: null, dc: null, role: '', connected: false, meAgain: false, oppAgain: false, oppDeck: null, code: '', round: 0, lastStart: null, tick: null });
+  Object.assign(P2P, { pc: null, dc: null, role: '', connected: false, meAgain: false, oppAgain: false, oppDeck: null, code: '', link: '', round: 0, lastStart: null, tick: null });
 }
 const p2pInGame = () => !!(UI.g && !UI.g.over && UI.vs === 'online' && NET.mode === 'p2p');
 /* 1.5秒ごとに：準備OKを送りなおす／対戦中は自分の手の数を知らせる（届いていない手があれば、相手が送りなおしを頼む） */
@@ -312,7 +381,7 @@ function p2pResultButtons() {
   b.textContent = P2P.meAgain ? '相手を待っています…' : P2P.oppAgain ? 'もう一度（相手は準備OK）' : 'もう一度（同じ相手と）';
 }
 async function p2pCopy() {
-  const t = P2P.code;
+  const t = P2P.link || P2P.code;
   if (!t) return;
   let ok = false;
   try { await navigator.clipboard.writeText(t); ok = true; } catch (e) { /* 下の方法で */ }
@@ -324,7 +393,9 @@ async function p2pCopy() {
 }
 async function p2pAction(k) {
   if (k === 'copy') { p2pCopy(); return; }
-  if (k === 'share') { if (navigator.share) navigator.share({ text: P2P.code }).catch(() => {}); return; }
+  if (k === 'share') { if (navigator.share) navigator.share({ url: P2P.link || P2P.code }).catch(() => {}); return; }
+  if (k === 'scan') { p2pScan(t => { P2P.inAnswer = t; p2pRefresh(); p2pAction('connect'); }); return; }
+  if (k === 'copyhand') { P2P.code = P2P.handCode; P2P.link = ''; p2pCopy(); return; }
   if (k === 'again') { p2pAgain(); return; }
   if (k === 'cancel') { p2pSendRaw({ k: 'bye' }); p2pClose(); Object.assign(P2P, { stage: 'idle', err: '' }); p2pRefresh(); return; }
   if (P2P.busy) return;
@@ -342,6 +413,7 @@ async function p2pAction(k) {
       await iceDone(pc, 4000);
       if (P2P.pc !== pc) return;
       P2P.code = await packCode(pc.localDescription);
+      P2P.link = p2pLink(P2P.code, 'j');
       P2P.stage = 'offer';
     } else if (k === 'join') {
       const desc = await unpackCode(P2P.inInvite, 'o');
@@ -353,6 +425,7 @@ async function p2pAction(k) {
       await iceDone(pc, 4000);
       if (P2P.pc !== pc) return;
       P2P.code = await packCode(pc.localDescription);
+      P2P.link = p2pLink(P2P.code, 'a');
       P2P.stage = 'answer';
     } else if (k === 'connect') {
       if (!P2P.pc || P2P.role !== 'host') throw new Error('先に「部屋をつくる」を押してください。');
@@ -371,23 +444,27 @@ async function p2pAction(k) {
   p2pRefresh();
 }
 function p2pPanelHTML() {
-  const head = `<h3 class="h3">オンライン対戦（コード交換）</h3>
-    <p class="note">「招待コード」と「参加コード」を1回ずつ送り合うと、2台が直接つながります。ログインはいりません。つながったあとは、同じ相手と何回でも対戦できます。</p>`;
+  const head = `<h3 class="h3">オンライン対戦（リンク交換）</h3>
+    <p class="note">「招待リンク」と「参加リンク」を1回ずつ送り合うと、2台が直接つながります。そばにいるなら、QRコードをスマホのカメラで読むだけ。はなれているなら、リンクをLINEなどで送ります。ログインはいりません。</p>`;
   if (!hasRTC()) return head + '<p class="msg warn">このブラウザでは、オンライン対戦を使えません。</p>';
   const err = P2P.err ? `<p class="msg err" role="alert">${esc(P2P.err)}</p>` : '';
-  const codeBox = (label, note) => `<div class="p2p-code"><p class="silk">${label}</p>
-      <textarea class="code-out" readonly rows="2" aria-label="${label}">${esc(P2P.code)}</textarea>
-      <div class="p2p-btns"><button type="button" class="btn gold" data-net="copy">コピー</button>${navigator.share ? '<button type="button" class="btn" data-net="share">送る</button>' : ''}</div>
-      <p class="note">${note}</p></div>`;
+  // QRコード（リンク）とコピー・送るボタン。gold は、その画面の本命の操作のときだけ
+  const codeBox = (label, note, gold) => `<div class="p2p-code"><p class="p2p-lbl">${label}</p>
+      ${P2P.link ? qrSVG(P2P.link, label + 'のQRコード') : ''}
+      <p class="note">${note}</p>
+      <div class="p2p-btns"><button type="button" class="btn ${gold ? 'gold' : ''}" data-net="copy">リンクをコピー</button>${navigator.share ? '<button type="button" class="btn" data-net="share">送る</button>' : ''}</div>
+      <details class="p2p-raw"><summary>リンクの文字を見る</summary><textarea class="code-out" readonly rows="3" aria-label="${label}">${esc(P2P.link || P2P.code)}</textarea></details></div>`;
   switch (P2P.stage) {
     case 'making':
-      return head + '<p class="msg">コードをつくっています…</p>';
+      return head + '<p class="msg">リンクをつくっています…</p>';
     case 'offer':
-      return head + codeBox('招待コード', 'このコードを、LINEなどで相手に送ってください。') + `
-        <label class="net-in"><span>相手から届いた「参加コード」</span><textarea id="p2pAnswer" rows="3" placeholder="ここに貼る" autocomplete="off">${esc(P2P.inAnswer)}</textarea></label>
-        <div class="p2p-btns"><button type="button" class="btn gold" data-net="connect">つなぐ</button><button type="button" class="btn ghost" data-net="cancel">やめる</button></div>${err}`;
+      return head + codeBox('招待リンク', '相手のスマホのカメラでこのQRコードを読んでもらうか、リンクを送ってください。', false) + `
+        <div class="p2p-code"><p class="p2p-lbl">相手から届いた「参加リンク」</p>
+        <p class="note">相手の画面に出たQRコードを、このスマホのカメラで読むと、この画面でつながります（同じブラウザで開いたとき）。${canScan() ? '下の「カメラで読む」でも読めます。' : ''}リンクが届いたら、ここに貼ってもかまいません。</p>
+        <label class="net-in"><span class="sr">参加リンク</span><textarea id="p2pAnswer" rows="2" placeholder="ここに貼る" autocomplete="off">${esc(P2P.inAnswer)}</textarea></label>
+        <div class="p2p-btns"><button type="button" class="btn gold" data-net="connect">つなぐ</button>${canScan() ? '<button type="button" class="btn" data-net="scan">カメラで読む</button>' : ''}<button type="button" class="btn ghost" data-net="cancel">やめる</button></div></div>${err}`;
     case 'answer':
-      return head + codeBox('参加コード', 'このコードを相手に送ってください。相手が「つなぐ」を押すと、対戦がはじまります。') + `
+      return head + codeBox('参加リンク', '部屋をつくった人に、このQRコードをカメラで読んでもらうか、リンクを送ってください。読んでもらえば、対戦がはじまります。', true) + `
         <p class="waiting">相手を待っています…</p><div class="p2p-btns"><button type="button" class="btn ghost" data-net="cancel">やめる</button></div>${err}`;
     case 'connecting':
       return head + '<p class="msg">つないでいます…</p><div class="p2p-btns"><button type="button" class="btn ghost" data-net="cancel">やめる</button></div>' + err;
@@ -396,11 +473,21 @@ function p2pPanelHTML() {
         ${P2P.meAgain ? '<p class="waiting">相手の準備を待っています…</p>' : '<button type="button" class="btn gold" data-net="again">この相手と対戦する</button>'}
         ${P2P.oppAgain && !P2P.meAgain ? '<p class="note">相手は準備OKです。</p>' : ''}
         <button type="button" class="btn ghost" data-net="cancel">接続を切る</button></div>${err}`;
-    default:
-      return head + `<div class="net-grid">
-        <div class="net-box"><h4>部屋をつくる</h4><p class="note">招待コードが出るので、相手に送ります。</p><button type="button" class="btn gold" data-net="create">部屋をつくる</button></div>
-        <div class="net-box"><h4>部屋に入る</h4><label class="net-in"><span>相手から届いた「招待コード」</span><textarea id="p2pInvite" rows="3" placeholder="ここに貼る" autocomplete="off">${esc(P2P.inInvite)}</textarea></label><button type="button" class="btn gold" data-net="join">参加コードをつくる</button></div>
+    default: {
+      // 参加リンクを別のタブで開いたとき
+      const hand = P2P.handoff === 'wait' ? '<p class="msg">部屋をつくった画面をさがしています…</p>'
+        : P2P.handoff === 'sent' ? '<div class="net-wait"><p class="net-ok">部屋をつくった画面に、参加リンクをわたしました</p><p>もとの画面にもどってください。この画面は閉じてかまいません。</p></div>'
+        : P2P.handoff === 'orphan' ? `<div class="p2p-code"><p class="msg warn">部屋をつくった画面が、このブラウザで見つかりませんでした。</p>
+            <p class="note">リンクをコピーして、部屋をつくった画面の「参加リンク」に貼ってください。</p>
+            <div class="p2p-btns"><button type="button" class="btn gold" data-net="copyhand">リンクをコピー</button></div></div>` : '';
+      if (hand) return head + hand;
+      const got = !!P2P.inInvite;
+      return head + `${got && P2P.fromLink ? '<p class="msg ok">招待リンクから開きました。下でデッキを選んで、「参加リンクをつくる」を押してください。</p>' : ''}
+      <div class="net-grid">
+        <div class="net-box"><h4>部屋をつくる</h4><p class="note">招待リンクとQRコードが出るので、相手に読んでもらいます。</p><button type="button" class="btn ${got ? '' : 'gold'}" data-net="create">部屋をつくる</button></div>
+        <div class="net-box"><h4>部屋に入る</h4><label class="net-in"><span>相手から届いた「招待リンク」</span><textarea id="p2pInvite" rows="2" placeholder="ここに貼る（QRコードで開いたときは、もう入っています）" autocomplete="off">${esc(P2P.inInvite)}</textarea></label><button type="button" class="btn ${got ? 'gold' : ''}" data-net="join">参加リンクをつくる</button></div>
       </div>${err}
       <p class="note">2台を同じWi-Fiにつなぐと、つながりやすくなります。学校や会社のネットワークでは、つながらないこともあります。勝つとパックチケット+${REWARD.win}、負け・引き分けで+${REWARD.lose}。</p>`;
+    }
   }
 }

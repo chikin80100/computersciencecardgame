@@ -8,7 +8,7 @@
 | 置き場所 | セーブ | オンライン対戦 |
 |---|---|---|
 | Claude のアーティファクト（claude.ai） | アカウント（`window.claude` の db）＋ブラウザ | Claude の部屋（db + room）。あいことば6けたで入る。ログインが必要 |
-| ふつうのWebサイト（GitHub Pages など） | ブラウザ（localStorage） | WebRTC の直接通信。つなぐためのコードをコピーして送り合う。ログイン不要 |
+| ふつうのWebサイト（GitHub Pages など） | ブラウザ（localStorage） | WebRTC の直接通信。招待リンク・参加リンク（QRコード）を送り合う。ログイン不要 |
 
 ## 必ず守ること
 
@@ -67,6 +67,7 @@ python3 test/cloud.py           # アカウント保存（db）とブラウザ�
 python3 test/p2p.py 0.25        # サイト版のWebRTC対戦：コード交換・対戦・再戦・切断・手が落ちたときの回復
 python3 test/p2p.py 0.25 p_ochiai,p_tron   # 2つめの引数でデッキを選べる
 python3 test/p2p_connect.py 10  # つなぐところだけを10回くり返す
+python3 test/p2p_link.py        # リンク交換：QRコード（zxing-cpp があれば読み取りも）・招待リンクで開く・参加リンクを別のタブからわたす・見つからないとき
 python3 test/visual.py          # 見た目を1回だけ撮る
 python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pioneer / ubicomp、ids=enigma,alan でカードを指定）
 ```
@@ -83,11 +84,12 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 | src/data.js | カードの定義：`TYPES` `WEAK`（弱点）`STATUS`（状態異常）`MONSTERS`（ユニット）`TRAINERS`（コマンド）`KIND` `PRESETS`（19個のデッキ）`SERIES` `PACKS` `REWARD` `EXCHANGE_COST` |
 | src/engine.js | ルールエンジン（DOMなし・async）とCPUのAI。Node 用に `module.exports` もある |
 | src/art.js | ドット絵。24×24 のマスに `PAL` の色の記号で描く。`ART[カードid] = g => {...}`、`spriteURL(id)` で画像に |
-| src/p2p.js | サイト版の WebRTC 対戦（つなぐ・コード・再戦・切断） |
+| src/qr.js | QRコードをつくる（ライブラリなし。バイトモード・誤り訂正L・型番1〜20）。`qrSVG(文字列)` |
+| src/p2p.js | サイト版の WebRTC 対戦（つなぐ・コード・リンク・QR・再戦・切断） |
 | src/ui.js | 画面ぜんぶ：タイトル・デッキ選択・デッキ編集・図鑑・あそびかた・パック開封・対戦・結果・セーブ・オンライン対戦（`NET`） |
 | src/style.css | 見た目 |
 | src/index.html | ひな形。`/*STYLE*/` と `/*SCRIPT*/` に中身が入る |
-| build.py | data → engine → art → p2p → ui の順にJSをつなげて、1枚のHTMLにする |
+| build.py | data → engine → art → qr → p2p → ui の順にJSをつなげて、1枚のHTMLにする |
 | docs/index.html | ビルドしたもの（GitHub Pages 用に git に入れる）。src を変えたらビルドしてから commit |
 | dist/index.html | ビルドしたもの（テストとアーティファクト用。git には入れない） |
 
@@ -143,7 +145,11 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 - 手の形：`{t, s:通し番号, ...}`。`t` は `bench evolve attach trainer retreat ability attack`（盤面の操作）、`choice`（`pick` で選んだ番号 `i`）、`setup`（最初の配置 `a`, `b`）、`end`（番の終わり。盤面のしるし `h = stateHash(g)` つき）、`surrender`。
 - 自分の手も相手の手も `applyMove(g, p, m)` で盤面に反映する。`end` で受け取った `h` が自分の `stateHash(g)` とちがったら `netDesync()`（引き分けで終わり、チケットなし）。
 - Claude の中（`NET`、ui.js）：部屋は db の `pvp/<あいことば>`、手は `pvpm/<gid>_h` と `pvpm/<gid>_g<token>` に書き、room（チャンネル `'pvp-'+gid`）の `mv` / `need` で知らせる。room がなくても db だけで遊べる。
-- サイト版（src/p2p.js）：`RTCPeerConnection`（STUN は Google と Cloudflare、TURN はなし）。データチャンネルは `{negotiated:true, id:0, ordered:true}`。コードは `CS2.` ＋ base64url（`packCode` / `unpackCode`）。SDP から ICE のユーザー名・パスワード、証明書の指紋（sha-256）、setup、UDP の候補（最大8つ）だけをバイト列につめ、受け取った側が決まった形の SDP を組み立てなおす（`compactSDP` / `expandSDP`）。候補が1つで90文字、3つで140文字ほど。この形にできない SDP（mid が 0 でないなど）は、古い形（SDP をまるごと deflate-raw した `CS1Z.`、600文字ほど）で出す。古い形も読める。メッセージは `again`（もう一度・デッキ）`start`（round, seed, gid, decks）`mv` `hb`（ハートビート）`need`（落ちた手の再送のお願い）`bye`。1.5秒ごとに `again` の再送とハートビート。
+- サイト版（src/p2p.js）：`RTCPeerConnection`（STUN は Google と Cloudflare、TURN はなし）。データチャンネルは `{negotiated:true, id:0, ordered:true}`。コードは `CS2.` ＋ base64url（`packCode` / `unpackCode`）。SDP から ICE のユーザー名・パスワード、証明書の指紋（sha-256）、setup、UDP の候補（最大8つ）だけをバイト列につめ、受け取った側が決まった形の SDP を組み立てなおす（`compactSDP` / `expandSDP`）。候補が1つで90文字、3つで140文字ほど。この形にできない SDP（mid が 0 でないなど）は、古い形（SDP をまるごと deflate-raw した `CS1Z.`、600文字ほど）で出す。古い形も読める。
+  - コードは、このページへのリンクにして送る（`p2pLink`：招待は `#j=CS2.…`、参加は `#a=CS2.…`、140〜200文字ほど）。画面にはそのQRコードを出す。スマホのふつうのカメラで読めば、ゲームが開く。10けたくらいにするには接続情報を置くサーバーが要る（証明書の指紋だけで43文字分ある）が、サーバーは使わないと決めた（2026年11月25日）。
+  - 招待リンクで開くと、`p2pFromHash()`（boot から呼ぶ）が招待コードを入れた状態でオンライン対戦の画面を出し、アドレスからコードを消す。参加リンクで開くと、BroadcastChannel `cs-term-p2p` で、同じブラウザの「部屋をつくった画面」（`p2pListen()`）にわたして、そちらでつなぐ。見つからないときは、リンクをコピーして貼る案内を出す。
+  - 「つなぐ」の欄は、コードだけでも、リンクのままでも読める。`BarcodeDetector` があるブラウザでは「カメラで読む」も出る（`p2pScan`）。
+  - メッセージは `again`（もう一度・デッキ）`start`（round, seed, gid, decks）`mv` `hb`（ハートビート）`need`（落ちた手の再送のお願い）`bye`。1.5秒ごとに `again` の再送とハートビート。
 
 ### 画面（src/ui.js）
 
