@@ -9,7 +9,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const UI = {
   screen: 'title', g: null, mode: 'idle', targets: null, onTarget: null, targetLabel: '',
-  busy: false, fast: false, turnResolve: null, setupResolve: null, chooseResolve: null, chooseOptions: null,
+  busy: false, fast: false, auto: false, autoTakeover: false, turnResolve: null, setupResolve: null, chooseResolve: null, chooseOptions: null,
   deck: { me: 'p_algo', opp: 'random', p2: 'p_data' }, edit: null, me: 0, vs: 'cpu', vsPick: 'cpu', waitNote: '', dexFilter: 'all', poolFilter: 'all', lastLog: '', logs: [],
 };
 
@@ -675,6 +675,7 @@ function renderRules() {
         </li>
         <li>最後にバトル場のユニットの<b>ワザ</b>を使うと番が終わる。ワザを使わずに終わってもよい。</li>
       </ol>
+      <p class="note">CPUと対戦するときは、下の「オート」を押すと、あなたの番もCPUが進めます（もう一度押すと、次のあなたの番から手で操作）。</p>
       <p class="note">ワザに必要なエネルギーは記号で書かれています。${eI('none', 's')}（無色）はどのタイプのエネルギーでも払えます。</p>
     </section>
     <section><h3 class="h3">タイプ相性（弱点 +20）</h3>
@@ -1037,12 +1038,48 @@ function makeIO() {
     log: (msg, cls) => addLog(msg, cls),
     render: () => renderBattle(),
     pause: ms => sleep(UI.fast ? ms * 0.35 : ms),
-    banner: p => showBanner(turnLabel(p), `ターン ${UI.g ? UI.g.turn : ''}`),
+    banner: p => { applyAuto(); return showBanner(turnLabel(p), `ターン ${UI.g ? UI.g.turn : ''}`); },
     fx: (uid, kind, val, extra) => { renderBattle(); fx(uid, kind, val, extra); },
     say: t => say(t),
     setup: () => localSetup(),
-    humanTurn: () => localTurn(),
+    humanTurn: async p => {
+      await localTurn();
+      // 番のとちゅうでオートにしたときは、そこから CPU が続きをやる
+      if (UI.autoTakeover && UI.g && !UI.g.over) { UI.autoTakeover = false; await cpuTurn(UI.g, p); }
+      UI.autoTakeover = false;
+    },
   };
+}
+
+/* ---------- オート対戦（CPU戦だけ）：自分の席も CPU が動かす ----------
+   エンジンは p.isCPU を見て、番の進め方（cpuTurn）と選び方（pick）を切りかえる。
+   オンはすぐ、オフは「次の番のはじめ」（banner のとき）に反映する。CPU が動かしている番のとちゅうで
+   急に人に選ばせないため。 */
+function applyAuto() {
+  const g = UI.g;
+  if (g && UI.vs === 'cpu') g.players[UI.me].isCPU = UI.auto;
+}
+function toggleAuto() {
+  const g = UI.g;
+  if (!g || UI.vs !== 'cpu' || g.over || UI.busy) return;
+  UI.auto = !UI.auto;
+  if (UI.auto) {
+    applyAuto();
+    closeSheet();
+    if (UI.mode === 'target') { UI.mode = 'idle'; UI.targets = null; UI.onTarget = null; UI.targetLabel = ''; }
+    if (UI.setupResolve) {
+      // 最初の配置のとちゅう：並べかけを手札にもどして、CPU に並べてもらう（setupGame が aiSetup を呼ぶ）
+      const me = meP();
+      for (const m of inPlay(me).slice()) setupUnplace(g, me, m);
+      UI.mode = 'idle';
+      const r = UI.setupResolve; UI.setupResolve = null; r();
+    } else if (UI.turnResolve) {
+      UI.autoTakeover = true;
+      const r = UI.turnResolve; UI.turnResolve = null; UI.mode = 'idle'; r();
+    }
+  }
+  toast(UI.auto ? 'オート対戦：あなたの番も CPU が動かします' : 'オートを止めます（次のあなたの番から手で操作）');
+  renderBattle();
 }
 
 /* この端末で2人：番や選択のたびに、端末を渡してもらう */
@@ -1106,7 +1143,7 @@ function startBattle() {
   beginBattle(newGame({
     io: makeIO(),
     players: [
-      { name: 'あなた', isCPU: false, deck: me.cards, energy: me.energy, deckName: me.name },
+      { name: 'あなた', isCPU: UI.auto, deck: me.cards, energy: me.energy, deckName: me.name },
       { name: 'CPU', isCPU: true, deck: op.cards, energy: op.energy, deckName: op.name },
     ],
   }));
@@ -1222,8 +1259,10 @@ function renderActbar() {
   if (!g) return;
   const fast = `<button type="button" class="iconbtn sq" data-act="speed" aria-pressed="${UI.fast}" aria-label="演出の速さ（いま${UI.fast ? '2倍速' : '通常'}）" title="演出の速さ">${UI.fast ? '×2' : '×1'}</button>`;
   const menu = '<button type="button" class="iconbtn sq" data-act="menu" aria-label="メニュー" title="メニュー">≡</button>';
+  const auto = UI.vs === 'cpu' && !g.over ? `<button type="button" class="iconbtn sq autobtn" data-act="auto" aria-pressed="${UI.auto}" ${UI.busy ? 'disabled' : ''} title="オート対戦（あなたの番も CPU が動かす）">オート</button>` : '';
   let main;
-  if (UI.mode === 'setup') main = `<button type="button" class="btn gold grow" data-act="ready" ${meP().active ? '' : 'disabled'}>準備OK</button>`;
+  if (UI.vs === 'cpu' && UI.auto && !g.over) main = `<span class="waiting autonote">${g.cur === UI.me && g.turn > 0 ? 'オート：CPU があなたの番を進めています…' : g.turn === 0 ? 'オート：準備中…' : '相手が考え中…'}</span>`;
+  else if (UI.mode === 'setup') main = `<button type="button" class="btn gold grow" data-act="ready" ${meP().active ? '' : 'disabled'}>準備OK</button>`;
   else if (UI.mode === 'target') main = '<button type="button" class="btn grow" data-act="cancel">キャンセル</button>';
   else if (g.over) main = '<button type="button" class="btn gold grow" data-act="result">結果を見る</button>';
   else if (isMyTurn()) main = `<button type="button" class="btn grow" data-act="attackmenu" ${meP().active ? '' : 'disabled'}>ワザ・にげる</button><button type="button" class="btn gold grow" data-act="end">番を終わる</button>`;
@@ -1232,10 +1271,11 @@ function renderActbar() {
     if (UI.vs === 'online' && NET.oppHere === false) w = NET.mode === 'p2p' ? '相手との接続が不安定です…' : '相手の接続を待っています…';
     else if (UI.waitNote) w = UI.waitNote;
     else if (g.turn === 0) w = UI.vs === 'online' ? '相手の準備を待っています…' : '準備中…';
+    else if (UI.vs === 'cpu' && g.cur === UI.me && meP().isCPU) w = 'この番は CPU が最後まで進めます。次の番から手で操作できます';
     else if (g.cur !== UI.me) w = UI.vs === 'cpu' ? '相手が考え中…' : '相手の番です…';
     main = `<span class="waiting">${esc(w)}</span>`;
   }
-  $('#actbar').innerHTML = menu + main + fast;
+  $('#actbar').innerHTML = menu + main + auto + fast;
 }
 
 /* ---------- 対戦中の操作 ---------- */
@@ -1249,6 +1289,7 @@ $('#scr-battle').addEventListener('click', e => {
   if (act === 'log') return toggleLog(true);
   if (act === 'field') return UI.g && UI.g.field && openCardInfo(UI.g.field.card.id);
   if (act === 'speed') { UI.fast = !UI.fast; renderActbar(); return; }
+  if (act === 'auto') return toggleAuto();
   if (act === 'trash') return openTrash(g.players[+el.dataset.p]);
   if (act === 'result') return showResult(g);
   if (UI.mode === 'setup') return onSetupClick(act, uid);

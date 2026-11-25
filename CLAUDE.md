@@ -59,6 +59,7 @@ python3 test/ubicomp_ui.py      # 「遍在する計算機」：NEWのしるし�
 python3 test/rare.py            # ゴッドパックとホロの見た目
 python3 test/multi_ui.py        # はじめのチケット30枚と、10連（チケット・枚数・まとめ方・ならび順・もう10パック・スマホ/パソコン/動きを減らす設定）
 python3 test/local2p.py         # この端末で2人対戦（端末を渡す画面）
+python3 test/auto_ui.py         # CPU戦のオート：準備・番のとちゅうでオン、最後まで自動、もう一度でも続く、オフで手動にもどる
 python3 test/online.py 0.3      # Claude内のオンライン対戦。偽の window.claude で2ページをつなぎ、手を30%落としても最後の盤面が一致するか
 python3 test/online.py 0.3 '&noroom=1'   # room が使えないとき（db だけ）でも遊べるか
 python3 test/online.py 0.3 '' p_tron,p_ochiai   # 3つめの引数で、部屋をつくる人・入る人のデッキを選べる。最後に、新しいしくみ（フィールドなど）が2人の画面で同じ回数おきたかを出す（events ... same: True）
@@ -154,6 +155,7 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 ### 画面（src/ui.js）
 
 - 見た目の決まり（2026年11月25日に見直し）：色は基板の緑・金・シルクの白・パンチカードの紙・インクの5つ（style.css の `:root`）。**金の塗りのボタン（`.btn.gold`）は、1つの画面（窓）にその画面の本命の操作1つだけ**（パックの画面は、パックごとの「ひらく」）。ほかは枠だけ（`.btn` / `.btn.ghost`）。押せない金ボタンは点線の枠になる。画面の言葉は日本語（盤面の「山札」「ベンチ」「バトル場」なども）。長い一覧は、選んだものだけをくわしく（`deckDetailHTML`）、一覧は小さいタイル（`.decks.compact`）にして、決める操作は下に固定する（`.matchbar`）。
+- オート対戦（CPU戦だけ。`UI.auto`、操作バーの「オート」）：自分の席の `isCPU` を切りかえて、エンジンの `cpuTurn` と `pick` に任せる（`applyAuto` / `toggleAuto`）。オンはすぐ（準備のとちゅうなら並べかけをもどして `aiSetup` に任せ、番のとちゅうなら `UI.autoTakeover` で `humanTurn` の中から `cpuTurn` を続ける）、オフは次の番のはじめ（`banner` のとき）に反映する。ページを開いているあいだは「もう一度」でも続く（セーブはしない）。チケットはふつうの対戦と同じようにもらえる。
 - `UI.me`：どちらの席の目線で盤面を見るか（CPU戦は0、オンラインは自分の席、この端末での2人対戦は操作している人）。`UI.vs`：`'cpu' | 'local' | 'online'`。
 - 画面は `show(名前)` で切り替え（`ROUTES`）。対戦画面は `renderBattle()`、人の操作は `doMove()` → `applyMove()`、番の終わりは `finishHumanTurn()`。
 - パック：`openPack(packId, n)` で開ける（n は 1 か `MULTI_PACKS`＝10。10連はチケット10枚・パックポイント10パック分）。中身は1パックずつ `rollPack(pack)`。10連は1枚ずつめくらず、`multiDoneHTML()` で、同じカード（ホロかどうかも同じ）をまとめて「×枚数」をつけ、ホロ → レア度の高い順にならべて、裏から順にめくれる絵で見せる（動きを減らす設定では、すぐ表）。おまけの確定枠はなく、確率は1パックずつと同じ。`rollPack` は test/odds.js が `function packPool` 〜 `function packHTML` の間を切り出して使うので、その間に画面の関数を入れない。5枚目と4枚目にレアが出やすい。シリーズのパックは目玉の人物カード（`feature`）が ◆◆◆◆ の半分をしめる（だいたい18%のパックに入る）。`isNew: true` のシリーズとパックには NEW のしるしがつく。シリーズは `SERIES` の順に、パックはシリーズの中で NEW が先頭に出る（いまは「遍在する計算機」のマーク・ワイザー・TRON・落合陽一）。ふつうのパックには `set` つきのカードは入らない。ゴッドパックは0.5%ほど。
