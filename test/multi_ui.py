@@ -32,11 +32,20 @@ SHOWN = '''(() => { const cells = [...document.querySelectorAll('#packov .po-fli
     sumNew: +document.querySelector('#packov .po-sum .newtxt b').textContent}; })()'''
 
 
+def skip_cutin(page):
+    """ex・★フルアートの告知（カットイン）が出ていたら、タップして結果へ"""
+    if page.query_selector('#packov .po-cutin'):
+        page.click('#packov .po-cutin', force=True); page.wait_for_timeout(250)
+
+
 def open10(page, pack, shot=None):
     page.click(f'.screen:not([hidden]) [data-open10="{pack}"]'); page.wait_for_timeout(300)
     check(page.is_visible('#packov .po-pack.many .po-x'), f'{pack}: 10パックの束と ×10 が出る')
     if shot: page.screenshot(path=str(OUT / f'{shot}_pack.png'))
     page.click('#packov .po-pack', force=True); page.wait_for_timeout(900)
+    if page.query_selector('#packov .po-cutin'):  # ex・★フルアートの告知が出たら、タップして結果へ
+        if shot: page.screenshot(path=str(OUT / f'{shot}_cutin.png'))
+        page.click('#packov .po-cutin', force=True); page.wait_for_timeout(200)
     if shot: page.screenshot(path=str(OUT / f'{shot}_flip.png'))  # めくっているところ
     page.wait_for_timeout(FLIP)
     if shot: page.screenshot(path=str(OUT / f'{shot}_done.png'))
@@ -91,10 +100,12 @@ with sync_playwright() as p:
     # 3) もう10パック → チケット10枚 → もう一度 → 0枚。0枚なら押せない
     page.click('#packov [data-po="again"]'); page.wait_for_timeout(300)
     page.click('#packov .po-pack', force=True); page.wait_for_timeout(900 + FLIP)
+    skip_cutin(page)
     st = page.evaluate(STATE)
     check(st['t'] == 10 and st['cards'] == 100 and st['packs'] == 20, f'もう10パック {st}')
     page.click('#packov [data-po="again"]'); page.wait_for_timeout(300)
     page.click('#packov .po-pack', force=True); page.wait_for_timeout(900 + FLIP)
+    skip_cutin(page)
     st = page.evaluate(STATE)
     check(st['t'] == 0 and st['cards'] == 150 and st['p'] == 150, f'チケットを使いきった {st}')
     check(page.query_selector('#packov [data-po="again"]') is None and page.query_selector('#packov [data-po="again1"]') is None, 'チケット0枚では「もう10パック」「もう1パック」は出ない')
@@ -112,6 +123,7 @@ with sync_playwright() as p:
     page.click('.screen:not([hidden]) .btn[data-open="world"]'); page.wait_for_timeout(300)
     check(not page.is_visible('#packov .po-x'), '1パックのときは ×10 が出ない')
     page.click('#packov .po-pack', force=True); page.wait_for_timeout(900)
+    skip_cutin(page)
     check(page.is_visible('#packov .po-card'), '1パックは1枚ずつめくる')
     page.click('#packov [data-po="all"]'); page.wait_for_timeout(300)
     check(len(page.query_selector_all('#packov .po-grid .tbtn')) == 5 and page.evaluate('STORE.tickets') == 8, '1パック：5枚・チケット-1')
@@ -152,6 +164,7 @@ with sync_playwright() as p:
     page.click('#packov [data-po="again1"]'); page.wait_for_timeout(300)
     check(page.is_visible('#packov .po-pack') and not page.is_visible('#packov .po-x'), '「もう1パック」で、1パックの開封になる')
     page.click('#packov .po-pack', force=True); page.wait_for_timeout(900)
+    skip_cutin(page)
     page.click('#packov [data-po="all"]'); page.wait_for_timeout(300)
     check(page.evaluate('STORE.tickets') == 4, '「もう1パック」でチケット-1')
     page.evaluate('STORE.tickets = 0; saveStore()'); page.evaluate('renderPackOverlay()'); page.wait_for_timeout(200)
@@ -173,6 +186,7 @@ with sync_playwright() as p:
     page.goto(URL + '#packs'); page.wait_for_timeout(900)
     page.click('.screen:not([hidden]) [data-open10="world"]'); page.wait_for_timeout(200)
     page.click('#packov .po-pack', force=True); page.wait_for_timeout(400)
+    skip_cutin(page)
     back = page.evaluate('''(() => { const c = document.querySelector('#packov .po-flip:last-child .po-back');
       return getComputedStyle(c).transform; })()''')
     check(back.startswith('matrix3d(-1'), f'動きを減らす設定：すぐ表になる（裏 {back[:24]}…）')
