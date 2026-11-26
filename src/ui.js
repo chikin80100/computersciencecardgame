@@ -944,8 +944,34 @@ function openPack(packId, n) {
   STORE.points += PACK_POINT * n;
   STORE.stats.packs += n;
   saveStore();
-  PACKFLOW = { pack, n, pulls, i: -1, stage: 'pack', flipped: false };
+  PACKFLOW = { pack, n, pulls, i: -1, stage: 'pack', flipped: false, fx: packFx(pulls) };
   renderPackOverlay();
+}
+/* ex・★フルアートが出るときの演出（★フルアートは虹色、ex は金色）。Safari のために filter は使わない */
+const spKind = pl => (pl.full ? 'full' : DEF[pl.id].ex ? 'ex' : '');
+const packFx = pulls => (pulls.some(pl => pl.full) ? 'full' : pulls.some(pl => DEF[pl.id].ex) ? 'ex' : '');
+const SP_LABEL = { full: '★フルアート！', ex: 'ex！' };
+/* 画面いっぱいの光のすじと、白いフラッシュ（パックを破いたとき） */
+function packBurst(kind) {
+  const ov = $('#packov');
+  if (!ov || !kind) return;
+  const b = document.createElement('div');
+  b.className = `po-burst ${kind}`;
+  b.setAttribute('aria-hidden', 'true');
+  ov.appendChild(b);
+  setTimeout(() => b.remove(), 1600);
+}
+/* 10連の結果の前の告知（カットイン） */
+function cutinHTML(f) {
+  const full = f.pulls.filter(pl => pl.full).length, ex = f.pulls.filter(pl => DEF[pl.id].ex).length;
+  return `<div class="po-cutin ${f.fx}" data-po="skipcut" role="status">
+    <span class="ci-rays" aria-hidden="true"></span>
+    <div class="ci-in">
+      ${full ? `<p class="ci-line full"><b>★フルアート</b> ×${full}</p>` : ''}
+      ${ex ? `<p class="ci-line ex"><b>ex</b> ×${ex}</p>` : ''}
+      <p class="ci-sub">が出た！（タップで結果へ）</p>
+    </div>
+  </div>`;
 }
 /* 10連の結果：同じカード（ホロ・フルアートかどうかも同じ）をまとめて、フルアート → ホロ → レア度の高い順 → NEW → 番号の順に並べる */
 function multiPulls(pulls) {
@@ -985,7 +1011,8 @@ function multiDoneHTML(f) {
       <p class="po-sum">${sum.map(([k, v, u]) => `<span class="${k === 'NEW' ? 'newtxt' : ''}">${k} <b>${v}</b>${u}</span>`).join('')}</p>
       <div class="po-grid multi" style="--step:${step}ms">${list.map((e, k) => {
         const rare = rarityOf(DEF[e.id]) >= 3 || e.holo || e.full;
-        return `<button type="button" class="tbtn po-flip ${rare ? 'rare' : ''}" style="--i:${k}" data-po-info="${e.id}" aria-label="${esc(DEF[e.id].name)}${e.holo ? '（☆ホロ）' : ''}${e.full ? '（★フルアート）' : ''}${e.n > 1 ? ` ${e.n}枚` : ''}${e.isNew ? '（NEW）' : ''}の詳細">
+        const sp = e.full ? 'full' : DEF[e.id].ex ? 'ex' : '';
+        return `<button type="button" class="tbtn po-flip ${rare ? 'rare' : ''} ${sp ? 'sp-' + sp : ''}" style="--i:${k}" data-po-info="${e.id}" aria-label="${esc(DEF[e.id].name)}${e.holo ? '（☆ホロ）' : ''}${e.full ? '（★フルアート）' : ''}${e.n > 1 ? ` ${e.n}枚` : ''}${e.isNew ? '（NEW）' : ''}の詳細">
           <span class="po-back" aria-hidden="true">${cardBackHTML(rare)}</span>
           <span class="po-front">${thumbHTML(e.id, { holo: e.holo, full: e.full, badge: e.isNew ? 'NEW' : '' })}</span>
           ${e.n > 1 ? `<b class="po-cnt">×${e.n}</b>` : ''}
@@ -1003,23 +1030,30 @@ function renderPackOverlay() {
     const many = f.n > 1, ghost = c => `<span class="po-ghost ${c}" aria-hidden="true">${packHTML(f.pack, true)}</span>`;
     ov.innerHTML = `<div class="po-in">
       <p class="silk">${many ? `OPEN ${f.n} PACKS` : 'OPEN PACK'} ・ TICKETS LEFT ${STORE.tickets}</p>
-      <button type="button" class="po-pack ${many ? 'many' : ''}" data-po="tear" aria-label="${many ? `${f.n}パックを開ける` : 'パックを開ける'}">${many ? ghost('g1') + ghost('g2') : ''}${packHTML(f.pack, true)}${many ? `<b class="po-x">×${f.n}</b>` : ''}</button>
+      <button type="button" class="po-pack ${many ? 'many' : ''} ${f.fx ? 'fx-' + f.fx : ''}" data-po="tear" aria-label="${many ? `${f.n}パックを開ける` : 'パックを開ける'}">${many ? ghost('g1') + ghost('g2') : ''}${packHTML(f.pack, true)}${many ? `<b class="po-x">×${f.n}</b>` : ''}</button>
       <p class="po-msg">${many ? `タップして${f.n}パックまとめて開封` : 'タップして開封'}</p>
     </div>`;
     const b = $('.po-pack', ov); if (b) b.focus({ preventScroll: true });
   } else if (f.stage === 'cards') {
     const pl = f.pulls[f.i];
     const rare = rarityOf(DEF[pl.id]) >= 3 || pl.holo || pl.full;
+    const sp = spKind(pl);
     ov.innerHTML = `<div class="po-in">
       <p class="silk">CARD ${f.i + 1} / 5</p>
-      <button type="button" class="po-card ${rare ? 'rare' : ''}" data-po="next" aria-label="カードをめくる">
-        <span class="po-back">${cardBackHTML(rare)}</span>
-        <span class="po-front">${thumbHTML(pl.id, { holo: pl.holo, full: pl.full, badge: pl.isNew ? 'NEW' : '' })}</span>
-      </button>
-      <p class="po-msg">タップしてめくる</p>
+      <div class="po-stage ${sp ? 'sp-' + sp : ''}">
+        ${sp ? '<span class="po-rays" aria-hidden="true"></span>' : ''}
+        <button type="button" class="po-card ${rare ? 'rare' : ''} ${sp ? 'sp-' + sp : ''}" data-po="next" aria-label="カードをめくる">
+          <span class="po-back">${cardBackHTML(rare)}</span>
+          <span class="po-front">${thumbHTML(pl.id, { holo: pl.holo, full: pl.full, badge: pl.isNew ? 'NEW' : '' })}</span>
+        </button>
+        ${sp ? `<b class="po-pop ${sp}" aria-hidden="true">${SP_LABEL[sp]}</b>` : ''}
+      </div>
+      <p class="po-msg">${sp ? '<b class="sp-hint">光っている…！</b> タップしてめくる' : 'タップしてめくる'}</p>
       <div class="po-btns"><button type="button" class="btn ghost" data-po="all">すべてめくる</button></div>
     </div>`;
     const b = $('.po-card', ov); if (b) b.focus({ preventScroll: true });
+  } else if (f.stage === 'cutin') {
+    ov.innerHTML = cutinHTML(f);
   } else if (f.n > 1) {
     ov.innerHTML = multiDoneHTML(f);
     ov.scrollTop = 0;
@@ -1038,10 +1072,14 @@ async function tearPack() {
   f.tearing = true;
   const el = $('#packov .po-pack');
   if (el) el.classList.add('tear');
-  await sleep(REDUCED ? 60 : 700);
+  if (f.fx) packBurst(f.fx);
+  await sleep(REDUCED ? 60 : UI.fast ? 250 : f.fx ? 850 : 700); // 光のすじは、カードが出たあとも少し続く
   if (PACKFLOW !== f) return;
-  if (f.n > 1) f.stage = 'done'; // 10連は、1枚ずつめくらずに、まとめて結果を見せる
-  else { f.stage = 'cards'; f.i = 0; f.flipped = false; }
+  if (f.n > 1) {
+    // 10連は、1枚ずつめくらずに、まとめて結果を見せる。ex・★フルアートがあれば、先に告知
+    f.stage = f.fx ? 'cutin' : 'done';
+    if (f.fx) setTimeout(() => { if (PACKFLOW === f && f.stage === 'cutin') { f.stage = 'done'; renderPackOverlay(); } }, UI.fast ? 300 : REDUCED ? 1400 : 2400);
+  } else { f.stage = 'cards'; f.i = 0; f.flipped = false; }
   renderPackOverlay();
 }
 function flipOrNext() {
@@ -1052,6 +1090,8 @@ function flipOrNext() {
     const b = $('#packov .po-card');
     const pl = f.pulls[f.i];
     if (b) { b.classList.add('flipped'); b.setAttribute('aria-label', '次のカード'); }
+    const st = $('#packov .po-stage');
+    if (st && spKind(pl)) { st.classList.add('go'); st.parentElement.classList.add('sp-go'); } // めくったら、光のすじと「ex！」「★フルアート！」
     const m = $('#packov .po-msg');
     if (m) m.innerHTML = `${esc(DEF[pl.id].name)}${DEF[pl.id].ex ? 'ex' : ''}${pl.holo ? '（☆ホロ）' : ''}${pl.full ? '（★フルアート）' : ''}　${RARITY_MARK[rarityOf(DEF[pl.id])]}${pl.isNew ? '　<b class="newtxt">NEW</b>' : ''}`;
     return;
@@ -1070,6 +1110,7 @@ $('#packov').addEventListener('click', e => {
   if (k === 'tear') tearPack();
   else if (k === 'next') flipOrNext();
   else if (k === 'all') { f.stage = 'done'; renderPackOverlay(); }
+  else if (k === 'skipcut') { f.stage = 'done'; renderPackOverlay(); }
   else if (k === 'again') { const id = f.pack.id, n = f.n; PACKFLOW = null; openPack(id, n); }
   else if (k === 'again1') { const id = f.pack.id; PACKFLOW = null; openPack(id, 1); }
   else if (k === 'battle') { PACKFLOW = null; renderPackOverlay(); UI.vsPick = 'cpu'; show('select'); }

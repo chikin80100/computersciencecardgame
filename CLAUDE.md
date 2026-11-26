@@ -58,6 +58,7 @@ python3 test/pioneer_ui.py      # 「プログラミングの先駆者」：開�
 python3 test/ubicomp_ui.py      # 「遍在する計算機」：NEWのしるし・開封・図鑑・フィールド（TRONハウス）・ベンチのTRONとセンサー・カーム・テクノロジー
 python3 test/rare.py            # ゴッドパックとホロの見た目
 python3 test/fullart.py         # ★フルアート：開封・10連・図鑑・デッキ編集・カードの説明（絵の切りかえ）・セーブ・マージ
+python3 test/pack_fx.py         # パック開封で ex・★フルアートが出るときの演出（開ける前の光・光のすじ・めくったときの文字・10連の告知・動きを減らす設定）
 python3 test/fullsheet.py       # ★フルアートの絵の一覧（ex と人物カード。types=1 でタイプごとの景色、ids=… でカードを指定、cards=1 で文字つきのカードの形）
 python3 test/multi_ui.py        # はじめのチケット30枚と、10連（チケット・枚数・まとめ方・ならび順・もう10パック・スマホ/パソコン/動きを減らす設定）
 python3 test/local2p.py         # この端末で2人対戦（端末を渡す画面）
@@ -182,6 +183,12 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
     - 新しい ex や人物カードを足したら、`FULL[id]` も描いて `python3 test/fullsheet.py` で目で見る（描かなくても `defaultFull` で出る）。
   - 図鑑・デッキ編集の一覧は、持っていれば ★フルアート → ☆ホロ の順に見せる（`bestLook`）。カードの説明では「絵を切りかえる」で、持っている見た目を順に見られる（`openCardInfo(id, look)`）。10連の結果では ★ → ☆ → レア度の順にならべる。
   - アカウントの保存とのマージは、☆も★もカードごとに多いほう（`mergeStore`）。
+- **ex・★フルアートが出るときの演出**（2026年11月26日〜。★フルアートは虹色、ex は金色。★のほうを優先。`PACKFLOW.fx` = `packFx(pulls)`、カードごとは `spKind(pl)`）：
+  - 開ける前：そのパックが光って、ゆれが速い（`.po-pack.fx-ex / .fx-full`）。
+  - 破いたとき：画面いっぱいの光のすじと白いフラッシュ（`packBurst` → `.po-burst`。カードが出たあとも少し続く）。破く時間は 0.7秒 → 0.85秒。
+  - 1枚ずつめくるとき：その番で裏が光ってゆれ、「光っている…！」。めくると、うしろで光のすじが回り「ex！」「★フルアート！」が飛び出す（`.po-stage.go`）。
+  - 10連：結果の前に告知（`PACKFLOW.stage = 'cutin'`、`cutinHTML`。「★フルアート ×n」「ex ×n」）。タップで結果へ（`data-po="skipcut"`）、待っていても2.4秒で結果へ。結果でも、そのカードのまわりが光る（`.po-flip.sp-ex / .sp-full`）。ex はパックの2割ほどに入るので、10連ではほぼ毎回告知が出る。**10連を開けるテストは、告知が出たらタップして進める**（multi_ui.py の `skip_cutin`）。
+  - 動きを減らす設定では、回したり光らせたりせず、文字だけを出す。Safari のために `filter` は使わない（回転・不透明度・`box-shadow`・`repeating-conic-gradient`）。
 - チケット：`REWARD = {start:30, win:5, lose:3, draw:3, daily:10}`（`grantReward()`）。`start` は、はじめての人（セーブに `tickets` がない人）だけに配る。前の版のセーブの枚数は変えない（2026年11月24日に20→30。前に10→20にしたときは、`bonus2` で前のセーブにも差を配った）。降参した人・この端末での2人対戦・ずれて終わった対戦はもらえない。
 
 ### セーブ
