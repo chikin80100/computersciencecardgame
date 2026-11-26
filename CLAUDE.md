@@ -69,6 +69,7 @@ python3 test/p2p.py 0.25        # サイト版のWebRTC対戦：コード交換�
 python3 test/p2p.py 0.25 p_ochiai,p_tron   # 2つめの引数でデッキを選べる
 python3 test/p2p_connect.py 10  # つなぐところだけを10回くり返す
 python3 test/p2p_room.py        # あいことば：Worker を手元で立てて（先に cd worker && npm install）、6けたでつながるか・まちがった数字・サーバーに届かない・期限切れ
+python3 test/p2p_room.py https://cs-card-signal.chikin80100.workers.dev   # デプロイした本物の Worker でためす（期限切れはとばす）
 python3 test/p2p_link.py        # リンク交換：QRコード（zxing-cpp があれば読み取りも）・招待リンクで開く・参加リンクを別のタブからわたす・見つからないとき
 python3 test/visual.py          # 見た目を1回だけ撮る
 python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pioneer / ubicomp、ids=enigma,alan でカードを指定）
@@ -149,7 +150,7 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 - 自分の手も相手の手も `applyMove(g, p, m)` で盤面に反映する。`end` で受け取った `h` が自分の `stateHash(g)` とちがったら `netDesync()`（引き分けで終わり、チケットなし）。
 - Claude の中（`NET`、ui.js）：部屋は db の `pvp/<あいことば>`、手は `pvpm/<gid>_h` と `pvpm/<gid>_g<token>` に書き、room（チャンネル `'pvp-'+gid`）の `mv` / `need` で知らせる。room がなくても db だけで遊べる。
 - サイト版（src/p2p.js）：`RTCPeerConnection`（STUN は Google と Cloudflare、TURN はなし）。データチャンネルは `{negotiated:true, id:0, ordered:true}`。コードは `CS2.` ＋ base64url（`packCode` / `unpackCode`）。SDP から ICE のユーザー名・パスワード、証明書の指紋（sha-256）、setup、UDP の候補（最大8つ）だけをバイト列につめ、受け取った側が決まった形の SDP を組み立てなおす（`compactSDP` / `expandSDP`）。候補が1つで90文字、3つで140文字ほど。この形にできない SDP（mid が 0 でないなど）は、古い形（SDP をまるごと deflate-raw した `CS1Z.`、600文字ほど）で出す。古い形も読める。
-  - **あいことば（2026年11月26日〜）**：`SIGNAL_URL`（テストでは `window.CS_SIGNAL_URL`）に Worker の URL があれば、部屋をつくった人は招待コードを Worker に預け（`POST /room`）、6けたの数字をもらう。相手は数字で招待コードを受けとり、参加コードを Worker にわたす。部屋をつくった人は `p2pWaitAnswer` で1.5〜4秒ごとに聞きに行き、届いたら `connect` して部屋を消す。部屋は10分で消える。あいことばのQRコードは `#r=123456` のリンク（開くと数字が入る）。Worker に届かないときは `P2P.sigNote` を出して、下のリンク交換にもどる。はじめは「サーバーは使わない」と決めたが（11月25日）、自分の Cloudflare の Worker ならよいことにした。
+  - **あいことば（2026年11月26日〜）**：`SIGNAL_URL`（テストでは `window.CS_SIGNAL_URL`）に Worker の URL があれば、部屋をつくった人は招待コードを Worker に預け（`POST /room`）、6けたの数字をもらう。相手は数字で招待コードを受けとり、参加コードを Worker にわたす。部屋をつくった人は `p2pWaitAnswer` で1.5〜4秒ごとに聞きに行き、届いたら `connect` して部屋を消す。部屋は10分で消える。あいことばのQRコードは `#r=123456` のリンク（開くと数字が入る）。Worker に届かないときは `P2P.sigNote` を出して、下のリンク交換にもどる。リンク交換のテスト（p2p.py・p2p_connect.py・p2p_link.py）は `window.CS_SIGNAL_URL = ''` にして、Worker を使わずに動かす。はじめは「サーバーは使わない」と決めたが（11月25日）、自分の Cloudflare の Worker ならよいことにした。
   - コードは、このページへのリンクにして送ることもできる（`p2pLink`：招待は `#j=CS2.…`、参加は `#a=CS2.…`、140〜200文字ほど）。画面にはそのQRコードを出す。スマホのふつうのカメラで読めば、ゲームが開く。Worker があるときは、「あいことばが使えないとき」のたたみの中に出す。
   - 招待リンクで開くと、`p2pFromHash()`（boot から呼ぶ）が招待コードを入れた状態でオンライン対戦の画面を出し、アドレスからコードを消す。参加リンクで開くと、BroadcastChannel `cs-term-p2p` で、同じブラウザの「部屋をつくった画面」（`p2pListen()`）にわたして、そちらでつなぐ。見つからないときは、リンクをコピーして貼る案内を出す。
   - 「つなぐ」の欄は、コードだけでも、リンクのままでも読める。`BarcodeDetector` があるブラウザでは「カメラで読む」も出る（`p2pScan`）。
@@ -184,6 +185,11 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 - **GitHub Pages**：`python3 build.py` → docs/index.html を commit して push。リポジトリの Settings → Pages → 「Deploy from a branch」→ `main` の `/docs`。
 - **Claude のアーティファクト**：slug `bab068e2-cfa2-4379-bf49-c553dfd2e285`（https://claude.ai/artifact/Q45rL3wkYszVFoTaqEKWRa）。だれでも見られる共有になっている。使っている機能（capabilities）は `{db:{}, user:{}, room:{topics:{mv:'interact', need:'interact'}}}`。アーティファクトを公開する道具は claude.ai のチャットにあるので、更新するときはそちらで dist/index.html をわたし「このアーティファクトに新しい版として公開して」とたのむ（共有中なので `shared_live:'public'` と今のタイトル「CS用語カードバトル」が要る）。最後に公開したのは「遍在する計算機」シリーズを入れた版（2026年11月24日、版 `1795506705-9ef3`）。
 
+- **あいことばの Worker**：`https://cs-card-signal.chikin80100.workers.dev`（2026年11月26日にデプロイ。`src/p2p.js` の `SIGNAL_URL`）。Worker を変えたら、`worker/` で `npx wrangler deploy` をしなおす。
+  - クラウドのセッションからデプロイするときは、環境「computersciencecardgame」を使う。この環境には、Cloudflare の API トークン（api.cloudflare.com のネットワークシークレット）と、Worker のホストを許す設定が入っている。
+  - 実行するのは `CLOUDFLARE_API_TOKEN=dummy CLOUDFLARE_ACCOUNT_ID=<アカウントID> WRANGLER_SEND_METRICS=false npx wrangler deploy`。トークンは本物でなくてよい（ネットワークのしくみが差しかえる）。アカウントIDは `GET /client/v4/accounts` で調べる。
+  - Cloudflare は Python の標準の User-Agent を断る（error 1010）ので、Python から呼ぶときは User-Agent をつける。
+
 ## 生きている人にかかわるカード（落合陽一・TRON など）
 
 - カードの説明は、本人の経歴・研究・作品などの事実だけを書く。本人が言っていないセリフは作らない。
@@ -207,4 +213,3 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 - デッキをコードにして友だちと共有する。
 - 効果音・BGM（Web Audio でその場で作る。音のファイルは使わない）。
 - TURN サーバーを使えるようにして、サイト版の対戦をつながりやすくする（Cloudflare の TURN を使うなら、Worker で短い期限の資格情報をつくって渡す形になる）。
-- Worker をデプロイしたら、`src/p2p.js` の `SIGNAL_URL` に URL を書く（まだ空なので、公開版はリンク交換のまま）。

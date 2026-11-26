@@ -23,6 +23,7 @@ with sync_playwright() as p:
     for i in range(N):
         ctx = b.new_context(viewport={'width': 390, 'height': 844})
         ctx.add_init_script(SPY)
+        ctx.add_init_script("window.CS_SIGNAL_URL = '';")  # リンク交換をためすので、あいことばの Worker は使わない
         ctx.route('**/fonts.g*/**', lambda r: r.abort())
         host, guest = ctx.new_page(), ctx.new_page()
         errs = []

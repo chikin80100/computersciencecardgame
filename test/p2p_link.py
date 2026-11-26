@@ -31,6 +31,7 @@ URL = f'http://127.0.0.1:{srv.server_address[1]}/index.html'
 
 
 def page_in(ctx):
+    ctx.add_init_script("window.CS_SIGNAL_URL = '';")  # リンク交換をためすので、あいことばの Worker は使わない
     pg = ctx.new_page()
     pg.on('pageerror', lambda e: errors.append(str(e)))
     route_fonts(pg)

@@ -1,12 +1,14 @@
 """サイト版の「あいことば」：Worker（worker/）を手元で動かして、6けたの数字でつながるかを確かめる
 
 先に1回だけ：cd worker && npm install
+引数に URL をわたすと、手元の Worker のかわりに、デプロイした Worker でためす（期限切れの確認は10分かかるので、とばす）：
+  python3 test/p2p_room.py https://cs-card-signal.chikin80100.workers.dev
 Worker は wrangler dev で立てる（部屋の期限はテスト用に20秒）。ページは http で開く（Worker が localhost からの呼び出しを許すため）。
 - 部屋をつくる → あいことばとQRコード（#r=数字 のリンク）
 - 相手：QRのリンクで開く → あいことばが入っている → 入る → 2人とも対戦の画面
 - まちがったあいことば・サーバーに届かないとき（リンク交換にもどる）・期限切れ
 """
-import pathlib, threading, functools, http.server, socketserver, subprocess, time, urllib.request, os, signal, re
+import sys, pathlib, threading, functools, http.server, socketserver, subprocess, time, urllib.request, os, signal, re
 from playwright.sync_api import sync_playwright
 from _env import launch, route_fonts
 
@@ -32,13 +34,15 @@ srv = socketserver.TCPServer(('127.0.0.1', 0), functools.partial(Quiet, director
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 URL = f'http://127.0.0.1:{srv.server_address[1]}/index.html'
 
-# Worker を立てる
+# Worker を立てる（引数に URL があれば、それを使う）
+REMOTE = sys.argv[1].rstrip('/') if len(sys.argv) > 1 else ''
 WPORT = 8799
-SIG = f'http://127.0.0.1:{WPORT}'
+SIG = REMOTE or f'http://127.0.0.1:{WPORT}'
 env = dict(os.environ, NO_PROXY='127.0.0.1,localhost', no_proxy='127.0.0.1,localhost', WRANGLER_SEND_METRICS='false')
-wd = subprocess.Popen(['npx', 'wrangler', 'dev', '--port', str(WPORT), '--ip', '127.0.0.1', '--var', f'ROOM_TTL_SEC:{TTL}'],
+wd = None if REMOTE else subprocess.Popen(['npx', 'wrangler', 'dev', '--port', str(WPORT), '--ip', '127.0.0.1', '--var', f'ROOM_TTL_SEC:{TTL}'],
                       cwd=str(ROOT / 'worker'), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env, start_new_session=True)
-opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+opener = urllib.request.build_opener() if REMOTE else urllib.request.build_opener(urllib.request.ProxyHandler({}))
+opener.addheaders = [('User-Agent', 'cs-card-test')]  # Cloudflare は Python の標準の名乗りを断る（error 1010）
 for _ in range(90):
     try:
         if opener.open(SIG + '/health', timeout=2).status == 200:
@@ -46,7 +50,8 @@ for _ in range(90):
     except Exception:
         time.sleep(1)
 else:
-    os.killpg(wd.pid, signal.SIGTERM)
+    if wd:
+        os.killpg(wd.pid, signal.SIGTERM)
     raise SystemExit('Worker が起動しませんでした（cd worker && npm install をしましたか？）')
 
 
@@ -131,16 +136,18 @@ try:
         check('#j=CS2.' in down.eval_on_selector('.code-out', 'e => e.value'), '招待リンクはちゃんとできている')
         down.screenshot(path=str(OUT / 'room_down.png'), full_page=True)
 
-        # 5. 期限切れ
-        late = new_page(b, SIG)
-        open_online(late)
-        late.click('[data-net="create"]', force=True)
-        late.wait_for_selector('.net-code', timeout=15000)
-        late.wait_for_selector('.msg.err', timeout=(TTL + 15) * 1000)
-        check('期限' in late.inner_text('.msg.err'), f'{TTL}秒（テスト用の期限）たつと「期限が切れました」')
+        # 5. 期限切れ（デプロイした Worker では10分かかるので、とばす）
+        if not REMOTE:
+            late = new_page(b, SIG)
+            open_online(late)
+            late.click('[data-net="create"]', force=True)
+            late.wait_for_selector('.net-code', timeout=15000)
+            late.wait_for_selector('.msg.err', timeout=(TTL + 15) * 1000)
+            check('期限' in late.inner_text('.msg.err'), f'{TTL}秒（テスト用の期限）たつと「期限が切れました」')
         b.close()
 finally:
-    os.killpg(wd.pid, signal.SIGTERM)
+    if wd:
+        os.killpg(wd.pid, signal.SIGTERM)
     srv.shutdown()
 print('errors:', errors)
 print('fails:', len(fails))
