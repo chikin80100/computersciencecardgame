@@ -697,60 +697,90 @@ section.series { margin: 18px 0 8px; } /* .pack.series（シリーズのパッ�
 .card.full .c-punch { padding: 4px; }
 
 /* ---------- ex・★フルアートが出るときの演出（ex は金、★フルアートは虹色） ----------
-   Safari でくずれないように filter は使わない（回転・不透明度・box-shadow・グラデーションだけ） */
-/* 開ける前：特別なパックは光って、ゆれが速い */
-.po-pack.fx-ex, .po-pack.fx-full { animation-duration: .8s; }
-.po-pack.fx-ex .pack { animation: spAura 1s ease-in-out infinite alternate; }
-.po-pack.fx-full .pack { animation: spAuraFull 1.8s linear infinite; }
-@keyframes spAura { from { box-shadow: 0 12px 22px rgba(0, 0, 0, .5), 0 0 10px 2px rgba(247, 209, 74, .45); } to { box-shadow: 0 12px 22px rgba(0, 0, 0, .5), 0 0 30px 10px rgba(247, 209, 74, .95); } }
-@keyframes spAuraFull {
-  0%, 100% { box-shadow: 0 12px 22px rgba(0, 0, 0, .5), 0 0 26px 8px rgba(255, 110, 210, .85); }
-  33% { box-shadow: 0 12px 22px rgba(0, 0, 0, .5), 0 0 26px 8px rgba(110, 230, 255, .85); }
-  66% { box-shadow: 0 12px 22px rgba(0, 0, 0, .5), 0 0 26px 8px rgba(255, 236, 110, .85); }
-}
-/* 破いたとき：画面いっぱいの光のすじと、白いフラッシュ */
-.po-burst { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; overflow: hidden; pointer-events: none; }
-.po-burst::before { content: ''; width: 170vmax; height: 170vmax; border-radius: 50%; background: repeating-conic-gradient(rgba(255, 228, 130, .42) 0 7deg, rgba(255, 228, 130, 0) 7deg 15deg); animation: spRays 2.6s linear infinite, spFade 1.5s ease-out forwards; }
-.po-burst.full::before { background: repeating-conic-gradient(rgba(255, 120, 220, .4) 0 6deg, rgba(0, 0, 0, 0) 6deg 12deg, rgba(120, 230, 255, .4) 12deg 18deg, rgba(0, 0, 0, 0) 18deg 24deg, rgba(255, 238, 120, .4) 24deg 30deg, rgba(0, 0, 0, 0) 30deg 36deg); }
-.po-burst::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, .95), rgba(255, 255, 255, 0) 62%); animation: spFade .8s ease-out forwards; }
-@keyframes spRays { to { transform: rotate(360deg); } }
-@keyframes spFade { from { opacity: 1; } to { opacity: 0; } }
-/* 1枚ずつめくるとき：カードのうしろの光のすじと、飛び出す文字 */
+   しずかに、1回だけ光らせる。動かすのは transform と opacity だけ。曲線は ease-out-quint（--sp-out）。
+   Safari でくずれないように filter・background-clip:text は使わない */
+:root { --sp-out: cubic-bezier(.23, 1, .32, 1); --sp-io: cubic-bezier(.65, 0, .35, 1);
+  --sp-gold: #ffe07a; --sp-pink: rgba(255, 120, 220, .85); --sp-cyan: rgba(110, 230, 255, .85); }
+
+/* 1. 開ける前：パックの表面を流れる光沢が、金色・虹色になる。ふちに細い光（動かない） */
+.po-pack.fx-ex .pack { box-shadow: 0 12px 22px rgba(0, 0, 0, .5), 0 0 0 1.5px rgba(255, 224, 122, .8), 0 0 26px rgba(247, 209, 74, .3); }
+.po-pack.fx-full .pack { box-shadow: 0 12px 22px rgba(0, 0, 0, .5), 0 0 0 1.5px rgba(255, 255, 255, .75), -8px -4px 26px rgba(255, 120, 220, .35), 8px 4px 26px rgba(110, 230, 255, .35); }
+.po-pack.fx-ex .pk-body::after { background: linear-gradient(120deg, transparent 30%, rgba(255, 228, 140, .62) 45%, transparent 60%); background-size: 250% 100%; animation-duration: 2.4s; }
+.po-pack.fx-full .pk-body::after { background: linear-gradient(120deg, transparent 26%, rgba(255, 140, 225, .5) 38%, rgba(255, 255, 255, .7) 45%, rgba(120, 230, 255, .5) 52%, rgba(255, 238, 130, .45) 59%, transparent 68%); background-size: 250% 100%; animation-duration: 2.4s; }
+
+/* 2. 破いたとき：破れた口に光の線が走り、中の光が1回だけ上へ立ちのぼる */
+.po-burst { position: absolute; z-index: 4; left: 50%; top: 14px; width: 0; height: 0; pointer-events: none; }
+.po-burst::before { content: ''; position: absolute; left: -130px; top: -4px; width: 260px; height: 8px; border-radius: 4px;
+  background: radial-gradient(closest-side, #fff, rgba(255, 236, 170, .8) 45%, rgba(255, 236, 170, 0)); animation: pbSeam .7s var(--sp-out) both; }
+.pb-beam { position: absolute; left: -120px; bottom: 0; width: 240px; height: 62vh; transform-origin: 50% 100%;
+  background: radial-gradient(ellipse 50% 100% at 50% 100%, rgba(255, 250, 225, .95), rgba(255, 224, 122, .45) 38%, rgba(255, 224, 122, 0) 72%);
+  animation: pbBeam .8s var(--sp-out) .06s both; }
+.po-burst.full .pb-beam { background: radial-gradient(ellipse 20% 100% at 36% 100%, var(--sp-pink), rgba(255, 120, 220, 0) 70%), radial-gradient(ellipse 20% 100% at 64% 100%, var(--sp-cyan), rgba(110, 230, 255, 0) 70%),
+  radial-gradient(ellipse 34% 100% at 50% 100%, #fff, rgba(255, 238, 130, .45) 40%, rgba(255, 238, 130, 0) 72%); }
+.po-pack.tear .pack { box-shadow: 0 12px 22px rgba(0, 0, 0, 0); transition: box-shadow .3s ease-out; } /* 破いたら、ふちの光とかげも消す */
+@keyframes pbSeam { 0% { opacity: 0; transform: scaleX(.4); } 30% { opacity: 1; } 100% { opacity: 0; transform: scaleX(1.15); } }
+@keyframes pbBeam { 0% { opacity: 0; transform: scaleY(.2); } 25% { opacity: 1; } 100% { opacity: 0; transform: scaleY(1); } }
+
+/* 3. その番のカード：裏のパンチカードを、読みとり機の光が左から右へなぞる。うしろに、やわらかい光 */
 .po-stage { position: relative; display: grid; place-items: center; }
-.po-stage > .po-card { position: relative; z-index: 1; }
-.po-rays { position: absolute; z-index: 0; left: 50%; top: 50%; width: 560px; height: 560px; margin: -280px 0 0 -280px; border-radius: 50%; opacity: 0; transition: opacity .4s; pointer-events: none;
-  background: radial-gradient(circle, rgba(255, 240, 180, .55), rgba(255, 240, 180, 0) 45%), repeating-conic-gradient(rgba(255, 220, 110, .38) 0 8deg, rgba(255, 220, 110, 0) 8deg 16deg); }
-.sp-full > .po-rays { background: radial-gradient(circle, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 45%), repeating-conic-gradient(rgba(255, 120, 220, .36) 0 6deg, rgba(0, 0, 0, 0) 6deg 12deg, rgba(120, 230, 255, .36) 12deg 18deg, rgba(0, 0, 0, 0) 18deg 24deg, rgba(255, 238, 120, .36) 24deg 30deg, rgba(0, 0, 0, 0) 30deg 36deg); }
-.po-stage.go > .po-rays { opacity: 1; animation: spRays 6s linear infinite; }
-.po-card.sp-ex:not(.flipped) { box-shadow: 0 0 14px 4px rgba(247, 209, 74, .9); animation: dealIn .35s ease-out, spShake .5s ease-in-out .4s infinite; }
-.po-card.sp-full:not(.flipped) { animation: dealIn .35s ease-out, spAuraFull 1.4s linear .35s infinite, spShake .5s ease-in-out .4s infinite; }
-@keyframes spShake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-1.6deg); } 75% { transform: rotate(1.6deg); } }
-.po-in.sp-go > .silk { visibility: hidden; } /* 「CARD 4 / 5」は、文字が飛び出しているあいだ隠す */
-.po-pop { position: absolute; z-index: 2; left: 50%; top: -42px; transform: translateX(-50%) scale(.3); opacity: 0; white-space: nowrap; font-family: var(--display); font-weight: 400; font-size: 34px; line-height: 1; pointer-events: none; }
-.po-pop.ex { color: #ffe07a; text-shadow: 0 3px 0 #6b4c12, 0 0 12px rgba(247, 209, 74, .9); }
-.po-pop.full { color: #fff; text-shadow: 0 3px 0 #5a2a6a, 0 0 10px rgba(255, 120, 220, .9), 0 0 18px rgba(120, 230, 255, .8); }
-.po-stage.go > .po-pop { animation: spPop .7s cubic-bezier(.2, 1.6, .4, 1) .25s forwards; }
-@keyframes spPop { from { opacity: 0; transform: translateX(-50%) scale(.3); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
-.sp-hint { color: #ffe07a; }
-/* 10連の告知（カットイン） */
-.po-cutin { position: relative; width: 100%; min-height: 70vh; display: grid; place-items: center; overflow: hidden; cursor: pointer; text-align: center; }
-.ci-rays { position: absolute; left: 50%; top: 50%; width: 150vmax; height: 150vmax; margin: -75vmax 0 0 -75vmax; border-radius: 50%; background: repeating-conic-gradient(rgba(255, 220, 110, .3) 0 7deg, rgba(255, 220, 110, 0) 7deg 15deg); animation: spRays 8s linear infinite; }
-.po-cutin.full .ci-rays { background: repeating-conic-gradient(rgba(255, 120, 220, .3) 0 6deg, rgba(0, 0, 0, 0) 6deg 12deg, rgba(120, 230, 255, .3) 12deg 18deg, rgba(0, 0, 0, 0) 18deg 24deg, rgba(255, 238, 120, .3) 24deg 30deg, rgba(0, 0, 0, 0) 30deg 36deg); }
-.ci-in { position: relative; z-index: 1; padding: 18px 26px; border-radius: 10px; background: rgba(3, 16, 11, .82); box-shadow: 0 0 0 2px rgba(247, 209, 74, .7), 0 10px 30px rgba(0, 0, 0, .5); animation: spCut .5s cubic-bezier(.2, 1.5, .4, 1) both; }
-.po-cutin.full .ci-in { animation: spCut .5s cubic-bezier(.2, 1.5, .4, 1) both, spAuraFull 1.8s linear .5s infinite; }
-@keyframes spCut { from { opacity: 0; transform: scale(.4) rotate(-6deg); } to { opacity: 1; transform: none; } }
-.ci-line { margin: 0; font-family: var(--display); font-size: 40px; line-height: 1.25; }
-.ci-line.ex { color: #ffe07a; text-shadow: 0 3px 0 #6b4c12; }
-.ci-line.full { color: #fff; text-shadow: 0 3px 0 #5a2a6a, 0 0 12px rgba(255, 120, 220, .9); }
-.ci-sub { margin: 6px 0 0; font-weight: 700; }
-/* 10連の結果：特別なカードのまわりも光る */
-.po-flip.sp-ex { box-shadow: 0 0 10px 3px rgba(247, 209, 74, .85); }
-.po-flip.sp-full { animation: spAuraFull 1.8s linear infinite; }
-@media (max-width: 560px) { .po-pop { font-size: 26px; } .ci-line { font-size: 30px; } }
-/* 動きを減らす設定：回したり光らせたりしない（文字だけ出す） */
+.po-stage > * { grid-area: 1 / 1; }
+.po-stage > .po-card { z-index: 1; }
+.po-glow { z-index: 0; width: calc(min(230px, 62vw) * 1.5); aspect-ratio: 1; pointer-events: none; opacity: .55; transform: scale(.92);
+  transition: opacity .6s var(--sp-out), transform .6s var(--sp-out);
+  background: radial-gradient(closest-side, rgba(255, 224, 122, .55), rgba(255, 224, 122, .18) 55%, rgba(255, 224, 122, 0)); }
+.sp-full > .po-glow { background: radial-gradient(closest-side at 38% 42%, rgba(255, 120, 220, .45), rgba(255, 120, 220, 0)), radial-gradient(closest-side at 62% 58%, rgba(110, 230, 255, .45), rgba(110, 230, 255, 0)), radial-gradient(closest-side, rgba(255, 255, 255, .25), rgba(255, 255, 255, 0)); }
+.po-stage.go > .po-glow { opacity: 1; transform: scale(1); }
+.po-card.sp-ex:not(.flipped), .po-card.sp-full:not(.flipped) { box-shadow: none; animation: dealIn .35s var(--sp-out); }
+.cb-scan { position: absolute; inset: 0; pointer-events: none; opacity: 0; animation: cbScan 2.4s cubic-bezier(.45, .05, .55, .95) .4s infinite;
+  background: linear-gradient(90deg, rgba(255, 150, 20, 0) 42%, rgba(255, 150, 20, .38) 47%, rgba(255, 176, 40, .95) 49.3%, #fff 50%, rgba(255, 176, 40, .95) 50.7%, rgba(255, 150, 20, .38) 53%, rgba(255, 150, 20, 0) 58%); }
+.cb-scan.full { background: linear-gradient(90deg, rgba(255, 60, 190, 0) 41%, rgba(255, 60, 190, .55) 47%, #fff 50%, rgba(30, 195, 255, .6) 53%, rgba(30, 195, 255, 0) 59%); }
+@keyframes cbScan { 0% { transform: translateX(-54%); opacity: 0; } 6%, 56% { opacity: 1; } 62% { transform: translateX(54%); opacity: 0; } 100% { transform: translateX(54%); opacity: 0; } }
+.sp-hint { color: var(--sp-gold); }
+.sp-full ~ .po-msg .sp-hint { color: #fff; text-shadow: -1px 0 0 var(--sp-pink), 1px 0 0 var(--sp-cyan); }
+
+/* 4. めくったとき：ふちから光の輪が1回広がり、表面を光沢が1回走る。名前の前にタグ */
+.po-ring { z-index: 2; width: min(230px, 62vw); aspect-ratio: 5 / 7; border-radius: 6px; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 0 2px rgba(255, 236, 170, .95), 0 0 22px 4px rgba(247, 209, 74, .55); }
+.sp-full > .po-ring { box-shadow: 0 0 0 2px rgba(255, 255, 255, .95), -6px -3px 20px 2px var(--sp-pink), 6px 3px 20px 2px var(--sp-cyan); }
+.po-stage.go > .po-ring { animation: spRing .7s var(--sp-out) .3s both; }
+@keyframes spRing { 0% { opacity: 0; transform: scale(.98); } 10% { opacity: 1; } 45% { opacity: .2; } 100% { opacity: 0; transform: scale(1.16); } }
+.po-sheen { position: absolute; inset: 0; z-index: 5; overflow: hidden; pointer-events: none; clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px); }
+.po-sheen::before { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(105deg, rgba(255, 255, 255, 0) 30%, rgba(255, 248, 220, .6) 50%, rgba(255, 255, 255, 0) 70%); }
+.sp-full .po-sheen::before { background: linear-gradient(105deg, rgba(255, 255, 255, 0) 26%, rgba(255, 140, 225, .4) 40%, rgba(255, 255, 255, .65) 50%, rgba(120, 230, 255, .4) 60%, rgba(255, 255, 255, 0) 74%); }
+.po-stage.go .po-sheen::before { animation: spSheen .9s var(--sp-io) .42s both; }
+@keyframes spSheen { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.sp-tag { display: inline-block; margin-right: .5em; padding: 1px 8px; border-radius: 3px; font-size: 13px; letter-spacing: .04em; vertical-align: 1px; animation: spTag .45s var(--sp-out) .3s both; }
+.sp-tag.ex { background: linear-gradient(90deg, #d9ad55, #f6dc8d, #d9ad55); color: #2a1d05; }
+.sp-tag.full { background: linear-gradient(90deg, #ffb3ea, #fff6c2 50%, #a9ecff); color: #2a1640; }
+@keyframes spTag { from { opacity: 0; transform: translateY(6px) scale(.96); } }
+
+/* 5. 10連の告知：画面を暗くして、1行ずつ下から出る。最後に下線を引く */
+.po-cutin { position: fixed; inset: 0; z-index: 2; display: grid; place-items: center; padding: 24px; cursor: pointer; text-align: center;
+  background: radial-gradient(circle at 50% 46%, rgba(247, 209, 74, .14), rgba(247, 209, 74, 0) 42%), rgba(2, 8, 6, .86); animation: ciFade .3s ease-out both; }
+.po-cutin.full { background: radial-gradient(circle at 40% 44%, rgba(255, 120, 220, .14), rgba(255, 120, 220, 0) 38%), radial-gradient(circle at 60% 50%, rgba(110, 230, 255, .14), rgba(110, 230, 255, 0) 38%), rgba(2, 8, 6, .86); }
+.ci-in { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ci-line { margin: 0; display: flex; align-items: baseline; justify-content: center; gap: .3em; font-family: var(--display); font-size: 44px; line-height: 1.2; animation: ciLine .55s var(--sp-out) calc(.15s + var(--d, 0ms)) both; }
+.ci-line b { font-weight: 400; }
+.ci-line span { font-size: .6em; color: var(--silk); font-variant-numeric: tabular-nums; }
+.ci-line.ex b { color: var(--sp-gold); text-shadow: 0 0 18px rgba(247, 209, 74, .45); }
+.ci-line.full b { color: #fff; text-shadow: -2px 0 0 var(--sp-pink), 2px 0 0 var(--sp-cyan), 0 0 22px rgba(255, 255, 255, .35); }
+.ci-rule { display: block; width: min(280px, 72vw); height: 2px; margin: 8px 0 4px; border-radius: 1px; background: linear-gradient(90deg, rgba(255, 224, 122, 0), var(--sp-gold) 22%, var(--sp-gold) 78%, rgba(255, 224, 122, 0)); animation: ciRule .6s var(--sp-out) calc(.15s + var(--d, 0ms)) both; }
+.po-cutin.full .ci-rule { background: linear-gradient(90deg, rgba(255, 120, 220, 0), var(--sp-pink) 20%, #fff6c2 50%, var(--sp-cyan) 80%, rgba(110, 230, 255, 0)); }
+.ci-sub { margin: 0; font-size: 14px; font-weight: 700; color: rgba(230, 238, 226, .82); animation: ciFade .4s ease-out calc(.15s + var(--d, 0ms)) both; }
+@keyframes ciFade { from { opacity: 0; } }
+@keyframes ciLine { from { opacity: 0; transform: translateY(16px); } }
+@keyframes ciRule { from { transform: scaleX(0); } }
+
+/* 6. 10連の結果：めくれたあとに、そのカードのうしろに光（動かない） */
+.po-flip.sp-ex, .po-flip.sp-full { isolation: isolate; }
+.po-flip.sp-ex::before, .po-flip.sp-full::before { content: ''; position: absolute; z-index: -1; inset: -14% -22%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(255, 224, 122, .85), rgba(255, 224, 122, .3) 55%, rgba(255, 224, 122, 0)); animation: ciFade .5s ease-out calc(.5s + var(--i) * var(--step, 60ms)) both; }
+.po-flip.sp-full::before { background: radial-gradient(closest-side at 38% 40%, rgba(255, 120, 220, .8), rgba(255, 120, 220, 0)), radial-gradient(closest-side at 62% 60%, rgba(110, 230, 255, .8), rgba(110, 230, 255, 0)); }
+
+@media (max-width: 560px) { .ci-line { font-size: 34px; } }
+/* 動きを減らす設定：光の線・輪・光沢は出さず、文字とタグはすぐ出す */
 @media (prefers-reduced-motion: reduce) {
-  .po-burst { display: none; }
-  .po-rays, .ci-rays { display: none; }
-  .po-pack.fx-ex .pack, .po-pack.fx-full .pack, .po-card.sp-ex, .po-card.sp-full, .ci-in, .po-flip.sp-full { animation: none !important; }
-  .po-stage.go > .po-pop { animation: none !important; opacity: 1; transform: translateX(-50%); }
+  .po-burst, .cb-scan, .po-ring, .po-sheen { display: none; }
+  .po-glow { transition: none; }
+  .po-card.sp-ex, .po-card.sp-full, .sp-tag, .po-cutin, .ci-line, .ci-rule, .ci-sub, .po-flip.sp-ex::before, .po-flip.sp-full::before { animation: none; }
 }
