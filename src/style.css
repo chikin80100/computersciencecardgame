@@ -436,6 +436,8 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 
 /* ---------- お財布・パック ---------- */
 .wallet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 540px; margin-bottom: 10px; }
+.wallet.w4 { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 720px; }
+@media (max-width: 560px) { .wallet.w4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } } /* スマホでは2つずつ2段 */
 .wl { display: flex; flex-direction: column; min-width: 0; background: rgba(0, 0, 0, .25); border: 1px solid rgba(230, 238, 226, .2); border-radius: 6px; padding: 6px 10px 4px; }
 .wl .silk { font-size: 10px; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wl-v { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; }
@@ -657,3 +659,39 @@ section.series { margin: 18px 0 8px; } /* .pack.series（シリーズのパッ�
 .ready-list { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-weight: 700; }
 .ready-list li { padding: 4px 10px; border-radius: 4px; background: rgba(0, 0, 0, .25); color: rgba(230, 238, 226, .75); }
 .ready-list li.on { color: #c9f5d6; background: rgba(143, 224, 166, .16); }
+
+/* ---------- ★フルアート（カードの面ぜんたいに絵のパラレル） ----------
+   絵は fullart.js の fullURL（40×56 マスのたて長のドット絵）を .fa-bg に敷く。文字を読みやすくするのは、上に重ねるグラデーション。
+   Safari でくずれないように filter は使わない */
+.fa-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; background-color: #05080a; background-repeat: no-repeat; background-position: center top; background-size: cover; image-rendering: pixelated; }
+.fa-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5, 8, 10, .45) 0, rgba(5, 8, 10, 0) 13%, rgba(5, 8, 10, 0) 60%, rgba(5, 8, 10, .88) 100%); }
+.fa-mark { color: #ffd76a; letter-spacing: 0; font-size: 11px; font-weight: 700; text-shadow: 0 0 4px rgba(255, 215, 106, .8); }
+/* 小さいカード */
+.thumb.full { color: #fff; background: #05080a; box-shadow: inset 0 0 0 2px rgba(255, 228, 150, .6); }
+.thumb.full > * { position: relative; z-index: 1; }
+.thumb.full > .fa-bg { position: absolute; z-index: 0; }
+.thumb.full > .t-badge { position: absolute; z-index: 3; }
+.thumb.full.ex::after { z-index: 2; }
+.thumb.full .t-top { color: rgba(255, 255, 255, .85); padding-top: 6px; text-shadow: 0 1px 2px #000; }
+.thumb.full .t-kind { color: #fff; }
+.fa-art { flex: 1; min-height: 0; display: block; }
+.fa-foot { flex: none; display: flex; flex-direction: column; }
+.thumb.full .t-name { color: #fff; text-shadow: 0 1px 0 #000, 0 0 4px rgba(0, 0, 0, .85); }
+.thumb.full .t-en { color: rgba(255, 255, 255, .72); }
+.thumb.full .t-bot { color: #fff; }
+/* 大きいカード（説明の窓）：絵はカードの上に 5:7 で敷き、下は暗い色につなげる */
+.card.full { background: #05080a; color: #fff; }
+.card.full > :not(.fa-bg) { position: relative; z-index: 1; }
+.card.full.ex::before { z-index: 2; }
+.card.full > .fa-bg { bottom: auto; aspect-ratio: 5 / 7; background-size: 100% auto; }
+.card.full > .fa-bg::after { background: linear-gradient(180deg, rgba(5, 8, 10, .5) 0, rgba(5, 8, 10, 0) 16%, rgba(5, 8, 10, 0) 70%, #05080a 100%); }
+.card.full .c-stage, .card.full .c-name, .card.full .c-hp { color: #fff; text-shadow: 0 1px 2px #000; }
+.card.full .c-sub { color: rgba(255, 255, 255, .85); text-shadow: 0 1px 2px #000; }
+.card.full .c-art { height: 318px; border: 0; background-image: none; } /* 絵（5:7）が見えるように、文の板は絵の下のほうから */
+.card.full .c-art::before { display: none; }
+.card.full .c-art img { visibility: hidden; }
+.card.full .c-body, .card.full .c-foot, .card.full .c-rule, .card.full .c-desc, .card.full .c-punch { background: rgba(239, 226, 191, .94); color: var(--ink); border-radius: 4px; }
+.card.full .c-body { margin: 0 12px; padding: 8px 10px; }
+.card.full .c-foot { padding: 6px 10px; border-top: 0; }
+.card.full .c-rule { padding: 4px 10px; }
+.card.full .c-punch { padding: 4px; }

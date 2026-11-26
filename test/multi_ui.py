@@ -66,13 +66,13 @@ with sync_playwright() as p:
     check(st['t'] == 20 and st['p'] == 50 and st['packs'] == 10 and st['cards'] == 50, f'チケット-10・ポイント+50・カード50枚 {st}')
     sh = page.evaluate(SHOWN)
     check(sh['total'] == 50, f'結果の画面のカードは ×n をたして50枚 {sh}')
-    # はじめての10連なので、持っているカード＝今回出たカード。（カード, ホロか）の組の数とマスの数が同じ
-    pairs = page.evaluate('Object.keys(STORE.coll).reduce((a, id) => a + (STORE.coll[id] > (STORE.holo[id] || 0) ? 1 : 0) + (STORE.holo[id] ? 1 : 0), 0)')
+    # はじめての10連なので、持っているカード＝今回出たカード。（カード, ふつう／☆ホロ／★フルアート）の組の数とマスの数が同じ
+    pairs = page.evaluate('Object.keys(STORE.coll).reduce((a, id) => { const h = STORE.holo[id] || 0, f = STORE.full[id] || 0; return a + (STORE.coll[id] > h + f ? 1 : 0) + (h ? 1 : 0) + (f ? 1 : 0); }, 0)')
     check(sh['cells'] == pairs, f'同じカードは1マスにまとまっている（{sh["cells"]}マス・{pairs}組・{st["kinds"]}種）')
     check(sh['news'] == st['kinds'] and sh['sumNew'] == st['kinds'], f'はじめて出たカードにだけ NEW（{sh["news"]}種・まとめ {sh["sumNew"]}種・所持 {st["kinds"]}種）')
     order = page.evaluate('''[...document.querySelectorAll('#packov .po-flip')].map(c => {
-      const id = c.dataset.poInfo, h = c.querySelector('.thumb.holo') ? 1 : 0; return [h, rarityOf(DEF[id])]; })''')
-    check(all((a[0], a[1]) >= (c[0], c[1]) for a, c in zip(order, order[1:])), 'ホロ → レア度の高い順にならぶ')
+      const id = c.dataset.poInfo; return [c.querySelector('.thumb.full') ? 1 : 0, c.querySelector('.thumb.holo') ? 1 : 0, rarityOf(DEF[id])]; })''')
+    check(all(tuple(a) >= tuple(c) for a, c in zip(order, order[1:])), '★フルアート → ☆ホロ → レア度の高い順にならぶ')
     vis_front = page.evaluate('''(() => { const c = document.querySelector('#packov .po-flip:last-child .po-front');
       return getComputedStyle(c).transform; })()''')
     check(vis_front in ('none', 'matrix(1, 0, 0, 1, 0, 0)', 'matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)'), f'最後のカードまで表になった（{vis_front}）')
