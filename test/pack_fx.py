@@ -1,4 +1,4 @@
-"""パック開封で ex・★フルアートが出るときの演出：開ける前の光・破いたときの光のすじ・めくったときの文字・10連の告知
+"""パック開封で ex・★フルアートが出るときの演出：開ける前の光沢・破いたときの光・裏をなぞる光・めくったときの光の輪とタグ・10連の告知
 
   python3 test/pack_fx.py
 """
@@ -45,25 +45,25 @@ with sync_playwright() as p:
     # 1. 1パック（4枚目 ex・5枚目 ★フルアート）
     pg.evaluate(FORCE, 'both')
     pg.click('.screen:not([hidden]) .btn[data-open="logic"]', force=True); pg.wait_for_timeout(400)
-    check(pg.query_selector('#packov .po-pack.fx-full') is not None, '開ける前：★フルアート入りのパックは虹色に光る')
+    check(pg.query_selector('#packov .po-pack.fx-full') is not None, '開ける前：★フルアート入りのパックは、光沢が虹色')
     pg.screenshot(path=str(OUT / 'fx_pack.png'))
     pg.click('#packov .po-pack', force=True); pg.wait_for_timeout(350)
-    check(pg.query_selector('#packov .po-burst.full') is not None, '破いたとき：虹色の光のすじが出る')
+    check(pg.query_selector('#packov .po-pack .po-burst.full .pb-beam') is not None, '破いたとき：破れた口から虹色の光が立ちのぼる')
     pg.screenshot(path=str(OUT / 'fx_burst.png'))
     pg.wait_for_timeout(1000)
     for _ in range(12):  # 4枚目（ex）の番まで進める
         if pg.evaluate('PACKFLOW.i === 3 && !PACKFLOW.flipped'):
             break
         pg.click('#packov .po-card', force=True); pg.wait_for_timeout(250)
-    check(pg.query_selector('#packov .po-card.sp-ex') is not None and '光っている' in pg.inner_text('#packov .po-msg'), 'ex の番：裏が金色に光り「光っている…！」')
+    check(pg.query_selector('#packov .po-card.sp-ex .cb-scan.ex') is not None and '光っている' in pg.inner_text('#packov .po-msg'), 'ex の番：裏を金色の光がなぞり「光っている…！」')
     pg.screenshot(path=str(OUT / 'fx_ex_before.png'))
     pg.click('#packov .po-card', force=True); pg.wait_for_timeout(1100)
-    check(pg.query_selector('#packov .po-stage.go .po-pop.ex') is not None, 'めくると「ex！」と光のすじ')
+    check(pg.query_selector('#packov .po-stage.go .po-ring') is not None and pg.query_selector('#packov .po-msg .sp-tag.ex') is not None, 'めくると光の輪が広がり、名前の前に「ex ユニット」のタグ')
     pg.screenshot(path=str(OUT / 'fx_ex_after.png'))
     pg.click('#packov .po-card', force=True); pg.wait_for_timeout(500)
-    check(pg.query_selector('#packov .po-card.sp-full') is not None, '★フルアートの番：裏が虹色に光る')
+    check(pg.query_selector('#packov .po-card.sp-full .cb-scan.full') is not None, '★フルアートの番：裏を虹色の光がなぞる')
     pg.click('#packov .po-card', force=True); pg.wait_for_timeout(1100)
-    check(pg.query_selector('#packov .po-stage.go .po-pop.full') is not None and pg.query_selector('#packov .po-card .thumb.full') is not None, 'めくると「★フルアート！」')
+    check(pg.query_selector('#packov .po-stage.sp-full.go .po-ring') is not None and pg.query_selector('#packov .po-msg .sp-tag.full') is not None and pg.query_selector('#packov .po-card .thumb.full') is not None, 'めくると虹色の輪が広がり、「★フルアート」のタグ')
     pg.screenshot(path=str(OUT / 'fx_full_after.png'))
     flt = pg.evaluate(NOFILTER)
     check(not flt, f'演出に filter を使っていない {flt[:2]}')
@@ -107,9 +107,11 @@ with sync_playwright() as p:
     rm.click('.screen:not([hidden]) [data-open10="logic"]', force=True); rm.wait_for_timeout(300)
     rm.click('#packov .po-pack', force=True); rm.wait_for_timeout(250)
     burst = rm.query_selector('#packov .po-burst')
-    check(burst is None or not burst.is_visible(), '動きを減らす設定：光のすじは出さない')
+    check(burst is None or not burst.is_visible(), '動きを減らす設定：立ちのぼる光は出さない')
     rm.wait_for_timeout(200)
     check(rm.query_selector('#packov .po-cutin') is not None and '★フルアート' in rm.inner_text('#packov'), '動きを減らす設定でも、告知の文字は出る')
+    op = rm.evaluate('''getComputedStyle(document.querySelector('#packov .ci-line')).opacity''')
+    check(op == '1', f'動きを減らす設定では、告知の文字は最初から見えている（opacity {op}）')
     rm.screenshot(path=str(OUT / 'fx_reduced.png'))
     b.close()
 
