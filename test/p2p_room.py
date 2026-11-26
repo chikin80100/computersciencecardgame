@@ -128,7 +128,8 @@ try:
         guest.click('[data-pick="me"][data-id="p_data"]', force=True)
         guest.click('.matchbar [data-net="again"]', force=True)
         host.wait_for_function('P2P.oppAgain', timeout=5000)
-        check('準備OK' in host.inner_text('.matchbar') and 'データ構造ラボ' in host.inner_text('.matchbar'), '相手が準備OKを押すと、こちらに「相手：準備OK（デッキ名）」')
+        check('準備OK' in host.inner_text('.matchbar'), '相手が準備OKを押すと、こちらに「相手：準備OK」')
+        check('データ構造ラボ' not in host.inner_text('#scr-select .net') + host.inner_text('.matchbar'), '相手のデッキの名前は出ない')
         check(host.evaluate('UI.screen') == 'select', '片方だけ準備OKでは、まだはじまらない')
         host.screenshot(path=str(OUT / 'room_ready_opp.png'))
         # 準備OKのあとでデッキを変える → 取り消し（相手にも伝わる）
@@ -147,6 +148,9 @@ try:
         host.wait_for_selector('#actbar [data-act="ready"]', timeout=15000); guest.wait_for_selector('#actbar [data-act="ready"]', timeout=15000)
         check(host.evaluate('UI.screen') == 'battle' and guest.evaluate('UI.screen') == 'battle', '2人とも準備OKで、対戦がはじまった')
         check(host.evaluate('UI.g.players[1].deckName') == 'ネットワーク網' and guest.evaluate('UI.g.players[1].deckName') == 'ネットワーク網', '相手のデッキは、変えたあとの「ネットワーク網」（2人の画面で同じ）')
+        host.wait_for_timeout(500)
+        check('ネットワーク網' not in host.inner_text('#board') and 'アルゴリズム研究室' not in guest.inner_text('#board'), '対戦中も、相手のデッキの名前は盤面に出ない')
+        check('アルゴリズム研究室' in host.inner_text('#board'), '自分のデッキの名前は出る')
         try:
             opener.open(SIG + f'/room/{code}', timeout=3)
             check(False, 'つながったあと、Worker の部屋は消えている')

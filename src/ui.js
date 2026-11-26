@@ -345,7 +345,7 @@ function renderSelect() {
     if (claude && !NETUI.checked) netInit().then(r => { NETUI.checked = true; NETUI.why = r.ok ? '' : r.why; if (UI.screen === 'select') renderSelect(); });
     // サイト版でつながったら、下の帯に「準備OK」を出す（2人とも押したらはじまる）
     const ready = !claude && P2P.connected && P2P.stage === 'connected';
-    const oppTxt = P2P.oppAgain ? `相手：準備OK${P2P.oppName ? `（${P2P.oppName}）` : ''}` : '相手：デッキを選んでいます…';
+    const oppTxt = P2P.oppAgain ? '相手：準備OK' : '相手：デッキを選んでいます…'; // 相手のデッキは見せない
     body = `<section class="sec net">${netPanelHTML()}</section>
     ${(claude && NETUI.stage === 'waiting') || (!claude && P2P.handoff) ? '' : picker('me', allDecks(), 'あなたのデッキ')}
     ${ready ? bar(nameOf(UI.deck.me), oppTxt, P2P.meAgain
@@ -1208,7 +1208,7 @@ function pbarHTML(p) {
   const g = UI.g;
   const cur = g.cur === p.idx && !g.over && UI.mode !== 'setup' && g.turn > 0;
   return `<div class="pbar ${p.idx !== UI.me ? 'opp' : 'me'} ${cur ? 'cur' : ''}">
-    <span class="who">${esc(whoLabel(p))}</span><span class="dname">${esc(p.deckName)}</span>
+    <span class="who">${esc(whoLabel(p))}</span><span class="dname">${esc(UI.vs === 'online' && p.idx !== UI.me && !g.over ? '' : p.deckName)}</span>
     <span class="pts"><span class="silk">ポイント</span><span class="leds" role="img" aria-label="${p.points}ポイント">${[0, 1, 2].map(i => `<i class="led ${i < p.points ? 'on' : ''}"></i>`).join('')}</span></span>
   </div>`;
 }

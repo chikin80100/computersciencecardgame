@@ -11,7 +11,7 @@ const P2P = {
   connected: false, meAgain: false, oppAgain: false, oppDeck: null, timer: null, busy: false,
   round: 0, lastStart: null, tick: null, needAt: 0,
   link: '', handoff: '', handCode: '', fromLink: false,
-  room: null, inRoom: '', viaRoom: false, sigNote: '', oppName: '',
+  room: null, inRoom: '', viaRoom: false, sigNote: '',
 };
 /* あいことばを預かる Worker の URL（worker/README.md の手順でデプロイしたもの）。空なら、リンク交換だけ。
    テストでは window.CS_SIGNAL_URL で上書きできる */
@@ -271,7 +271,7 @@ function p2pClose() {
   clearInterval(P2P.tick);
   try { if (P2P.dc) { P2P.dc.onclose = null; P2P.dc.onmessage = null; P2P.dc.close(); } } catch (e) { /* noop */ }
   try { if (P2P.pc) { P2P.pc.onconnectionstatechange = null; P2P.pc.close(); } } catch (e) { /* noop */ }
-  Object.assign(P2P, { pc: null, dc: null, role: '', connected: false, meAgain: false, oppAgain: false, oppDeck: null, oppName: '', code: '', link: '', round: 0, lastStart: null, tick: null });
+  Object.assign(P2P, { pc: null, dc: null, role: '', connected: false, meAgain: false, oppAgain: false, oppDeck: null, code: '', link: '', round: 0, lastStart: null, tick: null });
 }
 const p2pInGame = () => !!(UI.g && !UI.g.over && UI.vs === 'online' && NET.mode === 'p2p');
 /* 1.5秒ごとに：準備OKを送りなおす／対戦中は自分の手の数を知らせる（届いていない手があれば、相手が送りなおしを頼む） */
@@ -282,7 +282,8 @@ function p2pTick() {
 }
 function p2pSendAgain() {
   const mine = deckById(UI.deck.me) || PRESETS[0];
-  p2pSendRaw(P2P.role === 'host' ? { k: 'again', r: P2P.round, name: deckPayload(mine).name } : { k: 'again', r: P2P.round, deck: deckPayload(mine) });
+  // ゲストのデッキは、ホストが盤面をつくるのに要るので送る（画面には出さない）。ホストは準備OKだけを知らせる
+  p2pSendRaw(P2P.role === 'host' ? { k: 'again', r: P2P.round } : { k: 'again', r: P2P.round, deck: deckPayload(mine) });
 }
 function p2pRefresh() {
   if (UI.screen === 'select' && UI.vsPick === 'online') renderSelect();
@@ -361,11 +362,7 @@ function p2pOnMessage(raw) {
       if (msg.r === P2P.round - 1 && P2P.lastStart) { p2pSendRaw(P2P.lastStart); return; }
       if (msg.r !== P2P.round || !deckShapeOK(msg.deck)) return;
       P2P.oppDeck = msg.deck;
-      P2P.oppName = msg.deck.name;
-    } else {
-      if (msg.r !== P2P.round) return;
-      if (typeof msg.name === 'string') P2P.oppName = msg.name.slice(0, 40);
-    }
+    } else if (msg.r !== P2P.round) return;
     if (P2P.oppAgain && P2P.role !== 'host') return;
     P2P.oppAgain = true;
     if (!p2pMaybeStart()) p2pRefresh();
@@ -602,10 +599,10 @@ function p2pPanelHTML() {
       return head + '<p class="msg">つないでいます…</p>' + cancel() + err;
     case 'connected':
       return head + `<div class="net-wait"><p class="net-ok">相手とつながっています</p>
-        <p>下でデッキを選んで、「準備OK」を押してください。2人とも準備OKになると、対戦がはじまります。</p>
+        <p>下でデッキを選んで、「準備OK」を押してください。2人とも準備OKになると、対戦がはじまります。相手のデッキは、対戦が終わるまでわかりません。</p>
         <ul class="ready-list">
           <li class="${P2P.meAgain ? 'on' : ''}">あなた：${P2P.meAgain ? '準備OK' : 'デッキを選んでいます…'}</li>
-          <li class="${P2P.oppAgain ? 'on' : ''}">相手：${P2P.oppAgain ? `準備OK${P2P.oppName ? `（${esc(P2P.oppName)}）` : ''}` : 'デッキを選んでいます…'}</li>
+          <li class="${P2P.oppAgain ? 'on' : ''}">相手：${P2P.oppAgain ? '準備OK' : 'デッキを選んでいます…'}</li>
         </ul>
         <button type="button" class="btn ghost" data-net="cancel">接続を切る</button></div>${err}`;
     default: {
