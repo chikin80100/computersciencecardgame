@@ -118,9 +118,35 @@ try:
                 ok = True
                 break
         check(ok, 'あいことばだけで、2台がつながった')
-        host.wait_for_timeout(1000)
-        check(host.evaluate('UI.screen') == 'battle' and guest.evaluate('UI.screen') == 'battle', '2人とも対戦の画面になった')
         check(host.evaluate('P2P.room') is None, 'つながったら、部屋をつくった人は部屋の情報をすてた')
+
+        # 4. 待合室：つながっても、2人とも「準備OK」を押すまではじまらない
+        host.wait_for_timeout(2000)
+        check(host.evaluate('UI.screen') == 'select' and guest.evaluate('UI.screen') == 'select', 'つながっても、すぐには対戦がはじまらない')
+        check(host.query_selector('.matchbar [data-net="again"]') is not None and guest.query_selector('.matchbar [data-net="again"]') is not None, '2人の画面の下に「準備OK」がある')
+        host.screenshot(path=str(OUT / 'room_ready_host.png'))
+        guest.click('[data-pick="me"][data-id="p_data"]', force=True)
+        guest.click('.matchbar [data-net="again"]', force=True)
+        host.wait_for_function('P2P.oppAgain', timeout=5000)
+        check('準備OK' in host.inner_text('.matchbar') and 'データ構造ラボ' in host.inner_text('.matchbar'), '相手が準備OKを押すと、こちらに「相手：準備OK（デッキ名）」')
+        check(host.evaluate('UI.screen') == 'select', '片方だけ準備OKでは、まだはじまらない')
+        host.screenshot(path=str(OUT / 'room_ready_opp.png'))
+        # 準備OKのあとでデッキを変える → 取り消し（相手にも伝わる）
+        guest.click('[data-pick="me"][data-id="p_net"]', force=True)
+        check(guest.query_selector('.matchbar [data-net="again"]') is not None, 'デッキを変えると、準備OKが取り消される')
+        host.wait_for_function('!P2P.oppAgain', timeout=5000)
+        check('選んでいます' in host.inner_text('.matchbar'), '相手の画面でも「デッキを選んでいます」にもどる')
+        # 「準備をやめる」ボタン
+        host.click('.matchbar [data-net="again"]', force=True); host.wait_for_timeout(200)
+        check(host.query_selector('.matchbar [data-net="unready"]') is not None, '準備OKのあとは「準備をやめる」が出る')
+        host.click('.matchbar [data-net="unready"]', force=True)
+        guest.wait_for_function('!P2P.oppAgain', timeout=5000)
+        check(True, '「準備をやめる」で、相手の画面の準備OKも消える')
+        # 2人とも準備OK → はじまる。ゲストのデッキは、変えたあとのもの
+        guest.click('.matchbar [data-net="again"]', force=True); host.click('.matchbar [data-net="again"]', force=True)
+        host.wait_for_selector('#actbar [data-act="ready"]', timeout=15000); guest.wait_for_selector('#actbar [data-act="ready"]', timeout=15000)
+        check(host.evaluate('UI.screen') == 'battle' and guest.evaluate('UI.screen') == 'battle', '2人とも準備OKで、対戦がはじまった')
+        check(host.evaluate('UI.g.players[1].deckName') == 'ネットワーク網' and guest.evaluate('UI.g.players[1].deckName') == 'ネットワーク網', '相手のデッキは、変えたあとの「ネットワーク網」（2人の画面で同じ）')
         try:
             opener.open(SIG + f'/room/{code}', timeout=3)
             check(False, 'つながったあと、Worker の部屋は消えている')

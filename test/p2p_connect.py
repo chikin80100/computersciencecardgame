@@ -35,7 +35,7 @@ with sync_playwright() as p:
         guest.wait_for_selector('.code-out', state='attached', timeout=15000)
         host.fill('#p2pAnswer', guest.eval_on_selector('.code-out', 'e => e.value')); host.click('[data-net="connect"]', force=True)
         try:
-            host.wait_for_selector('#actbar [data-act="ready"]', timeout=12000); guest.wait_for_selector('#actbar [data-act="ready"]', timeout=5000)
+            host.wait_for_function('P2P.connected', timeout=12000); guest.wait_for_function('P2P.connected', timeout=5000)  # つながったら待合室（対戦は準備OKのあと）
             ok += 1
         except Exception:
             fail += 1

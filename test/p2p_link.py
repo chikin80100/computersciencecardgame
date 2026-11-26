@@ -102,7 +102,10 @@ with sync_playwright() as p:
             ok = True
             break
     check(ok, 'もとの画面でつながった')
-    host.wait_for_timeout(800)
+    host.wait_for_timeout(500)
+    check(host.evaluate('UI.screen') == 'select' and guest.evaluate('UI.screen') == 'select', 'つながっても、すぐには対戦がはじまらない（デッキを選べる）')
+    host.click('.matchbar [data-net="again"]', force=True); guest.click('.matchbar [data-net="again"]', force=True)
+    host.wait_for_timeout(1500)
     check(host.evaluate('UI.screen') == 'battle' and guest.evaluate('UI.screen') == 'battle', '2人とも対戦の画面になった')
     b.close()
 srv.shutdown()

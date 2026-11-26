@@ -113,6 +113,12 @@ with sync_playwright() as p:
     print('wrong paste:', host.inner_text('.msg.err') if vis(host, '.msg.err') else None)
     host.fill('#p2pAnswer', answer); click(host, '[data-net="connect"]')
     try:
+        # つながっても、すぐにははじまらない。2人とも「準備OK」を押す
+        host.wait_for_function('P2P.connected', timeout=30000); guest.wait_for_function('P2P.connected', timeout=5000)
+        host.wait_for_timeout(300)
+        print('waiting room (not started yet):', host.evaluate('UI.screen'), guest.evaluate('UI.screen'))
+        host.screenshot(path=str(OUT / 'p_ready_wait.png'))
+        click(guest, '.matchbar [data-net="again"]'); click(host, '.matchbar [data-net="again"]')
         host.wait_for_selector('#actbar [data-act="ready"]', timeout=30000)
     except Exception:
         diag = "({ stage: P2P.stage, role: P2P.role, conn: P2P.connected, err: P2P.err, pc: P2P.pc && P2P.pc.connectionState, ice: P2P.pc && P2P.pc.iceConnectionState, dc: P2P.dc && P2P.dc.readyState, me: P2P.meAgain, opp: P2P.oppAgain, screen: UI.screen })"
