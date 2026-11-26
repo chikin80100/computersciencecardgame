@@ -78,6 +78,7 @@ def state(pg):
 with sync_playwright() as p:
     b = launch(p, '--disable-features=WebRtcHideLocalIpsWithMdns')
     ctx = b.new_context(viewport={'width': 390, 'height': 844})
+    ctx.add_init_script("window.CS_SIGNAL_URL = '';")  # リンク交換をためすので、あいことばの Worker は使わない
     import sys as _s
     DROP = float(_s.argv[1]) if len(_s.argv) > 1 else 0
     if DROP:

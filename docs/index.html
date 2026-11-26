@@ -5378,7 +5378,7 @@ const P2P = {
 };
 /* あいことばを預かる Worker の URL（worker/README.md の手順でデプロイしたもの）。空なら、リンク交換だけ。
    テストでは window.CS_SIGNAL_URL で上書きできる */
-const SIGNAL_URL = '';
+const SIGNAL_URL = 'https://cs-card-signal.chikin80100.workers.dev';
 const signalURL = () => String(window.CS_SIGNAL_URL !== undefined ? window.CS_SIGNAL_URL : SIGNAL_URL).replace(/\/+$/, '');
 /* Worker を呼ぶ。本文は text/plain の JSON（ブラウザの事前確認を減らす）。8秒で打ち切り */
 async function sig(path, method, body) {
