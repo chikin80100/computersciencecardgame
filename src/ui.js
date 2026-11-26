@@ -260,7 +260,7 @@ document.addEventListener('click', e => {
   if (nav) { e.preventDefault(); if (nav.dataset.vs) UI.vsPick = nav.dataset.vs; show(nav.dataset.nav); }
 });
 window.addEventListener('hashchange', () => {
-  if (/^#[ja]=/.test(location.hash) && !(UI.g && !UI.g.over)) { const to = p2pFromHash(); if (to) { show(to); return; } }
+  if (/^#[jar]=/.test(location.hash) && !(UI.g && !UI.g.over)) { const to = p2pFromHash(); if (to) { show(to); return; } }
   const h = location.hash.replace('#', '');
   if ((UI.screen === 'battle' && UI.g && !UI.g.over) || UI.screen === 'editor') return;
   if (ROUTES.includes(h) && h !== UI.screen) show(h);
@@ -377,6 +377,8 @@ function renderSelect() {
   };
   const inp = $('#netCode');
   if (inp) inp.onkeydown = e => { if (e.key === 'Enter') onNet('join'); };
+  const tr = $('#p2pRoom');
+  if (tr) { tr.oninput = () => { P2P.inRoom = tr.value.replace(/\D/g, ''); }; tr.onkeydown = e => { if (e.key === 'Enter') onNet('joinroom'); }; }
   const ti = $('#p2pInvite'), ta = $('#p2pAnswer');
   if (ti) ti.oninput = () => { P2P.inInvite = ti.value; };
   if (ta) ta.oninput = () => { P2P.inAnswer = ta.value; };
@@ -700,7 +702,9 @@ function renderRules() {
     </ul></section>
     <section><h3 class="h3">対人戦</h3><ul>
       <li><b>2人で対戦（この端末）</b>：1台の端末を2人で交代して使う。番が変わるたびに「端末を渡す」画面が出る。パックチケットはもらえない。</li>
-      <li><b>オンライン対戦</b>：${TRANSPORT() === 'p2p'
+      <li><b>オンライン対戦</b>：${TRANSPORT() === 'p2p' && signalURL()
+        ? '1人が「部屋をつくる」を押し、出てきた6けたの「あいことば」を相手に伝える（そばにいるなら、QRコードをカメラで読んでもらってもよい）。相手は「部屋に入る」にあいことばを入れて「入る」を押す。ログインはいらない。あいことばが使えないときは、リンクやQRコードでもつなげる。'
+        : TRANSPORT() === 'p2p'
         ? '1人が「部屋をつくる」を押すと、「招待リンク」とQRコードが出る。相手はQRコードをスマホのカメラで読む（またはリンクを開く）と、「参加リンク」とQRコードが出る。最初の人がそれをカメラで読む（またはリンクを貼って「つなぐ」を押す）と、対戦がはじまる。ログインはいらない。'
         : '1人が「部屋をつくる」を押し、出てきた6けたの「あいことば」を相手に伝える。相手は「部屋に入る」にあいことばを入れる。2人ともClaudeにログインして、このページを開いている必要がある。'}</li>
       <li>オンライン対戦は、勝つとパックチケット+${REWARD.win}、負け・引き分けで+${REWARD.lose}。途中でぬけると降参になる。</li>

@@ -8,7 +8,7 @@
 | 置き場所 | セーブ | オンライン対戦 |
 |---|---|---|
 | Claude のアーティファクト（claude.ai） | アカウント（`window.claude` の db）＋ブラウザ | Claude の部屋（db + room）。あいことば6けたで入る。ログインが必要 |
-| ふつうのWebサイト（GitHub Pages など） | ブラウザ（localStorage） | WebRTC の直接通信。招待リンク・参加リンク（QRコード）を送り合う。ログイン不要 |
+| ふつうのWebサイト（GitHub Pages など） | ブラウザ（localStorage） | WebRTC の直接通信。あいことば6けた（Cloudflare Worker が接続情報を10分だけ預かる）。Worker がないとき・届かないときは、招待リンク・参加リンク（QRコード）を送り合う。ログイン不要 |
 
 ## 必ず守ること
 
@@ -68,6 +68,7 @@ python3 test/cloud.py           # アカウント保存（db）とブラウザ�
 python3 test/p2p.py 0.25        # サイト版のWebRTC対戦：コード交換・対戦・再戦・切断・手が落ちたときの回復
 python3 test/p2p.py 0.25 p_ochiai,p_tron   # 2つめの引数でデッキを選べる
 python3 test/p2p_connect.py 10  # つなぐところだけを10回くり返す
+python3 test/p2p_room.py        # あいことば：Worker を手元で立てて（先に cd worker && npm install）、6けたでつながるか・まちがった数字・サーバーに届かない・期限切れ
 python3 test/p2p_link.py        # リンク交換：QRコード（zxing-cpp があれば読み取りも）・招待リンクで開く・参加リンクを別のタブからわたす・見つからないとき
 python3 test/visual.py          # 見た目を1回だけ撮る
 python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pioneer / ubicomp、ids=enigma,alan でカードを指定）
@@ -86,7 +87,8 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 | src/engine.js | ルールエンジン（DOMなし・async）とCPUのAI。Node 用に `module.exports` もある |
 | src/art.js | ドット絵。24×24 のマスに `PAL` の色の記号で描く。`ART[カードid] = g => {...}`、`spriteURL(id)` で画像に |
 | src/qr.js | QRコードをつくる（ライブラリなし。バイトモード・誤り訂正L・型番1〜20）。`qrSVG(文字列)` |
-| src/p2p.js | サイト版の WebRTC 対戦（つなぐ・コード・リンク・QR・再戦・切断） |
+| src/p2p.js | サイト版の WebRTC 対戦（つなぐ・コード・あいことば・リンク・QR・再戦・切断）。`SIGNAL_URL` に Worker の URL |
+| worker/ | あいことばを預かる Cloudflare Worker（Durable Object `Room`）。デプロイのしかたは worker/README.md。`npm install` すると node_modules ができる（git には入れない） |
 | src/ui.js | 画面ぜんぶ：タイトル・デッキ選択・デッキ編集・図鑑・あそびかた・パック開封・対戦・結果・セーブ・オンライン対戦（`NET`） |
 | src/style.css | 見た目 |
 | src/index.html | ひな形。`/*STYLE*/` と `/*SCRIPT*/` に中身が入る |
@@ -147,7 +149,8 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 - 自分の手も相手の手も `applyMove(g, p, m)` で盤面に反映する。`end` で受け取った `h` が自分の `stateHash(g)` とちがったら `netDesync()`（引き分けで終わり、チケットなし）。
 - Claude の中（`NET`、ui.js）：部屋は db の `pvp/<あいことば>`、手は `pvpm/<gid>_h` と `pvpm/<gid>_g<token>` に書き、room（チャンネル `'pvp-'+gid`）の `mv` / `need` で知らせる。room がなくても db だけで遊べる。
 - サイト版（src/p2p.js）：`RTCPeerConnection`（STUN は Google と Cloudflare、TURN はなし）。データチャンネルは `{negotiated:true, id:0, ordered:true}`。コードは `CS2.` ＋ base64url（`packCode` / `unpackCode`）。SDP から ICE のユーザー名・パスワード、証明書の指紋（sha-256）、setup、UDP の候補（最大8つ）だけをバイト列につめ、受け取った側が決まった形の SDP を組み立てなおす（`compactSDP` / `expandSDP`）。候補が1つで90文字、3つで140文字ほど。この形にできない SDP（mid が 0 でないなど）は、古い形（SDP をまるごと deflate-raw した `CS1Z.`、600文字ほど）で出す。古い形も読める。
-  - コードは、このページへのリンクにして送る（`p2pLink`：招待は `#j=CS2.…`、参加は `#a=CS2.…`、140〜200文字ほど）。画面にはそのQRコードを出す。スマホのふつうのカメラで読めば、ゲームが開く。10けたくらいにするには接続情報を置くサーバーが要る（証明書の指紋だけで43文字分ある）が、サーバーは使わないと決めた（2026年11月25日）。
+  - **あいことば（2026年11月26日〜）**：`SIGNAL_URL`（テストでは `window.CS_SIGNAL_URL`）に Worker の URL があれば、部屋をつくった人は招待コードを Worker に預け（`POST /room`）、6けたの数字をもらう。相手は数字で招待コードを受けとり、参加コードを Worker にわたす。部屋をつくった人は `p2pWaitAnswer` で1.5〜4秒ごとに聞きに行き、届いたら `connect` して部屋を消す。部屋は10分で消える。あいことばのQRコードは `#r=123456` のリンク（開くと数字が入る）。Worker に届かないときは `P2P.sigNote` を出して、下のリンク交換にもどる。はじめは「サーバーは使わない」と決めたが（11月25日）、自分の Cloudflare の Worker ならよいことにした。
+  - コードは、このページへのリンクにして送ることもできる（`p2pLink`：招待は `#j=CS2.…`、参加は `#a=CS2.…`、140〜200文字ほど）。画面にはそのQRコードを出す。スマホのふつうのカメラで読めば、ゲームが開く。Worker があるときは、「あいことばが使えないとき」のたたみの中に出す。
   - 招待リンクで開くと、`p2pFromHash()`（boot から呼ぶ）が招待コードを入れた状態でオンライン対戦の画面を出し、アドレスからコードを消す。参加リンクで開くと、BroadcastChannel `cs-term-p2p` で、同じブラウザの「部屋をつくった画面」（`p2pListen()`）にわたして、そちらでつなぐ。見つからないときは、リンクをコピーして貼る案内を出す。
   - 「つなぐ」の欄は、コードだけでも、リンクのままでも読める。`BarcodeDetector` があるブラウザでは「カメラで読む」も出る（`p2pScan`）。
   - メッセージは `again`（もう一度・デッキ）`start`（round, seed, gid, decks）`mv` `hb`（ハートビート）`need`（落ちた手の再送のお願い）`bye`。1.5秒ごとに `again` の再送とハートビート。
@@ -203,4 +206,5 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 - デジタルツインの「分身」は、CPU同士だとほとんど起きない（バトル場でダウンし、山札にもう1枚残っているときだけ）。もっと出番をふやすなら、効果を見直す。
 - デッキをコードにして友だちと共有する。
 - 効果音・BGM（Web Audio でその場で作る。音のファイルは使わない）。
-- TURN サーバーを使えるようにして、サイト版の対戦をつながりやすくする（使う場合はサーバーの用意が必要）。
+- TURN サーバーを使えるようにして、サイト版の対戦をつながりやすくする（Cloudflare の TURN を使うなら、Worker で短い期限の資格情報をつくって渡す形になる）。
+- Worker をデプロイしたら、`src/p2p.js` の `SIGNAL_URL` に URL を書く（まだ空なので、公開版はリンク交換のまま）。

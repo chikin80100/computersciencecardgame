@@ -1,0 +1,17 @@
+# CS用語カードバトル：あいことばを預かる Worker（くわしくは README.md）
+name = "cs-card-signal"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+
+[vars]
+# この Worker を呼んでよいサイト（カンマ区切り）。localhost / 127.0.0.1 は手元の確認用に、いつでも呼べる
+ALLOWED_ORIGINS = "https://chikin80100.github.io"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+# 無料プランでは、SQLite を使う Durable Object だけが使える
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
