@@ -446,6 +446,8 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 
 /* ---------- お財布・パック ---------- */
 .wallet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 540px; margin-bottom: 10px; }
+.wallet.w4 { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 720px; }
+@media (max-width: 560px) { .wallet.w4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } } /* スマホでは2つずつ2段 */
 .wl { display: flex; flex-direction: column; min-width: 0; background: rgba(0, 0, 0, .25); border: 1px solid rgba(230, 238, 226, .2); border-radius: 6px; padding: 6px 10px 4px; }
 .wl .silk { font-size: 10px; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wl-v { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; }
@@ -667,6 +669,45 @@ section.series { margin: 18px 0 8px; } /* .pack.series（シリーズのパッ�
 .ready-list { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-weight: 700; }
 .ready-list li { padding: 4px 10px; border-radius: 4px; background: rgba(0, 0, 0, .25); color: rgba(230, 238, 226, .75); }
 .ready-list li.on { color: #c9f5d6; background: rgba(143, 224, 166, .16); }
+
+/* ---------- ★フルアート（カードの面ぜんたいに絵のパラレル） ----------
+   うしろ（.fa-bg）：タイプの色のグラデーション → 同じドット絵を大きく引きのばしたモザイク → タイプのもよう → 光とかげ。
+   Safari でくずれないように filter は使わない */
+.fa-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: linear-gradient(165deg, var(--c), #0b1d16 88%); }
+.fa-zoom { position: absolute; inset: -4%; background-repeat: no-repeat; background-position: 50% 42%; background-size: 330%; image-rendering: pixelated; opacity: .45; }
+.fa-tile { position: absolute; inset: 0; background-size: 24px 24px; opacity: .5; }
+.fa-glow { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, rgba(255, 248, 225, .55), rgba(255, 248, 225, 0) 55%), linear-gradient(180deg, rgba(5, 14, 10, 0) 52%, rgba(5, 14, 10, .88) 100%); }
+.fa-mark { color: #ffd76a; letter-spacing: 0; font-size: 11px; font-weight: 700; text-shadow: 0 0 4px rgba(255, 215, 106, .8); }
+/* 小さいカード */
+.thumb.full { color: #fff; background: #0b1d16; box-shadow: inset 0 0 0 2px rgba(255, 228, 150, .6); }
+.thumb.full > * { position: relative; z-index: 1; }
+.thumb.full > .fa-bg { position: absolute; z-index: 0; }
+.thumb.full > .t-badge { position: absolute; z-index: 3; }
+.thumb.full.ex::after { z-index: 2; }
+.thumb.full .t-top { color: rgba(255, 255, 255, .85); padding-top: 6px; text-shadow: 0 1px 2px #000; }
+.thumb.full .t-kind { color: #fff; }
+.fa-art { flex: 1; min-height: 0; display: block; }
+.fa-art img { position: absolute; inset: 0; margin: auto; width: 86%; height: 86%; object-fit: contain; }
+.fa-foot { flex: none; display: flex; flex-direction: column; }
+.thumb.full .t-name { color: #fff; text-shadow: 0 1px 0 #000, 0 0 4px rgba(0, 0, 0, .85); }
+.thumb.full .t-en { color: rgba(255, 255, 255, .72); }
+.thumb.full .t-bot { color: #fff; }
+/* 大きいカード（説明の窓） */
+.card.full { background: #0b1d16; color: #fff; }
+.card.full > :not(.fa-bg) { position: relative; z-index: 1; }
+.card.full.ex::before { z-index: 2; }
+.card.full .fa-zoom { background-position: 50% 20%; background-size: 260%; }
+.card.full .fa-glow { background: radial-gradient(ellipse at 50% 22%, rgba(255, 248, 225, .55), rgba(255, 248, 225, 0) 45%), linear-gradient(180deg, rgba(5, 14, 10, 0) 28%, rgba(5, 14, 10, .65) 60%); }
+.card.full .c-stage, .card.full .c-name, .card.full .c-hp { color: #fff; text-shadow: 0 1px 2px #000; }
+.card.full .c-sub { color: rgba(255, 255, 255, .8); }
+.card.full .c-art { height: 196px; border: 0; background-image: none; }
+.card.full .c-art::before { display: none; }
+.card.full .c-art img { width: 180px; height: 180px; }
+.card.full .c-body, .card.full .c-foot, .card.full .c-rule, .card.full .c-desc, .card.full .c-punch { background: rgba(239, 226, 191, .94); color: var(--ink); border-radius: 4px; }
+.card.full .c-body { margin: 0 12px; padding: 8px 10px; }
+.card.full .c-foot { padding: 6px 10px; border-top: 0; }
+.card.full .c-rule { padding: 4px 10px; }
+.card.full .c-punch { padding: 4px; }
 
 </style>
 </head>
@@ -6037,6 +6078,7 @@ function normalizeStore(st) {
   if (!Array.isArray(st.decks)) st.decks = [];
   if (!st.coll || typeof st.coll !== 'object') st.coll = {};
   if (!st.holo || typeof st.holo !== 'object') st.holo = {};
+  if (!st.full || typeof st.full !== 'object') st.full = {}; // ★フルアート（カードごとの枚数）
   if (!st.stats || typeof st.stats !== 'object') st.stats = {};
   ['wins', 'losses', 'draws', 'packs'].forEach(k => { if (typeof st.stats[k] !== 'number') st.stats[k] = 0; });
   if (typeof st.tickets !== 'number') { st.tickets = REWARD.start; st.bonus2 = 1; } // はじめのパックチケット
@@ -6069,10 +6111,11 @@ function mergeStore(local, remote) {
   const fresh = !local.synced; // この端末がまだ一度もアカウントとそろえていない
   const newer = fresh || (remote.updatedAt || 0) > (local.updatedAt || 0) ? remote : local;
   const out = Object.assign({}, newer);
-  out.coll = {}; out.holo = {};
+  out.coll = {}; out.holo = {}; out.full = {};
   for (const src of [local, remote]) {
     for (const id in src.coll || {}) out.coll[id] = Math.max(out.coll[id] || 0, src.coll[id]);
     for (const id in src.holo || {}) out.holo[id] = Math.max(out.holo[id] || 0, src.holo[id]);
+    for (const id in src.full || {}) out.full[id] = Math.max(out.full[id] || 0, src.full[id]);
   }
   if (fresh) {
     const decks = {};
@@ -6160,11 +6203,29 @@ function punchSVG(text, cols) {
   return out + '</svg>';
 }
 
+/* ★フルアート：カードの面ぜんたいに絵。うしろに同じドット絵を大きく引きのばしたモザイクと、タイプの色・もようをしく
+   （Safari でくずれないように filter は使わない。重ねるのはグラデーションと不透明度だけ） */
+function fullBgHTML(id, d) {
+  return `<span class="fa-bg" aria-hidden="true"><span class="fa-zoom" style="background-image:url(${spriteURL(id)})"></span><span class="fa-tile ${tileClass(d)}"></span><span class="fa-glow"></span></span>`;
+}
 function thumbHTML(id, opts) {
   opts = opts || {};
   const d = DEF[id];
   const c = d.kind === 'mon' ? TYPES[d.type].c : KIND[d.kind].c;
   const badge = opts.badge ? `<span class="t-badge ${opts.badge === 'NEW' ? 'new' : ''}">${esc(opts.badge)}</span>` : '';
+  if (opts.full && !opts.sil) {
+    return `<div class="thumb full ${d.ex || d.leg ? 'ex' : ''}" style="--c:${c}">
+    ${fullBgHTML(id, d)}
+    <span class="t-top"><span>${noLabel(d)}</span><span class="t-kind">${kindLabel(d)}</span></span>
+    <span class="fa-art" aria-hidden="true">${artImg(id)}</span>
+    <span class="fa-foot">
+      <span class="t-name">${nameHTML(d)}${d.ex ? '<b class="exb">ex</b>' : ''}</span>
+      <span class="t-en">${esc(d.en)}</span>
+      <span class="t-bot">${d.kind === 'mon' ? `${eI(d.type, 's')}<span>HP ${d.hp}</span>` : `<span class="t-k">${KIND[d.kind].name}</span>`}<span class="t-rar fa-mark">★</span></span>
+    </span>
+    ${badge}
+  </div>`;
+  }
   return `<div class="thumb ${d.ex || d.leg ? 'ex' : ''} ${d.kind === 'mon' ? '' : 'tr'} ${opts.sil ? 'sil' : ''} ${opts.holo ? 'holo' : ''}" style="--c:${c}">
     <span class="t-stripe"></span>
     <span class="t-top"><span>${noLabel(d)}</span><span class="t-kind">${kindLabel(d)}</span></span>
@@ -6191,10 +6252,10 @@ function cardHTML(id, opts) {
     const t = TYPES[d.type];
     const m = opts.m;
     const hp = m ? `<span class="c-hp"><small>HP</small>${hpLeft(m)}<small>/${maxHp(m)}</small></span>` : `<span class="c-hp"><small>HP</small>${d.hp}</span>`;
-    return `<div class="card-wrap"><article class="card ${d.ex ? 'ex' : ''} ${opts.holo ? 'holo' : ''}" style="--c:${t.c}">
-      <div class="c-stripe"></div>
+    return `<div class="card-wrap"><article class="card ${d.ex ? 'ex' : ''} ${opts.holo ? 'holo' : ''} ${opts.full ? 'full' : ''}" style="--c:${t.c}">
+      ${opts.full ? fullBgHTML(id, d) : ''}<div class="c-stripe"></div>
       <header class="c-head"><span class="c-stage">${stageLabel(d)}</span><h3 class="c-name">${nameHTML(d)}${d.ex ? '<b class="exb">ex</b>' : ''}</h3>${hp}${eI(d.type, 'l')}</header>
-      <p class="c-sub"><span>${esc(d.en)}</span><span>${noLabel(d)} ${RARITY_MARK[rarityOf(d)]}${d.from ? ` ・「${esc(d.from)}」から進化` : ''}</span></p>
+      <p class="c-sub"><span>${esc(d.en)}</span><span>${noLabel(d)} ${opts.full ? '★フルアート' : RARITY_MARK[rarityOf(d)]}${d.from ? ` ・「${esc(d.from)}」から進化` : ''}</span></p>
       <div class="c-art ${tileClass(d)}" aria-hidden="true">${artImg(id, { sil: opts.sil })}</div>
       <div class="c-body">
         ${d.ability ? `<div class="c-ab"><p class="c-ab-h"><span class="tag">特性</span><b>${esc(d.ability.name)}</b></p><p class="c-t">${esc(d.ability.text)}</p></div>` : ''}
@@ -6207,10 +6268,10 @@ function cardHTML(id, opts) {
     </article></div>`;
   }
   const k = KIND[d.kind];
-  return `<div class="card-wrap"><article class="card tr ${d.leg ? 'ex' : ''} ${opts.holo ? 'holo' : ''}" style="--c:${k.c}">
-    <div class="c-stripe"></div>
+  return `<div class="card-wrap"><article class="card tr ${d.leg ? 'ex' : ''} ${opts.holo ? 'holo' : ''} ${opts.full ? 'full' : ''}" style="--c:${k.c}">
+    ${opts.full ? fullBgHTML(id, d) : ''}<div class="c-stripe"></div>
     <header class="c-head"><span class="c-stage">${k.name}</span><h3 class="c-name">${nameHTML(d)}</h3></header>
-    <p class="c-sub"><span>${esc(d.en)}</span><span>${noLabel(d)} ${RARITY_MARK[rarityOf(d)]}</span></p>
+    <p class="c-sub"><span>${esc(d.en)}</span><span>${noLabel(d)} ${opts.full ? '★フルアート' : RARITY_MARK[rarityOf(d)]}</span></p>
     <div class="c-art ${tileClass(d)}" aria-hidden="true">${artImg(id, { sil: opts.sil })}</div>
     <div class="c-body"><p class="c-eff">${esc(d.text)}</p><p class="c-t c-kr">${esc(k.rule)}</p></div>
     <div class="c-desc"><p class="tag">用語解説${setTag(d)}</p><p>${esc(d.desc)}</p></div>
@@ -6562,7 +6623,7 @@ function renderEditor() {
         ${chipsHTML(UI.poolFilter, 'data-pf')}
         <div class="chips"><button type="button" class="chip" data-po-own="1" aria-pressed="${UI.poolOwned !== false}">持っているカードだけ表示</button></div>
         ${poolIds().length ? '' : '<p class="note">まだカードを持っていません。「パックをひらく」でカードを集めよう。</p>'}
-        <div class="grid pool">${poolIds().map(id => `<div class="pcell"><button type="button" class="tbtn" data-info="${id}" aria-label="${esc(DEF[id].name)}の詳細">${thumbHTML(id, { sil: !owned(id), holo: !!STORE.holo[id] })}</button>
+        <div class="grid pool">${poolIds().map(id => `<div class="pcell"><button type="button" class="tbtn" data-info="${id}" aria-label="${esc(DEF[id].name)}の詳細">${thumbHTML(id, { sil: !owned(id), ...bestLook(id) })}</button>
           <div class="pc-ctl"><button type="button" class="pm" data-minus="${id}" ${e.cards[id] ? '' : 'disabled'} aria-label="1枚減らす">−</button><b>${e.cards[id] || 0}</b><button type="button" class="pm" data-plus="${id}" ${(e.cards[id] || 0) >= Math.min(2, owned(id)) || n >= 20 ? 'disabled' : ''} aria-label="1枚増やす">＋</button></div>
           <p class="pc-own">所持 ${owned(id)}枚</p></div>`).join('')}</div>
       </section>
@@ -6608,13 +6669,14 @@ function renderDex() {
   const f = UI.dexFilter;
   const ids = ALL_IDS.filter(id => { const d = DEF[id]; if (f === 'all') return true; if (f === 'tr') return d.kind !== 'mon'; if (seriesOf(f)) return d.set === f; return d.kind === 'mon' && d.type === f; });
   const holoKinds = ALL_IDS.filter(id => STORE.holo[id]).length;
+  const fullKinds = ALL_IDS.filter(id => STORE.full[id]).length;
   $('#scr-dex').innerHTML = `<div class="page">
     <header class="top"><button type="button" class="back" data-nav="title">← タイトル</button><h2>カード図鑑</h2></header>
-    ${walletHTML([['集めたカード', ownedKinds(), `/ ${ALL_IDS.length}種`], ['ホロ', holoKinds, '種'], ['パックポイント', STORE.points, 'pt']])}
+    ${walletHTML([['集めたカード', ownedKinds(), `/ ${ALL_IDS.length}種`], ['☆ホロ', holoKinds, '種'], ['★フルアート', fullKinds, '種'], ['パックポイント', STORE.points, 'pt']])}
     <p class="note">カードをタップすると用語解説が読めます。持っていないカードは影になっています（パックポイントで交換もできます）。</p>
     ${chipsHTML(f, 'data-df')}
     ${TYPES[f] && f !== 'none' ? `<p class="note">${eI(f, 's')} ${TYPES[f].name}の弱点は ${eI(WEAK[f], 's')} ${TYPES[WEAK[f]].name}。${esc(WEAK_WHY[f])}。</p>` : ''}
-    <div class="grid dex">${ids.map(id => `<button type="button" class="tbtn" data-info="${id}" aria-label="${esc(DEF[id].name)}の詳細">${thumbHTML(id, { sil: !owned(id), holo: !!STORE.holo[id], badge: owned(id) ? '' : '未入手' })}</button>`).join('')}</div>
+    <div class="grid dex">${ids.map(id => `<button type="button" class="tbtn" data-info="${id}" aria-label="${esc(DEF[id].name)}の詳細">${thumbHTML(id, { sil: !owned(id), ...bestLook(id), badge: owned(id) ? '' : '未入手' })}</button>`).join('')}</div>
   </div>`;
   $('#scr-dex').onclick = e => {
     const c = e.target.closest('[data-df]');
@@ -6624,15 +6686,22 @@ function renderDex() {
   };
 }
 
-function openCardInfo(id) {
+/* 持っているパラレルのうち、いちばんめずらしい見た目（フルアート → ホロ） */
+const bestLook = id => (STORE.full[id] ? { full: true } : STORE.holo[id] ? { holo: true } : {});
+const LOOKS = { plain: 'ふつう', holo: '☆ホロ', full: '★フルアート' };
+function openCardInfo(id, look) {
   const d = DEF[id];
-  const n = owned(id), h = STORE.holo[id] || 0;
+  const n = owned(id), h = STORE.holo[id] || 0, fa = STORE.full[id] || 0;
+  const looks = ['plain'].concat(h ? ['holo'] : [], fa ? ['full'] : []);
+  if (!looks.includes(look)) look = fa ? 'full' : h ? 'holo' : 'plain';
+  const next = looks[(looks.indexOf(look) + 1) % looks.length];
   const cost = EXCHANGE_COST[rarityOf(d)];
   const head = `<div class="live">
-    <p>${n ? `所持 <b>${n}</b>枚${h ? `（うちホロ ${h}枚）` : ''}` : '<b>未入手</b>　パックから出るのを待つか、パックポイントで交換できます。'}</p>
+    <p>${n ? `所持 <b>${n}</b>枚${h || fa ? `（うち${[h ? `☆ホロ ${h}枚` : '', fa ? `★フルアート ${fa}枚` : ''].filter(Boolean).join('・')}）` : ''}` : '<b>未入手</b>　パックから出るのを待つか、パックポイントで交換できます。'}</p>
     <p>レア度 ${RARITY_MARK[rarityOf(d)]}　交換 ${cost}pt（いま ${STORE.points}pt）</p>
   </div>`;
-  openSheet(head + cardHTML(id, { sil: !n, holo: !!h }), [{
+  const swap = looks.length > 1 ? [{ label: `絵を切りかえる（いま：${LOOKS[look]}）`, note: `次は「${LOOKS[next]}」`, fn: () => openCardInfo(id, next) }] : [];
+  openSheet(head + cardHTML(id, { sil: !n, holo: look === 'holo', full: look === 'full' }), swap.concat([{
     label: `パックポイントで交換（${cost}pt）`, cls: 'gold', disabled: STORE.points < cost,
     note: STORE.points < cost ? `あと${cost - STORE.points}pt必要` : (n >= 2 ? 'デッキには同じカードを2枚まで入れられます' : ''),
     fn: () => {
@@ -6643,9 +6712,9 @@ function openCardInfo(id) {
       saveStore();
       toast(`「${d.name}」を手に入れた！`);
       if (RENDER[UI.screen]) RENDER[UI.screen]();
-      openCardInfo(id);
+      openCardInfo(id, look);
     },
-  }]);
+  }]));
 }
 
 /* ---------- あそびかた ---------- */
@@ -6736,7 +6805,7 @@ function renderRules() {
     </ul></section>
     <section><h3 class="h3">パックとコレクション</h3><ul>
       <li>パックチケット1枚で、パックを1つ（5枚入り）ひらける。「${MULTI_PACKS}連」なら、チケット${MULTI_PACKS}枚で${MULTI_PACKS}パックをまとめてひらける（中身の確率は1パックずつと同じ）。はじめはチケット${REWARD.start}枚。チケットは対戦すると増える（${REWARD_TEXT}。降参は0）。毎日はじめて遊ぶと+${REWARD.daily}。</li>
-      <li>レア度は ◆（v1など）・◆◆（v2など）・◆◆◆（v3など）・◆◆◆◆（ex）。ごくまれに、キラキラの<b>☆ホロ</b>カードや、全部レアの<b>ゴッドパック</b>が出る。</li>
+      <li>レア度は ◆（v1など）・◆◆（v2など）・◆◆◆（v3など）・◆◆◆◆（ex）。ごくまれに、キラキラの<b>☆ホロ</b>カード、カードの面ぜんたいに絵がかかれた<b>★フルアート</b>カード（ホロよりめずらしい）、全部レアの<b>ゴッドパック</b>が出る。ホロやフルアートも、デッキにはふつうのカードと同じように使える。</li>
       <li>パックを1つひらくたびにパックポイント+${PACK_POINT}。図鑑で、ほしいカードと交換できる（◆${EXCHANGE_COST[1]}pt〜◆◆◆◆${EXCHANGE_COST[4]}pt）。</li>
       <li>自分で作るデッキには、持っているカードしか入れられない。プリセットデッキはいつでも使える。</li>
       <li>「コンピュータの父」シリーズ（「アラン・チューリング」パック・「ジョン・フォン・ノイマン」パック・「クロード・シャノン」パック）、「プログラミングの先駆者」シリーズ（「エイダ・ラブレス」パック・「グレース・ホッパー」パック）、「遍在する計算機」シリーズ（「マーク・ワイザー」パック・「TRON」パック・「落合陽一」パック）のカードは、そのシリーズのパックからしか出ない。</li>
@@ -6816,7 +6885,7 @@ function toast(msg) {
    パック
    ========================================================= */
 function walletHTML(items) {
-  return `<div class="wallet">${items.map(([label, val, unit]) => `<span class="wl"><span class="silk">${label}</span><span class="wl-v"><b>${val}</b><small>${unit}</small></span></span>`).join('')}</div>`;
+  return `<div class="wallet ${items.length > 3 ? 'w4' : ''}">${items.map(([label, val, unit]) => `<span class="wl"><span class="silk">${label}</span><span class="wl-v"><b>${val}</b><small>${unit}</small></span></span>`).join('')}</div>`;
 }
 function packPool(pack) {
   if (pack.ids) return pack.ids.filter(id => DEF[id]);
@@ -6831,22 +6900,23 @@ function packProgress(pack) { const pool = packPool(pack); return [pool.filter(i
 function rollPack(pack) {
   const pool = packPool(pack);
   const units = pool.filter(id => DEF[id].kind === 'mon');
-  const holoPool = pack.feature ? units.concat([pack.feature]) : units; // シリーズのパックは、人物カードのホロも出る
+  const holoPool = pack.feature ? units.concat([pack.feature]) : units; // シリーズのパックは、人物カードのホロ・フルアートも出る
   const byR = r => pool.filter(id => rarityOf(DEF[id]) === r);
   const god = Math.random() < 0.005;
   const out = [];
   for (let i = 0; i < 5; i++) {
-    let r = 1, holo = false;
-    if (god) { r = Math.random() < 0.5 ? 3 : 4; holo = Math.random() < 0.35; } else if (i >= 3) {
+    let r = 1, holo = false, full = false;
+    if (god) { r = Math.random() < 0.5 ? 3 : 4; const t = Math.random(); holo = t < 0.3; full = !holo && t < 0.45; } else if (i >= 3) {
       const t = Math.random();
-      const o = i === 3 ? [0.72, 0.90, 0.98] : [0.50, 0.78, 0.94];
-      if (t < o[0]) r = 2; else if (t < o[1]) r = 3; else if (t < o[2]) r = 4; else holo = true;
+      // 4枚目：◆◆71% ◆◆◆18% ◆◆◆◆8% ☆ホロ2% ★フルアート1%　5枚目：◆◆47% ◆◆◆28% ◆◆◆◆16% ☆ホロ6% ★フルアート3%
+      const o = i === 3 ? [0.71, 0.89, 0.97, 0.99] : [0.47, 0.75, 0.91, 0.97];
+      if (t < o[0]) r = 2; else if (t < o[1]) r = 3; else if (t < o[2]) r = 4; else if (t < o[3]) holo = true; else full = true;
     }
     let id;
-    if (holo && !god) id = rndU(holoPool);
+    if ((holo || full) && !god) id = rndU(holoPool);
     else if (r === 4 && pack.feature && Math.random() < 0.5) id = pack.feature; // ◆◆◆◆の半分は、そのパックの人物カード
     else { let list = byR(r); while (!list.length && r > 1) list = byR(--r); id = rndU(list); }
-    out.push({ id, holo, god });
+    out.push({ id, holo, full, god });
   }
   return out;
 }
@@ -6893,12 +6963,12 @@ function renderPacks() {
       }).join('')}</div>
     </section>`).join('')}
     <section class="sec"><h3 class="h3">レア度と出る確率</h3>
-      <table class="tbl odds"><thead><tr><th></th><th>◆</th><th>◆◆</th><th>◆◆◆</th><th>◆◆◆◆</th><th>☆ホロ</th></tr></thead><tbody>
-        <tr><td>1〜3枚目</td><td>100%</td><td>−</td><td>−</td><td>−</td><td>−</td></tr>
-        <tr><td>4枚目</td><td>−</td><td>72%</td><td>18%</td><td>8%</td><td>2%</td></tr>
-        <tr><td>5枚目</td><td>−</td><td>50%</td><td>28%</td><td>16%</td><td>6%</td></tr>
+      <table class="tbl odds"><thead><tr><th></th><th>◆</th><th>◆◆</th><th>◆◆◆</th><th>◆◆◆◆</th><th>☆ホロ</th><th>★フルアート</th></tr></thead><tbody>
+        <tr><td>1〜3枚目</td><td>100%</td><td>−</td><td>−</td><td>−</td><td>−</td><td>−</td></tr>
+        <tr><td>4枚目</td><td>−</td><td>71%</td><td>18%</td><td>8%</td><td>2%</td><td>1%</td></tr>
+        <tr><td>5枚目</td><td>−</td><td>47%</td><td>28%</td><td>16%</td><td>6%</td><td>3%</td></tr>
       </tbody></table>
-      <p class="note">◆＝v1のユニットとふつうのコマンド、◆◆＝v2、◆◆◆＝v3と強いコマンド、◆◆◆◆＝exと人物カード。0.5%の確率で、全部◆◆◆以上の「ゴッドパック」。「コンピュータの父」シリーズでは、◆◆◆◆の半分がそのパックの人物カードになり、人物カードの☆ホロも出る。${MULTI_PACKS}連でも、1パックずつの確率は同じ。</p>
+      <p class="note">◆＝v1のユニットとふつうのコマンド、◆◆＝v2、◆◆◆＝v3と強いコマンド、◆◆◆◆＝exと人物カード。0.5%の確率で、全部◆◆◆以上の「ゴッドパック」。「コンピュータの父」シリーズでは、◆◆◆◆の半分がそのパックの人物カードになり、人物カードの☆ホロや★フルアートも出る。☆ホロと★フルアートは、ユニット（と人物カード）から出る。${MULTI_PACKS}連でも、1パックずつの確率は同じ。</p>
     </section>
   </div>`;
   $('#scr-packs').onclick = e => {
@@ -6925,6 +6995,7 @@ function openPack(packId, n) {
     seen.add(pl.id);
     STORE.coll[pl.id] = owned(pl.id) + 1;
     if (pl.holo) STORE.holo[pl.id] = (STORE.holo[pl.id] || 0) + 1;
+    if (pl.full) STORE.full[pl.id] = (STORE.full[pl.id] || 0) + 1;
   });
   STORE.points += PACK_POINT * n;
   STORE.stats.packs += n;
@@ -6932,17 +7003,17 @@ function openPack(packId, n) {
   PACKFLOW = { pack, n, pulls, i: -1, stage: 'pack', flipped: false };
   renderPackOverlay();
 }
-/* 10連の結果：同じカード（ホロかどうかも同じ）をまとめて、ホロ → レア度の高い順 → NEW → 番号の順に並べる */
+/* 10連の結果：同じカード（ホロ・フルアートかどうかも同じ）をまとめて、フルアート → ホロ → レア度の高い順 → NEW → 番号の順に並べる */
 function multiPulls(pulls) {
   const map = new Map();
   for (const pl of pulls) {
-    const k = pl.id + (pl.holo ? '*' : '');
-    const e = map.get(k) || { id: pl.id, holo: pl.holo, n: 0, isNew: false };
+    const k = pl.id + (pl.holo ? '*' : '') + (pl.full ? '#' : '');
+    const e = map.get(k) || { id: pl.id, holo: pl.holo, full: !!pl.full, n: 0, isNew: false };
     e.n++;
     if (pl.isNew) e.isNew = true;
     map.set(k, e);
   }
-  return Array.from(map.values()).sort((a, b) => (b.holo - a.holo) || (rarityOf(DEF[b.id]) - rarityOf(DEF[a.id])) || (b.isNew - a.isNew) || (DEF[a.id].no - DEF[b.id].no));
+  return Array.from(map.values()).sort((a, b) => (b.full - a.full) || (b.holo - a.holo) || (rarityOf(DEF[b.id]) - rarityOf(DEF[a.id])) || (b.isNew - a.isNew) || (DEF[a.id].no - DEF[b.id].no));
 }
 /* 開封のあとの下のボタン。チケットが足りないときは、押せないボタンではなく、次にできることを出す */
 function packMoreHTML(f) {
@@ -6963,15 +7034,16 @@ function multiDoneHTML(f) {
   const cnt = test => f.pulls.filter(test).length;
   const gods = new Set(f.pulls.filter(pl => pl.god).map(pl => pl.pk)).size;
   const step = Math.min(70, Math.round(1500 / list.length)); // めくり終わるまで、長くても2秒ほど
-  const sum = [['NEW', cnt(pl => pl.isNew), '種'], ['☆ホロ', cnt(pl => pl.holo), '枚'], [RARITY_MARK[4], cnt(pl => !pl.holo && rarityOf(DEF[pl.id]) === 4), '枚'], [RARITY_MARK[3], cnt(pl => !pl.holo && rarityOf(DEF[pl.id]) === 3), '枚']];
+  const plain = pl => !pl.holo && !pl.full;
+  const sum = [['NEW', cnt(pl => pl.isNew), '種'], ['★フルアート', cnt(pl => pl.full), '枚'], ['☆ホロ', cnt(pl => pl.holo), '枚'], [RARITY_MARK[4], cnt(pl => plain(pl) && rarityOf(DEF[pl.id]) === 4), '枚'], [RARITY_MARK[3], cnt(pl => plain(pl) && rarityOf(DEF[pl.id]) === 3), '枚']];
   return `<div class="po-in done multi">
       <h3 class="po-title">${esc(f.pack.name)}パック ×${f.n}${gods ? `<b class="god">GOD PACK${gods > 1 ? ` ×${gods}` : ''}!</b>` : ''}</h3>
       <p class="po-sum">${sum.map(([k, v, u]) => `<span class="${k === 'NEW' ? 'newtxt' : ''}">${k} <b>${v}</b>${u}</span>`).join('')}</p>
       <div class="po-grid multi" style="--step:${step}ms">${list.map((e, k) => {
-        const rare = rarityOf(DEF[e.id]) >= 3 || e.holo;
-        return `<button type="button" class="tbtn po-flip ${rare ? 'rare' : ''}" style="--i:${k}" data-po-info="${e.id}" aria-label="${esc(DEF[e.id].name)}${e.holo ? '（☆ホロ）' : ''}${e.n > 1 ? ` ${e.n}枚` : ''}${e.isNew ? '（NEW）' : ''}の詳細">
+        const rare = rarityOf(DEF[e.id]) >= 3 || e.holo || e.full;
+        return `<button type="button" class="tbtn po-flip ${rare ? 'rare' : ''}" style="--i:${k}" data-po-info="${e.id}" aria-label="${esc(DEF[e.id].name)}${e.holo ? '（☆ホロ）' : ''}${e.full ? '（★フルアート）' : ''}${e.n > 1 ? ` ${e.n}枚` : ''}${e.isNew ? '（NEW）' : ''}の詳細">
           <span class="po-back" aria-hidden="true">${cardBackHTML(rare)}</span>
-          <span class="po-front">${thumbHTML(e.id, { holo: e.holo, badge: e.isNew ? 'NEW' : '' })}</span>
+          <span class="po-front">${thumbHTML(e.id, { holo: e.holo, full: e.full, badge: e.isNew ? 'NEW' : '' })}</span>
           ${e.n > 1 ? `<b class="po-cnt">×${e.n}</b>` : ''}
         </button>`;
       }).join('')}</div>
@@ -6993,12 +7065,12 @@ function renderPackOverlay() {
     const b = $('.po-pack', ov); if (b) b.focus({ preventScroll: true });
   } else if (f.stage === 'cards') {
     const pl = f.pulls[f.i];
-    const rare = rarityOf(DEF[pl.id]) >= 3 || pl.holo;
+    const rare = rarityOf(DEF[pl.id]) >= 3 || pl.holo || pl.full;
     ov.innerHTML = `<div class="po-in">
       <p class="silk">CARD ${f.i + 1} / 5</p>
       <button type="button" class="po-card ${rare ? 'rare' : ''}" data-po="next" aria-label="カードをめくる">
         <span class="po-back">${cardBackHTML(rare)}</span>
-        <span class="po-front">${thumbHTML(pl.id, { holo: pl.holo, badge: pl.isNew ? 'NEW' : '' })}</span>
+        <span class="po-front">${thumbHTML(pl.id, { holo: pl.holo, full: pl.full, badge: pl.isNew ? 'NEW' : '' })}</span>
       </button>
       <p class="po-msg">タップしてめくる</p>
       <div class="po-btns"><button type="button" class="btn ghost" data-po="all">すべてめくる</button></div>
@@ -7010,7 +7082,7 @@ function renderPackOverlay() {
   } else {
     ov.innerHTML = `<div class="po-in done">
       <h3 class="po-title">${esc(f.pack.name)}パック${f.pulls[0].god ? '<b class="god">GOD PACK!</b>' : ''}</h3>
-      <div class="po-grid">${f.pulls.map(pl => `<button type="button" class="tbtn" data-po-info="${pl.id}" aria-label="${esc(DEF[pl.id].name)}の詳細">${thumbHTML(pl.id, { holo: pl.holo, badge: pl.isNew ? 'NEW' : '' })}</button>`).join('')}</div>
+      <div class="po-grid">${f.pulls.map(pl => `<button type="button" class="tbtn" data-po-info="${pl.id}" aria-label="${esc(DEF[pl.id].name)}の詳細">${thumbHTML(pl.id, { holo: pl.holo, full: pl.full, badge: pl.isNew ? 'NEW' : '' })}</button>`).join('')}</div>
       <p class="po-msg">パックポイント +${PACK_POINT}（いま ${STORE.points}pt）　チケット残り ${STORE.tickets}枚</p>
       ${packMoreHTML(f)}
     </div>`;
@@ -7037,7 +7109,7 @@ function flipOrNext() {
     const pl = f.pulls[f.i];
     if (b) { b.classList.add('flipped'); b.setAttribute('aria-label', '次のカード'); }
     const m = $('#packov .po-msg');
-    if (m) m.innerHTML = `${esc(DEF[pl.id].name)}${DEF[pl.id].ex ? 'ex' : ''}${pl.holo ? '（☆ホロ）' : ''}　${RARITY_MARK[rarityOf(DEF[pl.id])]}${pl.isNew ? '　<b class="newtxt">NEW</b>' : ''}`;
+    if (m) m.innerHTML = `${esc(DEF[pl.id].name)}${DEF[pl.id].ex ? 'ex' : ''}${pl.holo ? '（☆ホロ）' : ''}${pl.full ? '（★フルアート）' : ''}　${RARITY_MARK[rarityOf(DEF[pl.id])]}${pl.isNew ? '　<b class="newtxt">NEW</b>' : ''}`;
     return;
   }
   if (f.i >= 4) f.stage = 'done'; else { f.i++; f.flipped = false; }

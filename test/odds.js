@@ -8,13 +8,13 @@ const rndUSrc = ui.match(/^const rndU = .*$/m)[0];
 const ctx = { console, Math, module: {} };
 vm.createContext(ctx);
 vm.runInContext(rd('data.js') + '\n' + rd('engine.js') + '\nconst owned = id => 0;\n' + rndUSrc + '\n' + fnSrc + '\nthis.rollPack = rollPack; this.packPool = packPool; this.PACKS = PACKS; this.DEF = DEF; this.rarityOf = rarityOf;', ctx);
-const N = 300000, slot = [...Array(5)].map(() => ({ 1: 0, 2: 0, 3: 0, 4: 0, h: 0 }));
+const N = 300000, slot = [...Array(5)].map(() => ({ 1: 0, 2: 0, 3: 0, 4: 0, h: 0, f: 0 })); // h=☆ホロ f=★フルアート
 const seen = {}; let god = 0;
 for (const pk of ctx.PACKS) seen[pk.id] = new Set();
 for (let i = 0; i < N; i++) {
   const pk = ctx.PACKS[i % ctx.PACKS.length], r = ctx.rollPack(pk);
   if (r[0].god) god++;
-  r.forEach((c, j) => { seen[pk.id].add(c.id); if (c.holo && !c.god) slot[j].h++; else slot[j][ctx.rarityOf(ctx.DEF[c.id])]++; });
+  r.forEach((c, j) => { seen[pk.id].add(c.id); if (c.holo && !c.god) slot[j].h++; else if (c.full && !c.god) slot[j].f++; else slot[j][ctx.rarityOf(ctx.DEF[c.id])]++; });
 }
 slot.forEach((s, j) => console.log('slot', j + 1, Object.entries(s).map(([k, v]) => k + ':' + (100 * v / N).toFixed(1) + '%').join('  ')));
 console.log('god packs', (100 * god / N).toFixed(2) + '%');
