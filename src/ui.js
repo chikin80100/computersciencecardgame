@@ -929,6 +929,20 @@ function multiPulls(pulls) {
   }
   return Array.from(map.values()).sort((a, b) => (b.holo - a.holo) || (rarityOf(DEF[b.id]) - rarityOf(DEF[a.id])) || (b.isNew - a.isNew) || (DEF[a.id].no - DEF[b.id].no));
 }
+/* 開封のあとの下のボタン。チケットが足りないときは、押せないボタンではなく、次にできることを出す */
+function packMoreHTML(f) {
+  const t = STORE.tickets;
+  let main, note = '';
+  if (t >= f.n) main = `<button type="button" class="btn gold" data-po="again">もう${f.n}パック</button>`;
+  else if (t >= 1) {
+    main = '<button type="button" class="btn gold" data-po="again1">もう1パック</button>';
+    note = `${f.n}連にはチケットが${f.n}枚いります（いま${t}枚）。1パックずつなら開けられます。`;
+  } else {
+    main = '<button type="button" class="btn gold" data-po="battle">対戦する</button>';
+    note = 'チケットがなくなりました。対戦すると、チケットがふえます。';
+  }
+  return `<div class="po-btns">${note ? `<p class="po-note">${note}</p>` : ''}${main}<button type="button" class="btn" data-po="dex">図鑑で見る</button><button type="button" class="btn ghost" data-po="close">とじる</button></div>`;
+}
 function multiDoneHTML(f) {
   const list = multiPulls(f.pulls);
   const cnt = test => f.pulls.filter(test).length;
@@ -947,7 +961,7 @@ function multiDoneHTML(f) {
         </button>`;
       }).join('')}</div>
       <p class="po-msg">パックポイント +${PACK_POINT * f.n}（いま ${STORE.points}pt）　チケット残り ${STORE.tickets}枚</p>
-      <div class="po-btns"><button type="button" class="btn gold" data-po="again" ${STORE.tickets < f.n ? 'disabled' : ''}>もう${f.n}パック</button><button type="button" class="btn" data-po="dex">図鑑で見る</button><button type="button" class="btn ghost" data-po="close">とじる</button></div>
+      ${packMoreHTML(f)}
     </div>`;
 }
 function renderPackOverlay() {
@@ -983,7 +997,7 @@ function renderPackOverlay() {
       <h3 class="po-title">${esc(f.pack.name)}パック${f.pulls[0].god ? '<b class="god">GOD PACK!</b>' : ''}</h3>
       <div class="po-grid">${f.pulls.map(pl => `<button type="button" class="tbtn" data-po-info="${pl.id}" aria-label="${esc(DEF[pl.id].name)}の詳細">${thumbHTML(pl.id, { holo: pl.holo, badge: pl.isNew ? 'NEW' : '' })}</button>`).join('')}</div>
       <p class="po-msg">パックポイント +${PACK_POINT}（いま ${STORE.points}pt）　チケット残り ${STORE.tickets}枚</p>
-      <div class="po-btns"><button type="button" class="btn gold" data-po="again" ${STORE.tickets < 1 ? 'disabled' : ''}>もう1パック</button><button type="button" class="btn" data-po="dex">図鑑で見る</button><button type="button" class="btn ghost" data-po="close">とじる</button></div>
+      ${packMoreHTML(f)}
     </div>`;
   }
 }
@@ -1026,6 +1040,8 @@ $('#packov').addEventListener('click', e => {
   else if (k === 'next') flipOrNext();
   else if (k === 'all') { f.stage = 'done'; renderPackOverlay(); }
   else if (k === 'again') { const id = f.pack.id, n = f.n; PACKFLOW = null; openPack(id, n); }
+  else if (k === 'again1') { const id = f.pack.id; PACKFLOW = null; openPack(id, 1); }
+  else if (k === 'battle') { PACKFLOW = null; renderPackOverlay(); UI.vsPick = 'cpu'; show('select'); }
   else if (k === 'dex') { PACKFLOW = null; renderPackOverlay(); show('dex'); }
   else if (k === 'close') { PACKFLOW = null; renderPackOverlay(); if (RENDER[UI.screen]) RENDER[UI.screen](); }
 });

@@ -97,7 +97,8 @@ with sync_playwright() as p:
     page.click('#packov .po-pack', force=True); page.wait_for_timeout(900 + FLIP)
     st = page.evaluate(STATE)
     check(st['t'] == 0 and st['cards'] == 150 and st['p'] == 150, f'チケットを使いきった {st}')
-    check(page.is_disabled('#packov [data-po="again"]'), 'チケット0枚では「もう10パック」は押せない')
+    check(page.query_selector('#packov [data-po="again"]') is None and page.query_selector('#packov [data-po="again1"]') is None, 'チケット0枚では「もう10パック」「もう1パック」は出ない')
+    check(page.query_selector('#packov [data-po="battle"]') is not None and 'チケットがなくなりました' in page.inner_text('#packov'), 'チケット0枚では「対戦する」と案内が出る')
     page.click('#packov [data-po="close"]'); page.wait_for_timeout(300)
     check(len(page.query_selector_all('.screen:not([hidden]) [data-open10]:not([disabled])')) == 0, 'チケット0枚では10連のボタンは押せない')
 
@@ -139,6 +140,24 @@ with sync_playwright() as p:
     page.screenshot(path=str(OUT / 'm_pc_packs.png'))
     open10(page, 'mind', 'm_pc')
     check(page.evaluate('STORE.tickets') == 20, 'パソコン：10連でチケット-10')
+
+    # 6b) チケットが1〜9枚残ったとき：「もう1パック」と案内。下のボタンのうしろが、すけて見えない
+    page.click('#packov [data-po="close"]'); page.wait_for_timeout(200)
+    page.evaluate('STORE.tickets = 15; saveStore(); RENDER.packs()')
+    open10(page, 'mind', 'm_pc_left5')
+    check(page.query_selector('#packov [data-po="again"]') is None and page.query_selector('#packov [data-po="again1"]') is not None, 'のこり5枚：「もう10パック」ではなく「もう1パック」')
+    check('チケットが10枚いります' in page.inner_text('#packov .po-note'), 'のこり5枚：10連にはチケットが10枚いる、と案内')
+    bg = page.evaluate('''(() => { const b = document.querySelector('#packov .po-btns [data-po="dex"]'); return getComputedStyle(b).backgroundColor; })()''')
+    check(bg not in ('rgba(0, 0, 0, 0)', 'transparent'), f'下のボタンに背景の色がある（{bg}）')
+    page.click('#packov [data-po="again1"]'); page.wait_for_timeout(300)
+    check(page.is_visible('#packov .po-pack') and not page.is_visible('#packov .po-x'), '「もう1パック」で、1パックの開封になる')
+    page.click('#packov .po-pack', force=True); page.wait_for_timeout(900)
+    page.click('#packov [data-po="all"]'); page.wait_for_timeout(300)
+    check(page.evaluate('STORE.tickets') == 4, '「もう1パック」でチケット-1')
+    page.evaluate('STORE.tickets = 0; saveStore()'); page.evaluate('renderPackOverlay()'); page.wait_for_timeout(200)
+    check(page.query_selector('#packov [data-po="battle"]') is not None, '1パックの結果でも、0枚なら「対戦する」')
+    page.click('#packov [data-po="battle"]'); page.wait_for_timeout(300)
+    check(page.is_hidden('#packov') and page.evaluate('UI.screen') == 'select', '「対戦する」で対戦の画面へ')
 
     # 7) 前の版のセーブ（チケット4枚・bonus2 あり）は、はじめの枚数が変わっても増えない
     page.evaluate('''localStorage.setItem("cs-term-card-battle-v1", JSON.stringify({decks: [], coll: {hello: 1}, tickets: 4, points: 0,
