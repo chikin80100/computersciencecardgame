@@ -640,3 +640,8 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 .p2p-alt { margin: 12px 0 0; }
 .p2p-alt > summary { cursor: pointer; font-size: 13px; color: var(--gold); padding: 6px 0; }
 .net-box .p2p-alt { margin-top: 4px; }
+
+/* サイト版：つながったあとの準備のようす */
+.ready-list { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-weight: 700; }
+.ready-list li { padding: 4px 10px; border-radius: 4px; background: rgba(0, 0, 0, .25); color: rgba(230, 238, 226, .75); }
+.ready-list li.on { color: #c9f5d6; background: rgba(143, 224, 166, .16); }

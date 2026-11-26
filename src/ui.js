@@ -343,8 +343,14 @@ function renderSelect() {
   } else if (mode === 'online') {
     const claude = TRANSPORT() === 'claude';
     if (claude && !NETUI.checked) netInit().then(r => { NETUI.checked = true; NETUI.why = r.ok ? '' : r.why; if (UI.screen === 'select') renderSelect(); });
+    // サイト版でつながったら、下の帯に「準備OK」を出す（2人とも押したらはじまる）
+    const ready = !claude && P2P.connected && P2P.stage === 'connected';
+    const oppTxt = P2P.oppAgain ? '相手：準備OK' : '相手：デッキを選んでいます…'; // 相手のデッキは見せない
     body = `<section class="sec net">${netPanelHTML()}</section>
-    ${(claude && NETUI.stage === 'waiting') || (!claude && P2P.handoff) ? '' : picker('me', allDecks(), 'あなたのデッキ')}`;
+    ${(claude && NETUI.stage === 'waiting') || (!claude && P2P.handoff) ? '' : picker('me', allDecks(), 'あなたのデッキ')}
+    ${ready ? bar(nameOf(UI.deck.me), oppTxt, P2P.meAgain
+    ? '<button type="button" class="btn big" data-net="unready">準備をやめる</button>'
+    : '<button type="button" class="btn gold big" data-net="again">準備OK</button>') : ''}`;
   } else {
     body = `${picker('me', allDecks(), 'あなたのデッキ')}
       <p class="note">自分だけのデッキは「<button type="button" class="linkbtn" data-nav="decks">デッキをつくる</button>」で作れます。</p>
@@ -365,6 +371,10 @@ function renderSelect() {
     }
     const b = e.target.closest('[data-pick]');
     if (b && !b.disabled) {
+      // サイト版で準備OKのあとにデッキを変えたら、準備OKを取り消す（相手にも知らせる）
+      if (b.dataset.pick === 'me' && b.dataset.id !== UI.deck.me && UI.vsPick === 'online' && TRANSPORT() === 'p2p' && P2P.meAgain) {
+        p2pUnready(); toast('デッキを変えたので、準備OKを取り消しました');
+      }
       UI.deck[b.dataset.pick] = b.dataset.id;
       STORE.deckMe = UI.deck.me; STORE.deckOpp = UI.deck.opp; STORE.deckP2 = UI.deck.p2; saveStore();
       renderSelect();
@@ -703,9 +713,9 @@ function renderRules() {
     <section><h3 class="h3">対人戦</h3><ul>
       <li><b>2人で対戦（この端末）</b>：1台の端末を2人で交代して使う。番が変わるたびに「端末を渡す」画面が出る。パックチケットはもらえない。</li>
       <li><b>オンライン対戦</b>：${TRANSPORT() === 'p2p' && signalURL()
-        ? '1人が「部屋をつくる」を押し、出てきた6けたの「あいことば」を相手に伝える（そばにいるなら、QRコードをカメラで読んでもらってもよい）。相手は「部屋に入る」にあいことばを入れて「入る」を押す。ログインはいらない。あいことばが使えないときは、リンクやQRコードでもつなげる。'
+        ? '1人が「部屋をつくる」を押し、出てきた6けたの「あいことば」を相手に伝える（そばにいるなら、QRコードをカメラで読んでもらってもよい）。相手は「部屋に入る」にあいことばを入れて「入る」を押す。つながったら、2人ともデッキを選んで「準備OK」を押すと対戦がはじまる。ログインはいらない。あいことばが使えないときは、リンクやQRコードでもつなげる。'
         : TRANSPORT() === 'p2p'
-        ? '1人が「部屋をつくる」を押すと、「招待リンク」とQRコードが出る。相手はQRコードをスマホのカメラで読む（またはリンクを開く）と、「参加リンク」とQRコードが出る。最初の人がそれをカメラで読む（またはリンクを貼って「つなぐ」を押す）と、対戦がはじまる。ログインはいらない。'
+        ? '1人が「部屋をつくる」を押すと、「招待リンク」とQRコードが出る。相手はQRコードをスマホのカメラで読む（またはリンクを開く）と、「参加リンク」とQRコードが出る。最初の人がそれをカメラで読む（またはリンクを貼って「つなぐ」を押す）とつながる。2人ともデッキを選んで「準備OK」を押すと対戦がはじまる。ログインはいらない。'
         : '1人が「部屋をつくる」を押し、出てきた6けたの「あいことば」を相手に伝える。相手は「部屋に入る」にあいことばを入れる。2人ともClaudeにログインして、このページを開いている必要がある。'}</li>
       <li>オンライン対戦は、勝つとパックチケット+${REWARD.win}、負け・引き分けで+${REWARD.lose}。途中でぬけると降参になる。</li>
     </ul></section>
@@ -1198,7 +1208,7 @@ function pbarHTML(p) {
   const g = UI.g;
   const cur = g.cur === p.idx && !g.over && UI.mode !== 'setup' && g.turn > 0;
   return `<div class="pbar ${p.idx !== UI.me ? 'opp' : 'me'} ${cur ? 'cur' : ''}">
-    <span class="who">${esc(whoLabel(p))}</span><span class="dname">${esc(p.deckName)}</span>
+    <span class="who">${esc(whoLabel(p))}</span><span class="dname">${esc(UI.vs === 'online' && p.idx !== UI.me && !g.over ? '' : p.deckName)}</span>
     <span class="pts"><span class="silk">ポイント</span><span class="leds" role="img" aria-label="${p.points}ポイント">${[0, 1, 2].map(i => `<i class="led ${i < p.points ? 'on' : ''}"></i>`).join('')}</span></span>
   </div>`;
 }

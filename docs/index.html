@@ -651,6 +651,11 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 .p2p-alt > summary { cursor: pointer; font-size: 13px; color: var(--gold); padding: 6px 0; }
 .net-box .p2p-alt { margin-top: 4px; }
 
+/* サイト版：つながったあとの準備のようす */
+.ready-list { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-weight: 700; }
+.ready-list li { padding: 4px 10px; border-radius: 4px; background: rgba(0, 0, 0, .25); color: rgba(230, 238, 226, .75); }
+.ready-list li.on { color: #c9f5d6; background: rgba(143, 224, 166, .16); }
+
 </style>
 </head>
 <body data-screen="title">
@@ -5645,6 +5650,7 @@ function p2pTick() {
 }
 function p2pSendAgain() {
   const mine = deckById(UI.deck.me) || PRESETS[0];
+  // ゲストのデッキは、ホストが盤面をつくるのに要るので送る（画面には出さない）。ホストは準備OKだけを知らせる
   p2pSendRaw(P2P.role === 'host' ? { k: 'again', r: P2P.round } : { k: 'again', r: P2P.round, deck: deckPayload(mine) });
 }
 function p2pRefresh() {
@@ -5688,7 +5694,8 @@ function p2pWire(dc) {
     NET.oppHere = true;
     clearInterval(P2P.tick);
     P2P.tick = setInterval(p2pTick, 1500);
-    p2pAgain(); // 最初の対戦は、つながったらすぐはじめる
+    // すぐにははじめない：2人ともデッキを選んで「準備OK」を押したらはじまる
+    if (UI.screen !== 'select' || UI.vsPick !== 'online') { UI.vsPick = 'online'; if (UI.screen !== 'battle') show('select'); }
     p2pRefresh();
   };
   dc.onmessage = e => p2pOnMessage(e.data);
@@ -5727,6 +5734,12 @@ function p2pOnMessage(raw) {
     if (P2P.oppAgain && P2P.role !== 'host') return;
     P2P.oppAgain = true;
     if (!p2pMaybeStart()) p2pRefresh();
+  } else if (msg.k === 'unready') {
+    // 相手が「準備をやめる」を押した（デッキを変えるなど）
+    if (msg.r !== P2P.round) return;
+    P2P.oppAgain = false;
+    if (P2P.role === 'host') P2P.oppDeck = null;
+    p2pRefresh();
   } else if (msg.k === 'start') {
     if (P2P.role !== 'guest' || !Number.isInteger(msg.seed) || !Number.isInteger(msg.round) || typeof msg.gid !== 'string') return;
     if (msg.round <= P2P.round) return; // 同じ合図が2回届いた
@@ -5761,6 +5774,13 @@ function p2pAgain() {
   if (validateDeck(mine).errs.length) { toast('このデッキはまだ使えません。デッキ編集で直してください'); return; }
   P2P.meAgain = true;
   if (P2P.role !== 'host' || !p2pMaybeStart()) p2pSendAgain();
+  p2pRefresh();
+}
+/* 準備OKを取り消す（デッキを変えるときなど）。相手にも知らせる */
+function p2pUnready() {
+  if (!P2P.meAgain) return;
+  P2P.meAgain = false;
+  p2pSendRaw({ k: 'unready', r: P2P.round });
   p2pRefresh();
 }
 /* 結果画面の「もう一度（同じ相手と）」の表示を、いまの状態に合わせる */
@@ -5808,6 +5828,7 @@ async function p2pAction(k) {
   if (k === 'scan') { p2pScan(t => { P2P.inAnswer = t; p2pRefresh(); p2pAction('connect'); }); return; }
   if (k === 'copyhand') { P2P.code = P2P.handCode; P2P.link = ''; p2pCopy(); return; }
   if (k === 'again') { p2pAgain(); return; }
+  if (k === 'unready') { p2pUnready(); return; }
   if (k === 'cancel') { p2pSendRaw({ k: 'bye' }); p2pClose(); Object.assign(P2P, { stage: 'idle', err: '' }); p2pRefresh(); return; }
   if (P2P.busy) return;
   if (!hasRTC()) { P2P.err = 'このブラウザでは、オンライン対戦を使えません。'; p2pRefresh(); return; }
@@ -5946,8 +5967,11 @@ function p2pPanelHTML() {
       return head + '<p class="msg">つないでいます…</p>' + cancel() + err;
     case 'connected':
       return head + `<div class="net-wait"><p class="net-ok">相手とつながっています</p>
-        ${P2P.meAgain ? '<p class="waiting">相手の準備を待っています…</p>' : '<button type="button" class="btn gold" data-net="again">この相手と対戦する</button>'}
-        ${P2P.oppAgain && !P2P.meAgain ? '<p class="note">相手は準備OKです。</p>' : ''}
+        <p>下でデッキを選んで、「準備OK」を押してください。2人とも準備OKになると、対戦がはじまります。相手のデッキは、対戦が終わるまでわかりません。</p>
+        <ul class="ready-list">
+          <li class="${P2P.meAgain ? 'on' : ''}">あなた：${P2P.meAgain ? '準備OK' : 'デッキを選んでいます…'}</li>
+          <li class="${P2P.oppAgain ? 'on' : ''}">相手：${P2P.oppAgain ? '準備OK' : 'デッキを選んでいます…'}</li>
+        </ul>
         <button type="button" class="btn ghost" data-net="cancel">接続を切る</button></div>${err}`;
     default: {
       // 参加リンクを別のタブで開いたとき
@@ -6322,8 +6346,14 @@ function renderSelect() {
   } else if (mode === 'online') {
     const claude = TRANSPORT() === 'claude';
     if (claude && !NETUI.checked) netInit().then(r => { NETUI.checked = true; NETUI.why = r.ok ? '' : r.why; if (UI.screen === 'select') renderSelect(); });
+    // サイト版でつながったら、下の帯に「準備OK」を出す（2人とも押したらはじまる）
+    const ready = !claude && P2P.connected && P2P.stage === 'connected';
+    const oppTxt = P2P.oppAgain ? '相手：準備OK' : '相手：デッキを選んでいます…'; // 相手のデッキは見せない
     body = `<section class="sec net">${netPanelHTML()}</section>
-    ${(claude && NETUI.stage === 'waiting') || (!claude && P2P.handoff) ? '' : picker('me', allDecks(), 'あなたのデッキ')}`;
+    ${(claude && NETUI.stage === 'waiting') || (!claude && P2P.handoff) ? '' : picker('me', allDecks(), 'あなたのデッキ')}
+    ${ready ? bar(nameOf(UI.deck.me), oppTxt, P2P.meAgain
+    ? '<button type="button" class="btn big" data-net="unready">準備をやめる</button>'
+    : '<button type="button" class="btn gold big" data-net="again">準備OK</button>') : ''}`;
   } else {
     body = `${picker('me', allDecks(), 'あなたのデッキ')}
       <p class="note">自分だけのデッキは「<button type="button" class="linkbtn" data-nav="decks">デッキをつくる</button>」で作れます。</p>
@@ -6344,6 +6374,10 @@ function renderSelect() {
     }
     const b = e.target.closest('[data-pick]');
     if (b && !b.disabled) {
+      // サイト版で準備OKのあとにデッキを変えたら、準備OKを取り消す（相手にも知らせる）
+      if (b.dataset.pick === 'me' && b.dataset.id !== UI.deck.me && UI.vsPick === 'online' && TRANSPORT() === 'p2p' && P2P.meAgain) {
+        p2pUnready(); toast('デッキを変えたので、準備OKを取り消しました');
+      }
       UI.deck[b.dataset.pick] = b.dataset.id;
       STORE.deckMe = UI.deck.me; STORE.deckOpp = UI.deck.opp; STORE.deckP2 = UI.deck.p2; saveStore();
       renderSelect();
@@ -6682,9 +6716,9 @@ function renderRules() {
     <section><h3 class="h3">対人戦</h3><ul>
       <li><b>2人で対戦（この端末）</b>：1台の端末を2人で交代して使う。番が変わるたびに「端末を渡す」画面が出る。パックチケットはもらえない。</li>
       <li><b>オンライン対戦</b>：${TRANSPORT() === 'p2p' && signalURL()
-        ? '1人が「部屋をつくる」を押し、出てきた6けたの「あいことば」を相手に伝える（そばにいるなら、QRコードをカメラで読んでもらってもよい）。相手は「部屋に入る」にあいことばを入れて「入る」を押す。ログインはいらない。あいことばが使えないときは、リンクやQRコードでもつなげる。'
+        ? '1人が「部屋をつくる」を押し、出てきた6けたの「あいことば」を相手に伝える（そばにいるなら、QRコードをカメラで読んでもらってもよい）。相手は「部屋に入る」にあいことばを入れて「入る」を押す。つながったら、2人ともデッキを選んで「準備OK」を押すと対戦がはじまる。ログインはいらない。あいことばが使えないときは、リンクやQRコードでもつなげる。'
         : TRANSPORT() === 'p2p'
-        ? '1人が「部屋をつくる」を押すと、「招待リンク」とQRコードが出る。相手はQRコードをスマホのカメラで読む（またはリンクを開く）と、「参加リンク」とQRコードが出る。最初の人がそれをカメラで読む（またはリンクを貼って「つなぐ」を押す）と、対戦がはじまる。ログインはいらない。'
+        ? '1人が「部屋をつくる」を押すと、「招待リンク」とQRコードが出る。相手はQRコードをスマホのカメラで読む（またはリンクを開く）と、「参加リンク」とQRコードが出る。最初の人がそれをカメラで読む（またはリンクを貼って「つなぐ」を押す）とつながる。2人ともデッキを選んで「準備OK」を押すと対戦がはじまる。ログインはいらない。'
         : '1人が「部屋をつくる」を押し、出てきた6けたの「あいことば」を相手に伝える。相手は「部屋に入る」にあいことばを入れる。2人ともClaudeにログインして、このページを開いている必要がある。'}</li>
       <li>オンライン対戦は、勝つとパックチケット+${REWARD.win}、負け・引き分けで+${REWARD.lose}。途中でぬけると降参になる。</li>
     </ul></section>
@@ -7177,7 +7211,7 @@ function pbarHTML(p) {
   const g = UI.g;
   const cur = g.cur === p.idx && !g.over && UI.mode !== 'setup' && g.turn > 0;
   return `<div class="pbar ${p.idx !== UI.me ? 'opp' : 'me'} ${cur ? 'cur' : ''}">
-    <span class="who">${esc(whoLabel(p))}</span><span class="dname">${esc(p.deckName)}</span>
+    <span class="who">${esc(whoLabel(p))}</span><span class="dname">${esc(UI.vs === 'online' && p.idx !== UI.me && !g.over ? '' : p.deckName)}</span>
     <span class="pts"><span class="silk">ポイント</span><span class="leds" role="img" aria-label="${p.points}ポイント">${[0, 1, 2].map(i => `<i class="led ${i < p.points ? 'on' : ''}"></i>`).join('')}</span></span>
   </div>`;
 }
