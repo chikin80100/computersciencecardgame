@@ -450,7 +450,8 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 .pack-btn:hover:not(:disabled) { transform: translateY(-5px) rotate(-1.5deg); }
 /* Safari（iPad）では、filter をかさねたパックが切れて見えることがあるので、filter は使わない */
 .pack-btn:disabled { cursor: not-allowed; }
-.pack-btn:disabled::after { content: ''; position: absolute; inset: 0; z-index: 3; border-radius: 3px; background: rgba(20, 28, 25, .55); pointer-events: none; } /* 暗い色をかさねる */
+.pack-btn:disabled .pack { position: relative; }
+.pack-btn:disabled .pack::after { content: ''; position: absolute; inset: 0; z-index: 3; border-radius: 3px; background: rgba(20, 28, 25, .55); pointer-events: none; } /* パックの上に暗い色をかさねる */
 .pack-btn:disabled .pk-body::after { animation: none; opacity: 0; }
 .pk-new { position: absolute; z-index: 2; top: -8px; right: -10px; font-size: 12px; font-weight: 700; letter-spacing: .04em; background: #d63b2f; color: #fff; padding: 2px 7px; border-radius: 4px; box-shadow: 0 2px 6px rgba(0, 0, 0, .45); transform: rotate(8deg); }
 .pack { --w: 176px; width: var(--w); display: flex; flex-direction: column; border-radius: 3px; box-shadow: 0 12px 22px rgba(0, 0, 0, .5); }
@@ -587,7 +588,7 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 }
 
 /* ---------- 「コンピュータの父」シリーズ ---------- */
-.series { margin: 18px 0 8px; }
+section.series { margin: 18px 0 8px; } /* .pack.series（シリーズのパック）には当てない */
 .ser-h { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-family: var(--display); font-weight: 400; font-size: 21px; color: var(--gold); }
 .ser-new { font-family: var(--body); font-size: 11px; font-weight: 700; background: #d63b2f; color: #fff; padding: 1px 6px; border-radius: 3px; }
 .series .packs { margin-top: 12px; }
