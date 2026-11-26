@@ -1,0 +1,12 @@
+{
+  "name": "cs-card-signal",
+  "private": true,
+  "description": "CS用語カードバトル：サイト版オンライン対戦の「あいことば」を預かる Cloudflare Worker",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

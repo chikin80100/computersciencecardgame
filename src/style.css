@@ -634,3 +634,9 @@ img.px.ic { display: inline-block; width: 18px; height: 18px; vertical-align: -4
 .autobtn { font-size: 12px; padding: 4px 6px; }
 .autobtn[aria-pressed="true"] { background: var(--gold); color: #2a1d05; border-color: var(--gold); }
 .autonote { color: var(--gold); }
+
+/* あいことば（サイト版） */
+.room-wait .qr { width: min(160px, 46vw); }
+.p2p-alt { margin: 12px 0 0; }
+.p2p-alt > summary { cursor: pointer; font-size: 13px; color: var(--gold); padding: 6px 0; }
+.net-box .p2p-alt { margin-top: 4px; }
