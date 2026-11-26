@@ -28,11 +28,13 @@ const FONT = {
    '<': '001010100010001', '.': '000000000000010', '/': '001001010100100', '-': '000000111000000',
 };
 
-function grid() {
-  const a = Array.from({ length: 24 }, () => new Array(24).fill(null));
-  const inb = (x, y) => x >= 0 && y >= 0 && x < 24 && y < 24;
+/* W×H のマス（ふつうの絵は 24×24。★フルアートの絵は fullart.js で 40×56） */
+function grid(W, H) {
+  W = W || 24; H = H || W;
+  const a = Array.from({ length: H }, () => new Array(W).fill(null));
+  const inb = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
   const g = {
-    a,
+    a, W, H,
     set(x, y, c) { x = Math.round(x); y = Math.round(y); if (inb(x, y)) a[y][x] = c; return g; },
     get(x, y) { return inb(x, y) ? a[y][x] : null; },
     rect(x, y, w, h, c) { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) g.set(x + i, y + j, c); return g; },
@@ -60,7 +62,7 @@ function grid() {
       }
       return g;
     },
-    each(fn) { for (let y = 0; y < 24; y++) for (let x = 0; x < 24; x++) fn(x, y, x + 0.5, y + 0.5); return g; },
+    each(fn) { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) fn(x, y, x + 0.5, y + 0.5); return g; },
     disc(cx, cy, r, c) { return g.each((x, y, px, py) => { if ((px - cx) ** 2 + (py - cy) ** 2 <= r * r) g.set(x, y, c); }); },
     ring(cx, cy, r, t, c) {
       return g.each((x, y, px, py) => { const d = Math.hypot(px - cx, py - cy); if (d <= r && d > r - t) g.set(x, y, c); });

@@ -58,6 +58,7 @@ python3 test/pioneer_ui.py      # 「プログラミングの先駆者」：開�
 python3 test/ubicomp_ui.py      # 「遍在する計算機」：NEWのしるし・開封・図鑑・フィールド（TRONハウス）・ベンチのTRONとセンサー・カーム・テクノロジー
 python3 test/rare.py            # ゴッドパックとホロの見た目
 python3 test/fullart.py         # ★フルアート：開封・10連・図鑑・デッキ編集・カードの説明（絵の切りかえ）・セーブ・マージ
+python3 test/fullsheet.py       # ★フルアートの絵の一覧（ex と人物カード。types=1 でタイプごとの景色、ids=… でカードを指定、cards=1 で文字つきのカードの形）
 python3 test/multi_ui.py        # はじめのチケット30枚と、10連（チケット・枚数・まとめ方・ならび順・もう10パック・スマホ/パソコン/動きを減らす設定）
 python3 test/local2p.py         # この端末で2人対戦（端末を渡す画面）
 python3 test/auto_ui.py         # CPU戦のオート：準備・番のとちゅうでオン、最後まで自動、もう一度でも続く、オフで手動にもどる
@@ -87,14 +88,15 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 |---|---|
 | src/data.js | カードの定義：`TYPES` `WEAK`（弱点）`STATUS`（状態異常）`MONSTERS`（ユニット）`TRAINERS`（コマンド）`KIND` `PRESETS`（19個のデッキ）`SERIES` `PACKS` `REWARD` `EXCHANGE_COST` |
 | src/engine.js | ルールエンジン（DOMなし・async）とCPUのAI。Node 用に `module.exports` もある |
-| src/art.js | ドット絵。24×24 のマスに `PAL` の色の記号で描く。`ART[カードid] = g => {...}`、`spriteURL(id)` で画像に |
+| src/art.js | ドット絵。24×24 のマスに `PAL` の色の記号で描く。`ART[カードid] = g => {...}`、`spriteURL(id)` で画像に。`grid(W, H)` でほかの大きさのマスも作れる |
+| src/fullart.js | ★フルアートの絵（40×56 マスのたて長）。`FULL[カードid]`（1枚ずつ描いた一枚絵）、`SCENE`（タイプごとの景色）、`fullURL(id)` で画像に。色は PAL の記号か `'#rrggbb'` |
 | src/qr.js | QRコードをつくる（ライブラリなし。バイトモード・誤り訂正L・型番1〜20）。`qrSVG(文字列)` |
 | src/p2p.js | サイト版の WebRTC 対戦（つなぐ・コード・あいことば・リンク・QR・再戦・切断）。`SIGNAL_URL` に Worker の URL |
 | worker/ | あいことばを預かる Cloudflare Worker（Durable Object `Room`）。デプロイのしかたは worker/README.md。`npm install` すると node_modules ができる（git には入れない） |
 | src/ui.js | 画面ぜんぶ：タイトル・デッキ選択・デッキ編集・図鑑・あそびかた・パック開封・対戦・結果・セーブ・オンライン対戦（`NET`） |
 | src/style.css | 見た目 |
 | src/index.html | ひな形。`/*STYLE*/` と `/*SCRIPT*/` に中身が入る |
-| build.py | data → engine → art → qr → p2p → ui の順にJSをつなげて、1枚のHTMLにする |
+| build.py | data → engine → art → fullart → qr → p2p → ui の順にJSをつなげて、1枚のHTMLにする |
 | docs/index.html | ビルドしたもの（GitHub Pages 用に git に入れる）。src を変えたらビルドしてから commit |
 | dist/index.html | ビルドしたもの（テストとアーティファクト用。git には入れない） |
 
@@ -173,7 +175,11 @@ python3 test/sheet.py set=ubicomp big=1  # 絵柄の一覧（set=father / pionee
 - パック：`openPack(packId, n)` で開ける（n は 1 か `MULTI_PACKS`＝10。10連はチケット10枚・パックポイント10パック分）。中身は1パックずつ `rollPack(pack)`。10連は1枚ずつめくらず、`multiDoneHTML()` で、同じカード（ホロかどうかも同じ）をまとめて「×枚数」をつけ、ホロ → レア度の高い順にならべて、裏から順にめくれる絵で見せる（動きを減らす設定では、すぐ表）。おまけの確定枠はなく、確率は1パックずつと同じ。`rollPack` は test/odds.js が `function packPool` 〜 `function packHTML` の間を切り出して使うので、その間に画面の関数を入れない。5枚目と4枚目にレアが出やすい。シリーズのパックは目玉の人物カード（`feature`）が ◆◆◆◆ の半分をしめる（だいたい18%のパックに入る）。`isNew: true` のシリーズとパックには NEW のしるしがつく。シリーズは `SERIES` の順に、パックはシリーズの中で NEW が先頭に出る（いまは「遍在する計算機」のマーク・ワイザー・TRON・落合陽一）。ふつうのパックには `set` つきのカードは入らない。ゴッドパックは0.5%ほど。
 - **パラレル**（同じカードの、めずらしい見た目。デッキではふつうのカードと同じ）：☆ホロ（`STORE.holo`、キラキラが流れる）と ★フルアート（`STORE.full`、2026年11月26日〜）。どちらもユニット（シリーズのパックでは、その人物カードも。`rollPack` の `holoPool`）から出る。
   - 確率（`rollPack`）：4枚目 ◆◆71% ◆◆◆18% ◆◆◆◆8% ☆ホロ2% ★フルアート1%、5枚目 ◆◆47% ◆◆◆28% ◆◆◆◆16% ☆ホロ6% ★フルアート3%（フルアートの分は ◆◆ から取った）。ゴッドパックでは ☆30%・★15%。`node test/odds.js` の `h:` `f:` で見る。
-  - ★フルアートの絵（`fullBgHTML` と `.thumb.full` / `.card.full`）：カードの面ぜんたいに、タイプの色のグラデーション・同じドット絵を大きく引きのばしたモザイク（`.fa-zoom`）・タイプのもよう・光とかげを重ね、その上にくっきりした大きな絵と、文字をのせる。Safari のために `filter` は使わない。
+  - ★フルアートの絵（src/fullart.js、2026年11月26日に描きなおし）：40×56 マスのたて長の一枚絵を、カードの面ぜんたいに敷く（`fullBgHTML` → `.fa-bg`。文字の下は CSS のグラデーションで暗くする。Safari のために `filter` は使わない）。
+    - ex（20枚）と人物カード（7枚）は、1枚ずつ描きおこした絵（`FULL[id]`）。人物カードは顔を描かず、研究や作品の場面（ボンブ・ノイマン型の図・迷路のネズミ・解析機関・日誌のバグ・ユビキタスの部屋・鏡の湖と浮かぶ光の粒）。
+    - ほかのカードは、タイプごとの景色（`SCENE`：グラフの星座・データの塔・夕ぐれの街・金庫・基板・星雲・0と1の雨。コマンドは光のすじ）の上に、ふつうの絵を主役として置く（`defaultFull`）。星などの位置はカードの id から決まる乱数（`frand(fseed(id))`。画面の演出なので RNG は使わない）。
+    - 下の14マスくらいには名前・HP の文字が重なるので、絵の大事なところは上に描く。小さい文字（`g.text`、FONT の3×5）には Q・W・J がない。
+    - 新しい ex や人物カードを足したら、`FULL[id]` も描いて `python3 test/fullsheet.py` で目で見る（描かなくても `defaultFull` で出る）。
   - 図鑑・デッキ編集の一覧は、持っていれば ★フルアート → ☆ホロ の順に見せる（`bestLook`）。カードの説明では「絵を切りかえる」で、持っている見た目を順に見られる（`openCardInfo(id, look)`）。10連の結果では ★ → ☆ → レア度の順にならべる。
   - アカウントの保存とのマージは、☆も★もカードごとに多いほう（`mergeStore`）。
 - チケット：`REWARD = {start:30, win:5, lose:3, draw:3, daily:10}`（`grantReward()`）。`start` は、はじめての人（セーブに `tickets` がない人）だけに配る。前の版のセーブの枚数は変えない（2026年11月24日に20→30。前に10→20にしたときは、`bonus2` で前のセーブにも差を配った）。降参した人・この端末での2人対戦・ずれて終わった対戦はもらえない。

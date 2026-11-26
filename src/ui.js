@@ -147,10 +147,10 @@ function punchSVG(text, cols) {
   return out + '</svg>';
 }
 
-/* ★フルアート：カードの面ぜんたいに絵。うしろに同じドット絵を大きく引きのばしたモザイクと、タイプの色・もようをしく
-   （Safari でくずれないように filter は使わない。重ねるのはグラデーションと不透明度だけ） */
-function fullBgHTML(id, d) {
-  return `<span class="fa-bg" aria-hidden="true"><span class="fa-zoom" style="background-image:url(${spriteURL(id)})"></span><span class="fa-tile ${tileClass(d)}"></span><span class="fa-glow"></span></span>`;
+/* ★フルアート：カードの面ぜんたいに、フルアート用の絵（fullart.js の fullURL。40×56 マス）を敷く
+   （Safari でくずれないように filter は使わない。文字を読みやすくするのは、上に重ねるグラデーションだけ） */
+function fullBgHTML(id) {
+  return `<span class="fa-bg" aria-hidden="true" style="background-image:url(${fullURL(id)})"></span>`;
 }
 function thumbHTML(id, opts) {
   opts = opts || {};
@@ -159,9 +159,9 @@ function thumbHTML(id, opts) {
   const badge = opts.badge ? `<span class="t-badge ${opts.badge === 'NEW' ? 'new' : ''}">${esc(opts.badge)}</span>` : '';
   if (opts.full && !opts.sil) {
     return `<div class="thumb full ${d.ex || d.leg ? 'ex' : ''}" style="--c:${c}">
-    ${fullBgHTML(id, d)}
+    ${fullBgHTML(id)}
     <span class="t-top"><span>${noLabel(d)}</span><span class="t-kind">${kindLabel(d)}</span></span>
-    <span class="fa-art" aria-hidden="true">${artImg(id)}</span>
+    <span class="fa-art"></span>
     <span class="fa-foot">
       <span class="t-name">${nameHTML(d)}${d.ex ? '<b class="exb">ex</b>' : ''}</span>
       <span class="t-en">${esc(d.en)}</span>
@@ -197,7 +197,7 @@ function cardHTML(id, opts) {
     const m = opts.m;
     const hp = m ? `<span class="c-hp"><small>HP</small>${hpLeft(m)}<small>/${maxHp(m)}</small></span>` : `<span class="c-hp"><small>HP</small>${d.hp}</span>`;
     return `<div class="card-wrap"><article class="card ${d.ex ? 'ex' : ''} ${opts.holo ? 'holo' : ''} ${opts.full ? 'full' : ''}" style="--c:${t.c}">
-      ${opts.full ? fullBgHTML(id, d) : ''}<div class="c-stripe"></div>
+      ${opts.full ? fullBgHTML(id) : ''}<div class="c-stripe"></div>
       <header class="c-head"><span class="c-stage">${stageLabel(d)}</span><h3 class="c-name">${nameHTML(d)}${d.ex ? '<b class="exb">ex</b>' : ''}</h3>${hp}${eI(d.type, 'l')}</header>
       <p class="c-sub"><span>${esc(d.en)}</span><span>${noLabel(d)} ${opts.full ? '★フルアート' : RARITY_MARK[rarityOf(d)]}${d.from ? ` ・「${esc(d.from)}」から進化` : ''}</span></p>
       <div class="c-art ${tileClass(d)}" aria-hidden="true">${artImg(id, { sil: opts.sil })}</div>
@@ -213,7 +213,7 @@ function cardHTML(id, opts) {
   }
   const k = KIND[d.kind];
   return `<div class="card-wrap"><article class="card tr ${d.leg ? 'ex' : ''} ${opts.holo ? 'holo' : ''} ${opts.full ? 'full' : ''}" style="--c:${k.c}">
-    ${opts.full ? fullBgHTML(id, d) : ''}<div class="c-stripe"></div>
+    ${opts.full ? fullBgHTML(id) : ''}<div class="c-stripe"></div>
     <header class="c-head"><span class="c-stage">${k.name}</span><h3 class="c-name">${nameHTML(d)}</h3></header>
     <p class="c-sub"><span>${esc(d.en)}</span><span>${noLabel(d)} ${opts.full ? '★フルアート' : RARITY_MARK[rarityOf(d)]}</span></p>
     <div class="c-art ${tileClass(d)}" aria-hidden="true">${artImg(id, { sil: opts.sil })}</div>

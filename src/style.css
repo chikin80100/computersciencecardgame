@@ -661,15 +661,13 @@ section.series { margin: 18px 0 8px; } /* .pack.series（シリーズのパッ�
 .ready-list li.on { color: #c9f5d6; background: rgba(143, 224, 166, .16); }
 
 /* ---------- ★フルアート（カードの面ぜんたいに絵のパラレル） ----------
-   うしろ（.fa-bg）：タイプの色のグラデーション → 同じドット絵を大きく引きのばしたモザイク → タイプのもよう → 光とかげ。
+   絵は fullart.js の fullURL（40×56 マスのたて長のドット絵）を .fa-bg に敷く。文字を読みやすくするのは、上に重ねるグラデーション。
    Safari でくずれないように filter は使わない */
-.fa-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: linear-gradient(165deg, var(--c), #0b1d16 88%); }
-.fa-zoom { position: absolute; inset: -4%; background-repeat: no-repeat; background-position: 50% 42%; background-size: 330%; image-rendering: pixelated; opacity: .45; }
-.fa-tile { position: absolute; inset: 0; background-size: 24px 24px; opacity: .5; }
-.fa-glow { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, rgba(255, 248, 225, .55), rgba(255, 248, 225, 0) 55%), linear-gradient(180deg, rgba(5, 14, 10, 0) 52%, rgba(5, 14, 10, .88) 100%); }
+.fa-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; background-color: #05080a; background-repeat: no-repeat; background-position: center top; background-size: cover; image-rendering: pixelated; }
+.fa-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5, 8, 10, .45) 0, rgba(5, 8, 10, 0) 13%, rgba(5, 8, 10, 0) 60%, rgba(5, 8, 10, .88) 100%); }
 .fa-mark { color: #ffd76a; letter-spacing: 0; font-size: 11px; font-weight: 700; text-shadow: 0 0 4px rgba(255, 215, 106, .8); }
 /* 小さいカード */
-.thumb.full { color: #fff; background: #0b1d16; box-shadow: inset 0 0 0 2px rgba(255, 228, 150, .6); }
+.thumb.full { color: #fff; background: #05080a; box-shadow: inset 0 0 0 2px rgba(255, 228, 150, .6); }
 .thumb.full > * { position: relative; z-index: 1; }
 .thumb.full > .fa-bg { position: absolute; z-index: 0; }
 .thumb.full > .t-badge { position: absolute; z-index: 3; }
@@ -677,22 +675,21 @@ section.series { margin: 18px 0 8px; } /* .pack.series（シリーズのパッ�
 .thumb.full .t-top { color: rgba(255, 255, 255, .85); padding-top: 6px; text-shadow: 0 1px 2px #000; }
 .thumb.full .t-kind { color: #fff; }
 .fa-art { flex: 1; min-height: 0; display: block; }
-.fa-art img { position: absolute; inset: 0; margin: auto; width: 86%; height: 86%; object-fit: contain; }
 .fa-foot { flex: none; display: flex; flex-direction: column; }
 .thumb.full .t-name { color: #fff; text-shadow: 0 1px 0 #000, 0 0 4px rgba(0, 0, 0, .85); }
 .thumb.full .t-en { color: rgba(255, 255, 255, .72); }
 .thumb.full .t-bot { color: #fff; }
-/* 大きいカード（説明の窓） */
-.card.full { background: #0b1d16; color: #fff; }
+/* 大きいカード（説明の窓）：絵はカードの上に 5:7 で敷き、下は暗い色につなげる */
+.card.full { background: #05080a; color: #fff; }
 .card.full > :not(.fa-bg) { position: relative; z-index: 1; }
 .card.full.ex::before { z-index: 2; }
-.card.full .fa-zoom { background-position: 50% 20%; background-size: 260%; }
-.card.full .fa-glow { background: radial-gradient(ellipse at 50% 22%, rgba(255, 248, 225, .55), rgba(255, 248, 225, 0) 45%), linear-gradient(180deg, rgba(5, 14, 10, 0) 28%, rgba(5, 14, 10, .65) 60%); }
+.card.full > .fa-bg { bottom: auto; aspect-ratio: 5 / 7; background-size: 100% auto; }
+.card.full > .fa-bg::after { background: linear-gradient(180deg, rgba(5, 8, 10, .5) 0, rgba(5, 8, 10, 0) 16%, rgba(5, 8, 10, 0) 70%, #05080a 100%); }
 .card.full .c-stage, .card.full .c-name, .card.full .c-hp { color: #fff; text-shadow: 0 1px 2px #000; }
-.card.full .c-sub { color: rgba(255, 255, 255, .8); }
-.card.full .c-art { height: 196px; border: 0; background-image: none; }
+.card.full .c-sub { color: rgba(255, 255, 255, .85); text-shadow: 0 1px 2px #000; }
+.card.full .c-art { height: 318px; border: 0; background-image: none; } /* 絵（5:7）が見えるように、文の板は絵の下のほうから */
 .card.full .c-art::before { display: none; }
-.card.full .c-art img { width: 180px; height: 180px; }
+.card.full .c-art img { visibility: hidden; }
 .card.full .c-body, .card.full .c-foot, .card.full .c-rule, .card.full .c-desc, .card.full .c-punch { background: rgba(239, 226, 191, .94); color: var(--ink); border-radius: 4px; }
 .card.full .c-body { margin: 0 12px; padding: 8px 10px; }
 .card.full .c-foot { padding: 6px 10px; border-top: 0; }

@@ -12,7 +12,7 @@ from pathlib import Path
 
 root = Path(__file__).parent
 src = root / 'src'
-JS_ORDER = ['data.js', 'engine.js', 'art.js', 'qr.js', 'p2p.js', 'ui.js']  # この順につなげる（あとのファイルが前のファイルを使う）
+JS_ORDER = ['data.js', 'engine.js', 'art.js', 'fullart.js', 'qr.js', 'p2p.js', 'ui.js']  # この順につなげる（あとのファイルが前のファイルを使う）
 
 html = (src / 'index.html').read_text(encoding='utf-8')
 css = (src / 'style.css').read_text(encoding='utf-8')
